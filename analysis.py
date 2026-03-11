@@ -153,7 +153,7 @@ def get_data():
 
 @app.route("/")
 def home():
-    return "Commodex running."
+    return open("dashboard.html").read()
 
 run_analysis()
 thread = threading.Thread(target=scheduler_loop, daemon=True)
@@ -161,3 +161,4 @@ thread.start()
 print("Starting server on http://localhost:5000")
 
 app.run(host="0.0.0.0", port=10000, use_reloader=False)
+
