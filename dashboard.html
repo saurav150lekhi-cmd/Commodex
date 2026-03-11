@@ -92,7 +92,7 @@
 
   async function loadData() {
     try {
-      const res = await fetch("http://localhost:5000/data");
+      const res = await fetch("https://commodex-chel.onrender.com/data");
       data = await res.json();
       renderTabs();
       renderView(activeTab);
@@ -141,4 +141,5 @@
   setInterval(loadData, 5 * 60 * 1000);
 </script>
 </body>
+
 </html>
