@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: commodex
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python analysis.py
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
