@@ -159,4 +159,5 @@ run_analysis()
 thread = threading.Thread(target=scheduler_loop, daemon=True)
 thread.start()
 print("Starting server on http://localhost:5000")
-app.run(port=5000, use_reloader=False)
+
+app.run(host="0.0.0.0", port=10000, use_reloader=False)
