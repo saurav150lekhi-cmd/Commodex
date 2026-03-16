@@ -8,7 +8,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background: #0a0908; color: #d4c4a0; font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
 
-    /* ── Header ── */
     .header { background: #0f0e0b; border-bottom: 1px solid #2a2820; padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; }
     .logo { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: #e8d8b0; }
     .logo-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: #c8a870; letter-spacing: 3px; }
@@ -19,7 +18,6 @@
     .refresh-btn { background: none; border: 1px solid #3a3428; color: #c8a870; padding: 4px 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; }
     .refresh-btn:hover { color: #e8d8b0; border-color: #5a4a38; }
 
-    /* ── Prices Bar ── */
     .prices-bar { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 0 24px; height: 44px; display: flex; align-items: center; gap: 4px; overflow-x: auto; }
     .price-chip { display: flex; align-items: center; gap: 8px; padding: 5px 12px; border: 1px solid #222018; border-radius: 3px; background: #111009; min-width: 150px; flex-shrink: 0; cursor: pointer; transition: all 0.15s; }
     .price-chip:hover, .price-chip.active { border-color: var(--chip-color); background: #151310; }
@@ -31,13 +29,11 @@
     .price-change.flat { color: #fbbf24; background: #302616; }
     .prices-ts { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: #5a4a30; flex-shrink: 0; }
 
-    /* ── Tabs ── */
     .tabs { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 0 24px; display: flex; overflow-x: auto; }
     .tab { padding: 10px 16px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #8a7a60; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
     .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
     .tab:hover { color: #d4c4a0; }
 
-    /* ── Commodity Header ── */
     .commodity-header { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 14px 24px; display: flex; align-items: center; gap: 20px; }
     .comm-name { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; }
     .comm-price-block { display: flex; flex-direction: column; gap: 2px; }
@@ -54,24 +50,15 @@
     .sentiment-text { font-family: 'DM Mono', monospace; font-size: 10px; margin-left: 8px; letter-spacing: 1px; }
     .analysis-ts { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; margin-left: auto; text-align: right; line-height: 1.6; }
 
-    /* ── Chart ── */
-    .chart-section { background: #0a0908; border-bottom: 1px solid #2a2820; height: 340px; position: relative; }
-    .chart-header { padding: 8px 24px; display: flex; align-items: center; gap: 10px; background: #0d0c0a; border-bottom: 1px solid #1a1816; }
-    .chart-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #8a7a60; }
-    .chart-container { height: 300px; }
-    .chart-container iframe { width: 100%; height: 100%; border: none; }
+    .main { display: flex; height: calc(100vh - 140px); min-height: 500px; }
 
-    /* ── Main body ── */
-    .main { display: flex; height: calc(100vh - 370px); min-height: 500px; }
-
-    /* ── News Col ── */
-    .news-col { width: 38%; border-right: 1px solid #2a2820; display: flex; flex-direction: column; overflow: hidden; }
+    .news-col { width: 20%; border-right: 1px solid #2a2820; display: flex; flex-direction: column; overflow: hidden; }
     .col-header { padding: 10px 16px; border-bottom: 1px solid #2a2820; font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2.5px; color: #8a7a60; display: flex; align-items: center; gap: 8px; }
     .col-count { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: #6a5a40; }
     .news-list { flex: 1; overflow-y: auto; }
     .news-item { padding: 11px 16px; border-bottom: 1px solid #161412; cursor: pointer; transition: background 0.1s; text-decoration: none; display: block; }
     .news-item:hover { background: #0d0c0a; }
-    .news-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .news-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
     .news-source { font-family: 'DM Mono', monospace; font-size: 8px; color: #c8a870; }
     .news-time { font-family: 'DM Mono', monospace; font-size: 8px; color: #6a5a40; margin-left: auto; }
     .news-title { font-size: 12px; color: #c4b490; line-height: 1.5; }
@@ -80,17 +67,14 @@
     .impact-MEDIUM { background: #1a2030; color: #60a5fa; border: 1px solid #60a5fa30; }
     .impact-LOW { background: #1a1a1a; color: #6a6a6a; border: 1px solid #3a3a3a30; }
 
-    /* ── Analysis Col ── */
     .analysis-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
     .analysis-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 20px; }
 
-    /* ── Briefing ── */
     .section-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2.5px; color: #8a7a60; margin-bottom: 10px; }
     .briefing-text { font-size: 13px; line-height: 1.9; color: #c4b490; font-weight: 300; }
     .briefing-text p { margin-bottom: 14px; }
     .briefing-text p:last-child { margin-bottom: 0; }
 
-    /* ── Drivers ── */
     .drivers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .drivers-box { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 12px; }
     .drivers-box-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; margin-bottom: 10px; }
@@ -102,31 +86,26 @@
     .drivers-box.up .driver-arrow { color: #4ade80; }
     .drivers-box.down .driver-arrow { color: #f87171; }
 
-    /* ── Levels ── */
     .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .level-box { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 12px; }
     .level-box-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 6px; }
     .level-value { font-family: 'DM Mono', monospace; font-size: 16px; color: #e8d8b0; }
     .level-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; margin-top: 3px; }
 
-    /* ── Takeaway ── */
     .takeaway-box { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 16px; }
     .takeaway-bias { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; margin-bottom: 12px; padding: 5px 10px; border-radius: 3px; display: inline-block; }
     .takeaway-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
     .takeaway-item-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1.5px; color: #8a7a60; margin-bottom: 5px; }
     .takeaway-item-value { font-size: 12px; color: #c4b490; line-height: 1.5; }
 
-    /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 2px; }
     ::-webkit-scrollbar-thumb { background: #3a3428; border-radius: 1px; }
-
     .loading { padding: 32px 20px; font-family: 'DM Mono', monospace; font-size: 10px; color: #6a5a40; letter-spacing: 1px; }
     .section-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 16px; }
   </style>
 </head>
 <body>
 
-<!-- Header -->
 <div class="header">
   <span class="logo">Commodex</span>
   <span class="logo-sub">RESEARCH TERMINAL</span>
@@ -137,29 +116,16 @@
   </div>
 </div>
 
-<!-- Prices Bar -->
 <div class="prices-bar" id="prices-bar">
   <span style="font-family:'DM Mono',monospace;font-size:9px;color:#6a5a40">FETCHING PRICES...</span>
 </div>
 
-<!-- Tabs -->
 <div class="tabs" id="tabs"></div>
 
-<!-- Commodity Header -->
 <div class="commodity-header" id="commodity-header">
   <div class="loading">Loading...</div>
 </div>
 
-<!-- Chart -->
-<div class="chart-section">
-  <div class="chart-header">
-    <span class="chart-label">PRICE CHART</span>
-    <span id="chart-symbol-label" style="font-family:'DM Mono',monospace;font-size:9px;color:#c8a870;"></span>
-  </div>
-  <div class="chart-container" id="chart-container"></div>
-</div>
-
-<!-- Main -->
 <div class="main">
   <div class="news-col">
     <div class="col-header">
@@ -181,11 +147,6 @@
     "Silver": "#8faabf", "Copper": "#b87040", "Natural Gas": "#5a9e8f"
   };
 
-  const TV_SYMBOLS = {
-    "Gold": "COMEX:GC1!", "Crude Oil": "NYMEX:CL1!",
-    "Silver": "COMEX:SI1!", "Copper": "COMEX:HG1!", "Natural Gas": "NYMEX:NG1!"
-  };
-
   const PRICE_SYMBOLS = {
     "Gold":        { sym: "GC=F",  unit: "oz",    label: "GOLD",      decimals: 1 },
     "Silver":      { sym: "SI=F",  unit: "oz",    label: "SILVER",    decimals: 3 },
@@ -196,7 +157,6 @@
 
   let data = {}, activeTab = "Gold", priceCache = {};
 
-  /* ── Prices ── */
   async function loadPrices() {
     const syms = Object.values(PRICE_SYMBOLS).map(s => encodeURIComponent(s.sym)).join('%2C');
     const url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + syms + "&fields=regularMarketPrice,regularMarketChangePercent";
@@ -217,11 +177,7 @@
     const cfg = PRICE_SYMBOLS[name];
     const q = priceCache[cfg?.sym];
     if (!q) return null;
-    return {
-      price: q.regularMarketPrice?.toFixed(cfg.decimals),
-      change: q.regularMarketChangePercent,
-      cfg
-    };
+    return { price: q.regularMarketPrice?.toFixed(cfg.decimals), change: q.regularMarketChangePercent, cfg };
   }
 
   function renderPricesBar() {
@@ -246,42 +202,24 @@
     bar.innerHTML = html;
   }
 
-  /* ── Sentiment ── */
   const SENTIMENTS = ["STRONG_BEARISH", "BEARISH", "NEUTRAL", "BULLISH", "STRONG_BULLISH"];
-  const SENTIMENT_LABELS = {
-    "STRONG_BEARISH": "STRONG BEARISH",
-    "BEARISH": "BEARISH",
-    "NEUTRAL": "NEUTRAL",
-    "BULLISH": "BULLISH",
-    "STRONG_BULLISH": "STRONG BULLISH"
-  };
-  const SENTIMENT_COLORS = {
-    "STRONG_BEARISH": "#ef4444",
-    "BEARISH": "#f87171",
-    "NEUTRAL": "#fbbf24",
-    "BULLISH": "#86efac",
-    "STRONG_BULLISH": "#22c55e"
-  };
+  const SENTIMENT_LABELS = { "STRONG_BEARISH": "STRONG BEARISH", "BEARISH": "BEARISH", "NEUTRAL": "NEUTRAL", "BULLISH": "BULLISH", "STRONG_BULLISH": "STRONG BULLISH" };
+  const SENTIMENT_COLORS = { "STRONG_BEARISH": "#ef4444", "BEARISH": "#f87171", "NEUTRAL": "#fbbf24", "BULLISH": "#86efac", "STRONG_BULLISH": "#22c55e" };
 
   function renderSentimentMeter(sentiment) {
     const idx = SENTIMENTS.indexOf(sentiment);
     const color = SENTIMENT_COLORS[sentiment] || "#fbbf24";
     let steps = "";
     for (let i = 0; i < 5; i++) {
-      const filled = i <= idx;
-      const stepColor = filled ? SENTIMENT_COLORS[SENTIMENTS[i]] : "#2a2820";
+      const stepColor = i <= idx ? SENTIMENT_COLORS[SENTIMENTS[i]] : "#2a2820";
       steps += `<div class="sentiment-step" style="background:${stepColor}"></div>`;
     }
     return `<div class="sentiment-block">
       <div class="sentiment-label">SENTIMENT</div>
-      <div class="sentiment-meter">
-        ${steps}
-        <span class="sentiment-text" style="color:${color}">${SENTIMENT_LABELS[sentiment] || "NEUTRAL"}</span>
-      </div>
+      <div class="sentiment-meter">${steps}<span class="sentiment-text" style="color:${color}">${SENTIMENT_LABELS[sentiment] || "NEUTRAL"}</span></div>
     </div>`;
   }
 
-  /* ── Commodity Header ── */
   function renderCommodityHeader(name) {
     const color = COLORS[name];
     const pd = getPriceData(name);
@@ -291,7 +229,6 @@
     const chg = pd ? pd.change : null;
     const chgClass = chg > 0 ? "up" : chg < 0 ? "down" : "flat";
     const chgStr = chg != null ? (chg >= 0 ? "▲ " : "▼ ") + Math.abs(chg).toFixed(2) + "%" : "";
-
     document.getElementById("commodity-header").innerHTML = `
       <div class="comm-name" style="color:${color}">${name}</div>
       <div class="divider"></div>
@@ -301,129 +238,58 @@
       </div>
       <div class="divider"></div>
       ${renderSentimentMeter(sentiment)}
-      <div class="analysis-ts" style="margin-left:auto">
-        ${d ? "Generated " + d.timestamp + "<br>" + d.count + " articles" : ""}
-      </div>
+      <div class="analysis-ts">${d ? "Generated " + d.timestamp + "<br>" + d.count + " articles" : ""}</div>
     `;
   }
 
-  /* ── TradingView Chart ── */
-  function renderChart(name) {
-    const sym = TV_SYMBOLS[name];
-    const color = COLORS[name].replace("#", "");
-    document.getElementById("chart-symbol-label").textContent = sym;
-    document.getElementById("chart-container").innerHTML = `
-      <iframe
-        src="https://s.tradingview.com/widgetembed/?frameElementId=tv&symbol=${encodeURIComponent(sym)}&interval=60&hidesidetoolbar=1&symboledit=0&saveimage=0&toolbarbg=0a0908&studies=[]&theme=dark&style=1&timezone=Asia%2FKolkata&withdateranges=1&hidevolume=0&locale=en"
-        allowtransparency="true"
-        frameborder="0"
-        scrolling="no">
-      </iframe>`;
-  }
-
-  /* ── Analysis Body ── */
   function renderAnalysisBody(name) {
     const d = data[name];
     if (!d) return;
     const a = d.analysis;
-    const color = COLORS[name];
-
-    // Briefing
     const briefingHtml = (a.briefing || "")
-      .split(/\n{2,}/)
-      .map(p => p.replace(/\n/g, " ").trim())
-      .filter(p => p.length > 10)
-      .map(p => `<p>${p}</p>`)
-      .join("") || "<p>No briefing available.</p>";
-
-    // Drivers
-    const upDrivers = (a.drivers?.up || []).map(d =>
-      `<div class="driver-item"><span class="driver-arrow">▲</span><span>${d}</span></div>`
-    ).join("") || '<div class="driver-item"><span class="driver-arrow">—</span><span>No data</span></div>';
-    const downDrivers = (a.drivers?.down || []).map(d =>
-      `<div class="driver-item"><span class="driver-arrow">▼</span><span>${d}</span></div>`
-    ).join("") || '<div class="driver-item"><span class="driver-arrow">—</span><span>No data</span></div>';
-
-    // Levels
+      .split(/\n{2,}/).map(p => p.replace(/\n/g, " ").trim()).filter(p => p.length > 10)
+      .map(p => `<p>${p}</p>`).join("") || "<p>No briefing available.</p>";
+    const upDrivers = (a.drivers?.up || []).map(d => `<div class="driver-item"><span class="driver-arrow">▲</span><span>${d}</span></div>`).join("") || '<div class="driver-item"><span>No data</span></div>';
+    const downDrivers = (a.drivers?.down || []).map(d => `<div class="driver-item"><span class="driver-arrow">▼</span><span>${d}</span></div>`).join("") || '<div class="driver-item"><span>No data</span></div>';
     const lv = a.levels || {};
-
-    // Takeaway
     const tk = a.takeaway || {};
     const bias = tk.bias || "Neutral";
-    const biasColor = bias.toLowerCase().includes("bull") ? "#4ade80"
-                    : bias.toLowerCase().includes("bear") ? "#f87171"
-                    : "#fbbf24";
-
+    const biasColor = bias.toLowerCase().includes("bull") ? "#4ade80" : bias.toLowerCase().includes("bear") ? "#f87171" : "#fbbf24";
     document.getElementById("analysis-body").innerHTML = `
       <div class="section-card">
         <div class="section-label">INVESTMENT BRIEFING</div>
         <div class="briefing-text">${briefingHtml}</div>
       </div>
-
       <div>
         <div class="section-label">WHAT IS MOVING THIS MARKET</div>
         <div class="drivers-grid">
-          <div class="drivers-box up">
-            <div class="drivers-box-label">▲ UPWARD PRESSURES</div>
-            ${upDrivers}
-          </div>
-          <div class="drivers-box down">
-            <div class="drivers-box-label">▼ DOWNWARD PRESSURES</div>
-            ${downDrivers}
-          </div>
+          <div class="drivers-box up"><div class="drivers-box-label">▲ UPWARD PRESSURES</div>${upDrivers}</div>
+          <div class="drivers-box down"><div class="drivers-box-label">▼ DOWNWARD PRESSURES</div>${downDrivers}</div>
         </div>
       </div>
-
       <div>
         <div class="section-label">KEY TRADING LEVELS</div>
         <div class="levels-grid">
-          <div class="level-box">
-            <div class="level-box-label">RESISTANCE</div>
-            <div class="level-value" style="color:#f87171">${lv.resistance || "—"}</div>
-            <div class="level-sub">COMEX / NYMEX</div>
-          </div>
-          <div class="level-box">
-            <div class="level-box-label">SUPPORT</div>
-            <div class="level-value" style="color:#4ade80">${lv.support || "—"}</div>
-            <div class="level-sub">COMEX / NYMEX</div>
-          </div>
-          <div class="level-box">
-            <div class="level-box-label">MCX RESISTANCE</div>
-            <div class="level-value" style="color:#f87171">${lv.mcx_resistance || "—"}</div>
-            <div class="level-sub">MCX India</div>
-          </div>
-          <div class="level-box">
-            <div class="level-box-label">MCX SUPPORT</div>
-            <div class="level-value" style="color:#4ade80">${lv.mcx_support || "—"}</div>
-            <div class="level-sub">MCX India</div>
-          </div>
+          <div class="level-box"><div class="level-box-label">RESISTANCE</div><div class="level-value" style="color:#f87171">${lv.resistance || "—"}</div><div class="level-sub">COMEX / NYMEX</div></div>
+          <div class="level-box"><div class="level-box-label">SUPPORT</div><div class="level-value" style="color:#4ade80">${lv.support || "—"}</div><div class="level-sub">COMEX / NYMEX</div></div>
+          <div class="level-box"><div class="level-box-label">MCX RESISTANCE</div><div class="level-value" style="color:#f87171">${lv.mcx_resistance || "—"}</div><div class="level-sub">MCX India</div></div>
+          <div class="level-box"><div class="level-box-label">MCX SUPPORT</div><div class="level-value" style="color:#4ade80">${lv.mcx_support || "—"}</div><div class="level-sub">MCX India</div></div>
         </div>
       </div>
-
       <div>
         <div class="section-label">TRADER TAKEAWAY</div>
         <div class="takeaway-box">
           <span class="takeaway-bias" style="background:${biasColor}20;color:${biasColor};border:1px solid ${biasColor}40">${bias.toUpperCase()}</span>
           <div class="takeaway-grid">
-            <div>
-              <div class="takeaway-item-label">STRATEGY</div>
-              <div class="takeaway-item-value">${tk.strategy || "—"}</div>
-            </div>
-            <div>
-              <div class="takeaway-item-label">SHORT TERM · 1-2W</div>
-              <div class="takeaway-item-value">${tk.short_term || "—"}</div>
-            </div>
-            <div>
-              <div class="takeaway-item-label">MEDIUM TERM · 1-3M</div>
-              <div class="takeaway-item-value">${tk.medium_term || "—"}</div>
-            </div>
+            <div><div class="takeaway-item-label">STRATEGY</div><div class="takeaway-item-value">${tk.strategy || "—"}</div></div>
+            <div><div class="takeaway-item-label">SHORT TERM · 1-2W</div><div class="takeaway-item-value">${tk.short_term || "—"}</div></div>
+            <div><div class="takeaway-item-label">MEDIUM TERM · 1-3M</div><div class="takeaway-item-value">${tk.medium_term || "—"}</div></div>
           </div>
         </div>
       </div>
     `;
   }
 
-  /* ── News ── */
   function formatTime(published) {
     if (!published) return "";
     try {
@@ -437,10 +303,7 @@
     const color = COLORS[name];
     const articles = d?.articles || [];
     document.getElementById("news-count").textContent = articles.length + " ARTICLES";
-    if (!articles.length) {
-      document.getElementById("news-list").innerHTML = '<div class="loading">No articles found.</div>';
-      return;
-    }
+    if (!articles.length) { document.getElementById("news-list").innerHTML = '<div class="loading">No articles found.</div>'; return; }
     document.getElementById("news-list").innerHTML = articles.map(a =>
       `<a class="news-item" href="${a.url}" target="_blank" rel="noopener">
         <div class="news-meta">
@@ -453,7 +316,6 @@
     ).join('');
   }
 
-  /* ── Tabs ── */
   function renderTabs() {
     const container = document.getElementById("tabs");
     container.innerHTML = "";
@@ -472,12 +334,10 @@
     renderTabs();
     renderPricesBar();
     renderCommodityHeader(name);
-    renderChart(name);
     renderAnalysisBody(name);
     renderNews(name);
   }
 
-  /* ── Data ── */
   async function loadData() {
     try {
       const res = await fetch("/data");
@@ -485,7 +345,6 @@
       document.getElementById("last-updated").textContent = new Date().toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"}) + " IST";
       renderTabs();
       renderCommodityHeader(activeTab);
-      renderChart(activeTab);
       renderAnalysisBody(activeTab);
       renderNews(activeTab);
     } catch(e) {
@@ -493,7 +352,6 @@
     }
   }
 
-  /* ── Init ── */
   loadData();
   loadPrices();
   setInterval(loadData, 5 * 60 * 1000);
