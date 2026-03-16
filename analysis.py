@@ -28,17 +28,17 @@ NEWS_SOURCES = [
 COMMODITIES = {
     "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "gold rises", "gold falls", "gold hits", "gold climbs"],
     "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls"],
-    "Silver":      ["silver price", "silver rate", "silver futures", "xag"],
+    "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "mcx silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
     "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "mcx copper", "copper cathode", "copper inventories"],
-    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub"],
+    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "mcx gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports"],
 }
 
 GOOGLE_SEARCHES = {
     "Gold":        ["gold site:bloomberg.com", "gold site:reuters.com"],
     "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:reuters.com"],
-    "Silver":      ["silver site:bloomberg.com"],
+    "Silver":      ["silver site:bloomberg.com", "silver price site:reuters.com"],
     "Copper":      ["copper LME site:bloomberg.com", "copper price site:reuters.com"],
-    "Natural Gas": ["natural gas site:bloomberg.com"],
+    "Natural Gas": ["natural gas site:bloomberg.com", "natural gas site:reuters.com"],
 }
 
 HIGH_IMPACT_KEYWORDS = [
