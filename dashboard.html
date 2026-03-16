@@ -69,6 +69,13 @@
     .takeaway-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px; }
     .takeaway-item-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1.5px; color: #8a7a60; margin-bottom: 5px; }
     .takeaway-item-value { font-size: 12px; color: #c4b490; line-height: 1.5; }
+    .meta-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 3px; display: inline-flex; align-items: center; gap: 6px; }
+    .price-context-box { background: #0d0c0a; border: 1px solid #2a2820; border-left: 3px solid #5a4a38; border-radius: 4px; padding: 12px 16px; font-size: 12px; color: #c4b490; line-height: 1.6; }
+    .timeframe-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .timeframe-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 14px; }
+    .timeframe-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 8px; }
+    .timeframe-value { font-size: 12px; color: #c4b490; line-height: 1.6; }
 
     ::-webkit-scrollbar { width: 2px; }
     ::-webkit-scrollbar-thumb { background: #3a3428; border-radius: 1px; }
@@ -170,23 +177,80 @@
     `;
   }
 
+  const CONFIDENCE_COLORS = { "HIGH": "#4ade80", "MEDIUM": "#fbbf24", "LOW": "#f87171" };
+  const NARRATIVE_COLORS = { "Strengthening": "#4ade80", "Stable": "#fbbf24", "Weakening": "#f87171", "Shifting": "#818cf8" };
+
   function renderAnalysisBody(name) {
     const d = data[name];
     if (!d) return;
     const a = d.analysis;
-    const briefingHtml = (a.briefing || "")
+
+    // Market summary
+    const summaryHtml = (a.market_summary || a.briefing || "")
       .split(/\n{2,}/).map(p => p.replace(/\n/g, " ").trim()).filter(p => p.length > 10)
-      .map(p => `<p>${p}</p>`).join("") || "<p>No briefing available.</p>";
+      .map(p => `<p>${p}</p>`).join("") || "<p>No summary available.</p>";
+
+    // Confidence badge
+    const conf = a.confidence || "LOW";
+    const confColor = CONFIDENCE_COLORS[conf] || "#fbbf24";
+
+    // Dominant narrative badge
+    const dn = a.dominant_narrative || {};
+    const narStatus = dn.status || "";
+    const narColor = NARRATIVE_COLORS[narStatus] || "#8a7a60";
+
+    // Price action context
+    const pac = a.price_action_context || "—";
+
+    // Trader takeaways
+    const tt = a.trader_takeaways || {};
+
+    // Takeaway
     const tk = a.takeaway || {};
     const bias = tk.bias || "Neutral";
     const biasColor = bias.toLowerCase().includes("bull") ? "#4ade80" : bias.toLowerCase().includes("bear") ? "#f87171" : "#fbbf24";
+
     document.getElementById("analysis-body").innerHTML = `
       <div class="section-card">
-        <div class="section-label">INVESTMENT BRIEFING</div>
-        <div class="briefing-text">${briefingHtml}</div>
+        <div class="section-label">MARKET SUMMARY</div>
+        <div class="briefing-text">${summaryHtml}</div>
       </div>
+
+      <div class="meta-row">
+        <div class="badge" style="background:${confColor}18;color:${confColor};border:1px solid ${confColor}35">
+          <span style="font-size:7px">CONFIDENCE</span> ${conf}
+        </div>
+        ${dn.theme && dn.theme !== "—" ? `
+        <div class="badge" style="background:${narColor}18;color:${narColor};border:1px solid ${narColor}35">
+          <span style="font-size:7px">NARRATIVE</span> ${dn.theme} &nbsp;·&nbsp; ${narStatus}
+        </div>` : ""}
+      </div>
+
       <div>
-        <div class="section-label">TRADER TAKEAWAY</div>
+        <div class="section-label">PRICE ACTION CONTEXT</div>
+        <div class="price-context-box">${pac}</div>
+      </div>
+
+      <div>
+        <div class="section-label">TRADER TAKEAWAYS</div>
+        <div class="timeframe-grid">
+          <div class="timeframe-card">
+            <div class="timeframe-label">INTRADAY</div>
+            <div class="timeframe-value">${tt.intraday || "—"}</div>
+          </div>
+          <div class="timeframe-card">
+            <div class="timeframe-label">NEXT FEW DAYS</div>
+            <div class="timeframe-value">${tt.next_few_days || "—"}</div>
+          </div>
+          <div class="timeframe-card">
+            <div class="timeframe-label">NEXT FEW WEEKS</div>
+            <div class="timeframe-value">${tt.next_few_weeks || "—"}</div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-label">TAKEAWAY</div>
         <div class="takeaway-box">
           <span class="takeaway-bias" style="background:${biasColor}20;color:${biasColor};border:1px solid ${biasColor}40">${bias.toUpperCase()}</span>
           <div class="takeaway-grid">

@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY = os.environ.get("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", "")
 EIA_API_KEY = os.environ.get("EIA_API_KEY", "")
 
 app = Flask(__name__)
@@ -327,37 +327,61 @@ def analyse_commodity(commodity_name, articles, macro_context):
         for a in articles[:15]
     ) or "No news available."
 
-    prompt = """You are a senior commodity analyst and trading strategist for a hedge fund.
+    prompt = """You are a senior commodity analyst at a hedge fund. Analyse the data below for """ + commodity_name + """ using the 10-step pipeline, then return only the final JSON from Step 10.
 
-COMMODITY: """ + commodity_name + """
 TIME: """ + datetime.now().strftime("%d %b %Y, %I:%M %p") + """ IST
 
 LIVE MARKET DATA:
 """ + macro_context + """
 
-RECENT NEWS:
+RECENT NEWS HEADLINES:
 """ + headlines + """
 
-Using BOTH the market data and news above, return ONLY a valid JSON object with exactly this structure. No markdown, no explanation, just the JSON:
+---
+
+STEP 1 - DATA INGESTION: Filter only information relevant to """ + commodity_name + """ from the inputs above.
+
+STEP 2 - EVENT EXTRACTION: Group relevant articles into 3-5 distinct market events, ignoring duplicate coverage of the same event.
+
+STEP 3 - RELEVANCE FILTERING: Score each event for relevance to """ + commodity_name + """ price action. Discard low relevance events.
+
+STEP 4 - DRIVER IDENTIFICATION: Identify 3-5 primary market drivers across these categories: Macroeconomic, Supply, Demand, Geopolitical, Financial Positioning, Currency.
+
+STEP 5 - PRICE ACTION CONTEXT: Determine if current price movement confirms, contradicts, or is unclear relative to the identified drivers. Never invent explanations if evidence is weak.
+
+STEP 6 - MARKET SUMMARY: Write a concise professional analyst narrative of what is currently happening in this market.
+
+STEP 7 - TRADER TAKEAWAYS: Generate observational insights for three timeframes: Intraday, Next Few Days, Next Few Weeks. Never give buy/sell recommendations.
+
+STEP 8 - DRIVER CONFIDENCE: Assign HIGH, MEDIUM or LOW confidence based on number of supporting events, source consistency, and price alignment.
+
+STEP 9 - MARKET NARRATIVE TRACKING: Identify the dominant narrative (e.g. inflation hedge, supply disruption) and whether it is Strengthening, Stable, Weakening or Shifting.
+
+STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. No markdown, no explanation, no text before or after the JSON:
 
 {
-  "briefing": "3-4 paragraph plain text investment briefing covering market situation, macro drivers, supply/demand, India angle. Reference specific data points from the market data provided. No markdown, no bullet points.",
+  "market_summary": "concise professional narrative of current market situation",
   "sentiment": "STRONG_BULLISH or BULLISH or NEUTRAL or BEARISH or STRONG_BEARISH",
   "drivers": {
     "up": ["driver 1", "driver 2", "driver 3"],
     "down": ["driver 1", "driver 2", "driver 3"]
   },
-  "levels": {
-    "resistance": "$XXXX",
-    "support": "$XXXX",
-    "mcx_resistance": "₹XX,XXX",
-    "mcx_support": "₹XX,XXX"
+  "price_action_context": "confirms or contradicts or unclear - one sentence explanation",
+  "trader_takeaways": {
+    "intraday": "what to monitor today",
+    "next_few_days": "catalysts to watch this week",
+    "next_few_weeks": "structural themes for medium term"
+  },
+  "confidence": "HIGH or MEDIUM or LOW",
+  "dominant_narrative": {
+    "theme": "name of the dominant narrative e.g. inflation hedge",
+    "status": "Strengthening or Stable or Weakening or Shifting"
   },
   "takeaway": {
     "bias": "Bullish or Bearish or Neutral",
-    "strategy": "One sentence actionable strategy for traders.",
-    "short_term": "One sentence view for next 1-2 weeks.",
-    "medium_term": "One sentence view for next 1-3 months."
+    "strategy": "one sentence observational insight for traders - no buy/sell recommendation",
+    "short_term": "one sentence view for next 1-2 weeks",
+    "medium_term": "one sentence view for next 1-3 months"
   }
 }"""
 
@@ -419,19 +443,25 @@ def run_analysis():
                 analysis = analyse_commodity(commodity, articles, macro_context)
             else:
                 analysis = {
-                    "briefing": "Not enough news to generate analysis.",
+                    "market_summary": "Not enough news to generate analysis.",
                     "sentiment": "NEUTRAL",
                     "drivers": {"up": [], "down": []},
-                    "levels": {"resistance": "—", "support": "—", "mcx_resistance": "—", "mcx_support": "—"},
+                    "price_action_context": "—",
+                    "trader_takeaways": {"intraday": "—", "next_few_days": "—", "next_few_weeks": "—"},
+                    "confidence": "LOW",
+                    "dominant_narrative": {"theme": "—", "status": "—"},
                     "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
                 }
         except Exception as e:
             print("Error analysing " + commodity + ": " + str(e))
             analysis = {
-                "briefing": "Error generating analysis: " + str(e),
+                "market_summary": "Error generating analysis: " + str(e),
                 "sentiment": "NEUTRAL",
                 "drivers": {"up": [], "down": []},
-                "levels": {"resistance": "—", "support": "—", "mcx_resistance": "—", "mcx_support": "—"},
+                "price_action_context": "—",
+                "trader_takeaways": {"intraday": "—", "next_few_days": "—", "next_few_weeks": "—"},
+                "confidence": "LOW",
+                "dominant_narrative": {"theme": "—", "status": "—"},
                 "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
             }
         priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
