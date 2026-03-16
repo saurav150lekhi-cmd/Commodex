@@ -5,10 +5,11 @@ import time
 import threading
 import schedule
 import os
+import urllib.request
 from datetime import datetime
 from flask import Flask, jsonify, send_from_directory
 
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+ANTHROPIC_API_KEY = os.environ.get("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", "")
 
 app = Flask(__name__)
 latest_results = {}
@@ -31,11 +32,11 @@ COMMODITIES = {
 }
 
 GOOGLE_SEARCHES = {
-    "Gold":        ["gold site:bloomberg.com", "gold site:reuters.com", "gold site:wsj.com", "gold site:livemint.com"],
-    "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:reuters.com", "crude oil site:wsj.com"],
-    "Silver":      ["silver site:bloomberg.com", "silver site:reuters.com"],
-    "Copper":      ["copper LME site:bloomberg.com", "copper site:reuters.com"],
-    "Natural Gas": ["natural gas site:bloomberg.com", "natural gas site:reuters.com"],
+    "Gold":        ["gold site:bloomberg.com", "gold site:reuters.com"],
+    "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:reuters.com"],
+    "Silver":      ["silver site:bloomberg.com"],
+    "Copper":      ["copper LME site:bloomberg.com"],
+    "Natural Gas": ["natural gas site:bloomberg.com"],
 }
 
 HIGH_IMPACT_KEYWORDS = [
@@ -156,7 +157,7 @@ Return ONLY a valid JSON object with exactly this structure. No markdown, no exp
   }
 }
 
-Base all values on the news provided and current macro context. Be specific with price levels — use real approximate levels for """ + commodity_name + """ as of today."""
+Base all values on the news provided and current macro context. Be specific with price levels for """ + commodity_name + """ as of today."""
 
     message = client.messages.create(
         model="claude-sonnet-4-20250514",
@@ -164,7 +165,6 @@ Base all values on the news provided and current macro context. Be specific with
         messages=[{"role": "user", "content": prompt}]
     )
     raw = message.content[0].text.strip()
-    # Strip any accidental markdown fences
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
@@ -199,7 +199,6 @@ def run_analysis():
                 "levels": {"resistance": "—", "support": "—", "mcx_resistance": "—", "mcx_support": "—"},
                 "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
             }
-        # Sort articles: HIGH first, then MEDIUM, then LOW
         priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
         sorted_articles = sorted(articles, key=lambda a: priority.get(a.get("impact", "LOW"), 2))
         results[commodity] = {
@@ -225,6 +224,29 @@ def scheduler_loop():
 @app.route("/data")
 def get_data():
     response = jsonify(latest_results)
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+
+@app.route("/prices")
+def get_prices():
+    symbols = {
+        "Gold": "GC=F", "Silver": "SI=F",
+        "Crude Oil": "CL=F", "Copper": "HG=F", "Natural Gas": "NG=F"
+    }
+    prices = {}
+    for name, sym in symbols.items():
+        try:
+            url = "https://query1.finance.yahoo.com/v8/finance/chart/" + sym + "?interval=1d&range=2d"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=5) as r:
+                d = json.loads(r.read())
+            meta = d["chart"]["result"][0]["meta"]
+            price = meta["regularMarketPrice"]
+            prev = meta["previousClose"]
+            prices[name] = {"price": price, "change": ((price - prev) / prev) * 100}
+        except:
+            prices[name] = {"price": None, "change": None}
+    response = jsonify(prices)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
