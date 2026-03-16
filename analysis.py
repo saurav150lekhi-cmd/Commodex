@@ -10,7 +10,7 @@ import urllib.parse
 from datetime import datetime
 from flask import Flask, jsonify, send_from_directory
 
-ANTHROPIC_API_KEY = os.environ.get("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", "")
+ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 EIA_API_KEY = os.environ.get("EIA_API_KEY", "")
 
 app = Flask(__name__)
