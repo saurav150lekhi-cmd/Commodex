@@ -9,6 +9,9 @@ import urllib.request
 import urllib.parse
 from datetime import datetime
 from flask import Flask, jsonify, send_from_directory
+from dotenv import load_dotenv
+
+load_dotenv()
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 EIA_API_KEY = os.environ.get("EIA_API_KEY", "")
