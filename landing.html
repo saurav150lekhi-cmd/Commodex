@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commodex — AI Commodity Intelligence</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0908; color: #d4c4a0; font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+
+    /* NAV */
+    .nav { height: 52px; border-bottom: 1px solid #1e1c18; padding: 0 40px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; background: #0a0908; z-index: 100; }
+    .nav-logo { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: #e8d8b0; }
+    .nav-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: #c8a870; letter-spacing: 3px; }
+    .nav-right { margin-left: auto; display: flex; gap: 10px; }
+    .btn-outline { background: none; border: 1px solid #3a3428; color: #c8a870; padding: 7px 18px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-outline:hover { border-color: #c8a870; color: #e8d8b0; }
+    .btn-solid { background: #c8a870; border: none; color: #0a0908; padding: 7px 18px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-solid:hover { background: #e8d8b0; }
+
+    /* HERO */
+    .hero { padding: 80px 40px 60px; max-width: 900px; margin: 0 auto; text-align: center; }
+    .hero-eyebrow { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 4px; color: #c8a870; margin-bottom: 20px; }
+    .hero-title { font-family: 'Fraunces', serif; font-size: 52px; font-weight: 300; color: #e8d8b0; line-height: 1.15; margin-bottom: 20px; }
+    .hero-title span { color: #c8a870; }
+    .hero-sub { font-size: 16px; color: #8a7a60; line-height: 1.8; max-width: 560px; margin: 0 auto 36px; font-weight: 300; }
+    .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .btn-hero { background: #c8a870; color: #0a0908; border: none; padding: 13px 32px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-hero:hover { background: #e8d8b0; }
+    .btn-hero-outline { background: none; color: #c8a870; border: 1px solid #3a3428; padding: 13px 32px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; text-decoration: none; display: inline-block; }
+    .btn-hero-outline:hover { border-color: #c8a870; color: #e8d8b0; }
+
+    /* COMMODITIES STRIP */
+    .strip { border-top: 1px solid #1e1c18; border-bottom: 1px solid #1e1c18; padding: 18px 40px; display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; background: #0d0c0a; margin-top: 60px; }
+    .strip-item { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; display: flex; align-items: center; gap: 8px; }
+    .strip-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    /* FEATURES */
+    .section { padding: 64px 40px; max-width: 1000px; margin: 0 auto; }
+    .section-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 3px; color: #c8a870; margin-bottom: 14px; text-align: center; }
+    .section-title { font-family: 'Fraunces', serif; font-size: 32px; font-weight: 300; color: #e8d8b0; text-align: center; margin-bottom: 48px; line-height: 1.3; }
+    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+    .feature-card { background: #0d0c0a; border: 1px solid #1e1c18; border-radius: 4px; padding: 24px; }
+    .feature-icon { font-family: 'DM Mono', monospace; font-size: 18px; color: #c8a870; margin-bottom: 14px; }
+    .feature-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #e8d8b0; margin-bottom: 10px; }
+    .feature-text { font-size: 13px; color: #8a7a60; line-height: 1.7; font-weight: 300; }
+
+    /* HOW IT WORKS */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
+    .step { padding: 24px; border-right: 1px solid #1e1c18; }
+    .step:last-child { border-right: none; }
+    .step-num { font-family: 'DM Mono', monospace; font-size: 24px; color: #2a2820; margin-bottom: 14px; }
+    .step-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #c8a870; margin-bottom: 8px; }
+    .step-text { font-size: 12px; color: #6a5a40; line-height: 1.7; }
+
+    /* DATA SOURCES */
+    .sources { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .source-tag { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; padding: 6px 14px; border: 1px solid #2a2820; border-radius: 3px; color: #8a7a60; }
+
+    /* CTA SECTION */
+    .cta-section { background: #0d0c0a; border-top: 1px solid #1e1c18; border-bottom: 1px solid #1e1c18; padding: 64px 40px; text-align: center; }
+    .cta-title { font-family: 'Fraunces', serif; font-size: 36px; font-weight: 300; color: #e8d8b0; margin-bottom: 16px; }
+    .cta-sub { font-size: 14px; color: #6a5a40; margin-bottom: 32px; font-weight: 300; }
+
+    /* FOOTER */
+    .footer { padding: 24px 40px; border-top: 1px solid #1e1c18; display: flex; align-items: center; gap: 12px; }
+    .footer-logo { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 300; color: #6a5a40; }
+    .footer-text { font-family: 'DM Mono', monospace; font-size: 8px; color: #3a3428; margin-left: auto; letter-spacing: 1px; }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: #1e1c18; margin: 0 40px; }
+
+    @media (max-width: 768px) {
+      .hero-title { font-size: 36px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr 1fr; }
+      .step { border-right: none; border-bottom: 1px solid #1e1c18; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="nav">
+  <span class="nav-logo">Commodex</span>
+  <span class="nav-sub">RESEARCH TERMINAL</span>
+  <div class="nav-right">
+    <a href="/app" class="btn-outline">SIGN IN</a>
+    <a href="/app" class="btn-solid">GET STARTED</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-eyebrow">AI-POWERED · REAL-TIME · INSTITUTIONAL GRADE</div>
+  <h1 class="hero-title">Commodity intelligence<br>driven by <span>Claude AI</span></h1>
+  <p class="hero-sub">Commodex pulls live news, price data, and macro indicators — then runs it through a 10-step analysis pipeline powered by Claude to give you structured, actionable market insights.</p>
+  <div class="hero-cta">
+    <a href="/app" class="btn-hero">OPEN TERMINAL</a>
+    <a href="#features" class="btn-hero-outline">SEE HOW IT WORKS</a>
+  </div>
+</section>
+
+<!-- COMMODITIES STRIP -->
+<div class="strip">
+  <div class="strip-item"><div class="strip-dot" style="background:#c9a84c"></div><span style="color:#c9a84c">GOLD</span></div>
+  <div class="strip-item"><div class="strip-dot" style="background:#b85c38"></div><span style="color:#b85c38">CRUDE OIL</span></div>
+  <div class="strip-item"><div class="strip-dot" style="background:#8faabf"></div><span style="color:#8faabf">SILVER</span></div>
+  <div class="strip-item"><div class="strip-dot" style="background:#b87040"></div><span style="color:#b87040">COPPER</span></div>
+  <div class="strip-item"><div class="strip-dot" style="background:#5a9e8f"></div><span style="color:#5a9e8f">NATURAL GAS</span></div>
+</div>
+
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-label">WHAT YOU GET</div>
+  <h2 class="section-title">Everything a commodity trader needs</h2>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">⬡</div>
+      <div class="feature-title">AI MARKET ANALYSIS</div>
+      <div class="feature-text">Claude runs a 10-step pipeline on live news — extracting drivers, sentiment, and structured takeaways for each commodity.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">◈</div>
+      <div class="feature-title">LIVE PRICES</div>
+      <div class="feature-text">Real-time prices and percentage changes from Yahoo Finance, updated every 2 minutes across all five commodities.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">◎</div>
+      <div class="feature-title">CFTC POSITIONING</div>
+      <div class="feature-text">Non-commercial net positioning from CFTC Commitment of Traders reports, integrated into the AI analysis context.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">▦</div>
+      <div class="feature-title">MACRO CONTEXT</div>
+      <div class="feature-text">IMF and World Bank macro indicators — inflation, GDP growth, unemployment — fed directly into the analysis pipeline.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">◐</div>
+      <div class="feature-title">SENTIMENT TRACKING</div>
+      <div class="feature-text">5-level sentiment meter (Strong Bearish to Strong Bullish) with historical sentiment tracking across analysis runs.</div>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">◫</div>
+      <div class="feature-title">TRADER TAKEAWAYS</div>
+      <div class="feature-text">Structured insights for intraday, next few days, and next few weeks — no buy/sell recommendations, pure analysis.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- HOW IT WORKS -->
+<section class="section">
+  <div class="section-label">THE PIPELINE</div>
+  <h2 class="section-title">10-step analysis on every run</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-title">INGEST</div>
+      <div class="step-text">Pull live news from Reuters, Bloomberg, FT, Argus, Kitco and filter for relevance.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-title">ENRICH</div>
+      <div class="step-text">Layer in EIA supply data, CFTC positioning, IMF macro indicators, and live prices.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-title">ANALYSE</div>
+      <div class="step-text">Claude identifies market drivers, scores confidence, and tracks the dominant narrative.</div>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-title">DELIVER</div>
+      <div class="step-text">Structured JSON output rendered as a clean research terminal — updated 4× daily.</div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- DATA SOURCES -->
+<section class="section">
+  <div class="section-label">DATA SOURCES</div>
+  <h2 class="section-title">Built on institutional-grade data</h2>
+  <div class="sources">
+    <span class="source-tag">REUTERS</span>
+    <span class="source-tag">BLOOMBERG</span>
+    <span class="source-tag">FINANCIAL TIMES</span>
+    <span class="source-tag">ARGUS MEDIA</span>
+    <span class="source-tag">KITCO</span>
+    <span class="source-tag">YAHOO FINANCE</span>
+    <span class="source-tag">CFTC</span>
+    <span class="source-tag">EIA</span>
+    <span class="source-tag">IMF</span>
+    <span class="source-tag">WORLD BANK</span>
+    <span class="source-tag">CLAUDE AI</span>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="cta-section">
+  <h2 class="cta-title">Ready to trade smarter?</h2>
+  <p class="cta-sub">Create your free account and open the research terminal.</p>
+  <a href="/app" class="btn-hero">OPEN TERMINAL →</a>
+</div>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <span class="footer-logo">Commodex</span>
+  <span class="footer-text">FOR INFORMATIONAL PURPOSES ONLY · NOT FINANCIAL ADVICE</span>
+</footer>
+
+</body>
+</html>

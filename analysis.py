@@ -578,6 +578,40 @@ def get_prices():
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
+@app.route("/run", methods=["POST"])
+@jwt_required()
+def trigger_run():
+    if analysis_status["running"]:
+        return jsonify({"error": "Analysis already running."}), 409
+    thread = threading.Thread(target=lambda: _run_in_context(), daemon=True)
+    thread.start()
+    return jsonify({"message": "Analysis started."}), 202
+
+
+def _run_in_context():
+    with app.app_context():
+        run_analysis()
+
+
+@app.route("/history/<commodity>")
+@jwt_required()
+def get_history(commodity):
+    rows = (AnalysisRun.query
+            .filter_by(commodity=commodity)
+            .order_by(AnalysisRun.run_at.desc())
+            .limit(30)
+            .all())
+    result = [
+        {
+            "run_at":    r.run_at.strftime("%d %b %Y, %H:%M UTC"),
+            "sentiment": r.sentiment,
+            "articles":  r.article_count,
+        }
+        for r in rows
+    ]
+    return jsonify(result)
+
+
 @app.route("/health")
 def health():
     response = jsonify({
@@ -591,6 +625,11 @@ def health():
     return response
 
 @app.route("/")
+def landing():
+    return send_from_directory(".", "landing.html")
+
+
+@app.route("/app")
 def index():
     return send_from_directory(".", "dashboard.html")
 
@@ -634,7 +673,7 @@ if __name__ == "__main__":
         db.create_all()
         log.info("Database tables ready.")
         load_latest_from_db()
-    run_analysis()
+        run_analysis()
     thread = threading.Thread(target=scheduler_loop, daemon=True)
     thread.start()
     print("Starting Commodex on http://localhost:5000")

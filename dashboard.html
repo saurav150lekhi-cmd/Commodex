@@ -17,8 +17,15 @@
     .header-ts { font-family: 'DM Mono', monospace; font-size: 9px; color: #8a7a60; }
     .refresh-btn { background: none; border: 1px solid #3a3428; color: #c8a870; padding: 4px 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; }
     .refresh-btn:hover { color: #e8d8b0; border-color: #5a4a38; }
+    .run-btn { background: #c8a870; border: none; color: #0a0908; padding: 4px 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; }
+    .run-btn:hover { background: #e8d8b0; }
+    .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
     .signout-btn { background: none; border: none; color: #6a5a40; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; }
     .signout-btn:hover { color: #c8a870; }
+    .verify-banner { background: #1a1500; border-bottom: 1px solid #c8a87040; padding: 8px 24px; font-family: 'DM Mono', monospace; font-size: 10px; color: #c8a870; display: flex; align-items: center; gap: 12px; }
+    .verify-banner button { background: none; border: 1px solid #c8a87060; color: #c8a870; padding: 3px 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; }
+    .verify-banner button:hover { background: #c8a87020; }
+    .verify-banner.hidden { display: none; }
 
     /* Login overlay */
     .login-overlay { position: fixed; inset: 0; background: rgba(10,9,8,0.97); z-index: 999; display: flex; align-items: center; justify-content: center; }
@@ -95,6 +102,19 @@
     .timeframe-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 14px; }
     .timeframe-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 8px; }
     .timeframe-value { font-size: 12px; color: #c4b490; line-height: 1.6; }
+    .drivers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .driver-col { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 14px; }
+    .driver-col-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; margin-bottom: 10px; }
+    .driver-col-up .driver-col-label { color: #4ade80; }
+    .driver-col-down .driver-col-label { color: #f87171; }
+    .driver-item { font-size: 11px; color: #c4b490; padding: 4px 0; border-bottom: 1px solid #1a1816; line-height: 1.5; display: flex; gap: 6px; }
+    .driver-item:last-child { border-bottom: none; }
+    .driver-dot-up { color: #4ade80; flex-shrink: 0; }
+    .driver-dot-down { color: #f87171; flex-shrink: 0; }
+    .hist-bar-row { display: flex; align-items: center; gap: 8px; padding: 3px 0; }
+    .hist-bar-label { font-family: 'DM Mono', monospace; font-size: 8px; color: #8a7a60; width: 120px; flex-shrink: 0; }
+    .hist-bar-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .hist-bar-sentiment { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1px; }
 
     ::-webkit-scrollbar { width: 2px; }
     ::-webkit-scrollbar-thumb { background: #3a3428; border-radius: 1px; }
@@ -111,8 +131,15 @@
     <div class="live-dot"></div>
     <span class="header-ts" id="last-updated">Loading...</span>
     <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+    <button class="run-btn" id="run-btn" onclick="triggerRun()">▶ RUN NOW</button>
     <button class="signout-btn" onclick="signOut()">SIGN OUT</button>
   </div>
+</div>
+
+<div class="verify-banner hidden" id="verify-banner">
+  ⚠ Your email is not verified. Check your inbox.
+  <button onclick="resendVerification()">Resend Email</button>
+  <span id="verify-msg" style="color:#4ade80;font-size:9px"></span>
 </div>
 
 <!-- Login overlay -->
@@ -128,6 +155,7 @@
       <button class="login-btn" id="login-btn" onclick="submitLogin()">SIGN IN</button>
       <div class="login-error" id="login-error"></div>
       <div class="login-toggle">No account? <span onclick="showRegister()">Register</span></div>
+      <div class="login-toggle" style="margin-top:12px">Forgot password? <span onclick="showForgot()">Reset it</span></div>
     </div>
     <div id="register-form" style="display:none">
       <label class="login-label">EMAIL</label>
@@ -137,6 +165,19 @@
       <button class="login-btn" id="reg-btn" onclick="submitRegister()">CREATE ACCOUNT</button>
       <div class="login-error" id="reg-error"></div>
       <div class="login-toggle">Have an account? <span onclick="showLogin()">Sign in</span></div>
+    </div>
+    <div id="forgot-form" style="display:none">
+      <label class="login-label">EMAIL</label>
+      <input class="login-input" type="email" id="forgot-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')submitForgot()" />
+      <button class="login-btn" id="forgot-btn" onclick="submitForgot()">SEND RESET LINK</button>
+      <div class="login-error" id="forgot-msg" style="min-height:16px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;margin-top:12px"></div>
+      <div class="login-toggle">Remember it? <span onclick="showLogin()">Sign in</span></div>
+    </div>
+    <div id="reset-form" style="display:none">
+      <label class="login-label">NEW PASSWORD</label>
+      <input class="login-input" type="password" id="reset-password" placeholder="Min 8 characters" onkeydown="if(event.key==='Enter')submitReset()" />
+      <button class="login-btn" id="reset-btn" onclick="submitReset()">SET NEW PASSWORD</button>
+      <div class="login-error" id="reset-msg" style="min-height:16px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;margin-top:12px"></div>
     </div>
   </div>
 </div>
@@ -184,11 +225,13 @@
     } catch { return false; }
   }
 
-  async function apiFetch(url) {
-    let res = await fetch(url, { headers: authHeaders() });
+  async function apiFetch(url, opts) {
+    const options = opts || {};
+    const method  = options.method || "GET";
+    let res = await fetch(url, { method, headers: authHeaders(), body: options.body });
     if (res.status === 401) {
       const ok = await refreshToken();
-      if (ok) res = await fetch(url, { headers: authHeaders() });
+      if (ok) res = await fetch(url, { method, headers: authHeaders(), body: options.body });
       else { showLoginOverlay(); return null; }
     }
     return res;
@@ -206,12 +249,16 @@
   function showLogin() {
     document.getElementById("login-form").style.display = "";
     document.getElementById("register-form").style.display = "none";
+    document.getElementById("forgot-form").style.display = "none";
+    document.getElementById("reset-form").style.display = "none";
     document.getElementById("login-error").textContent = "";
   }
 
   function showRegister() {
     document.getElementById("login-form").style.display = "none";
     document.getElementById("register-form").style.display = "";
+    document.getElementById("forgot-form").style.display = "none";
+    document.getElementById("reset-form").style.display = "none";
     document.getElementById("reg-error").textContent = "";
   }
 
@@ -229,6 +276,9 @@
       localStorage.setItem("refresh_token", data.refresh_token);
       hideLoginOverlay();
       loadData(); loadPrices();
+      if (data.email_verified === false) {
+        checkVerificationBanner(false);
+      }
     } catch { errEl.textContent = "Connection error."; }
     finally  { btn.disabled = false; }
   }
@@ -351,6 +401,10 @@
     const bias = tk.bias || "Neutral";
     const biasColor = bias.toLowerCase().includes("bull") ? "#4ade80" : bias.toLowerCase().includes("bear") ? "#f87171" : "#fbbf24";
 
+    // Drivers
+    const driversUp   = (a.drivers?.up   || []).map(d => `<div class="driver-item"><span class="driver-dot-up">▲</span>${d}</div>`).join("") || "<div class='driver-item' style='color:#6a5a40'>None identified</div>";
+    const driversDown = (a.drivers?.down || []).map(d => `<div class="driver-item"><span class="driver-dot-down">▼</span>${d}</div>`).join("") || "<div class='driver-item' style='color:#6a5a40'>None identified</div>";
+
     document.getElementById("analysis-body").innerHTML = `
       <div class="section-card">
         <div class="section-label">MARKET SUMMARY</div>
@@ -365,6 +419,20 @@
         <div class="badge" style="background:${narColor}18;color:${narColor};border:1px solid ${narColor}35">
           <span style="font-size:7px">NARRATIVE</span> ${dn.theme} &nbsp;·&nbsp; ${narStatus}
         </div>` : ""}
+      </div>
+
+      <div>
+        <div class="section-label">MARKET DRIVERS</div>
+        <div class="drivers-grid">
+          <div class="driver-col driver-col-up">
+            <div class="driver-col-label">BULLISH FACTORS</div>
+            ${driversUp}
+          </div>
+          <div class="driver-col driver-col-down">
+            <div class="driver-col-label">BEARISH FACTORS</div>
+            ${driversDown}
+          </div>
+        </div>
       </div>
 
       <div>
@@ -399,6 +467,13 @@
             <div><div class="takeaway-item-label">SHORT TERM · 1-2W</div><div class="takeaway-item-value">${tk.short_term || "—"}</div></div>
             <div><div class="takeaway-item-label">MEDIUM TERM · 1-3M</div><div class="takeaway-item-value">${tk.medium_term || "—"}</div></div>
           </div>
+        </div>
+      </div>
+
+      <div id="sentiment-history-section">
+        <div class="section-label">SENTIMENT HISTORY</div>
+        <div id="sentiment-history-body" class="section-card" style="min-height:48px">
+          <div class="loading" style="padding:8px 0">Loading history...</div>
         </div>
       </div>
     `;
@@ -448,6 +523,7 @@
     renderCommodityHeader(name);
     renderAnalysisBody(name);
     renderNews(name);
+    loadHistory(name);
   }
 
   async function loadData() {
@@ -460,17 +536,147 @@
       renderCommodityHeader(activeTab);
       renderAnalysisBody(activeTab);
       renderNews(activeTab);
+      loadHistory(activeTab);
     } catch(e) {
       document.getElementById("last-updated").textContent = "Server offline";
     }
   }
 
+  async function triggerRun() {
+    const btn = document.getElementById("run-btn");
+    btn.disabled = true;
+    btn.textContent = "● RUNNING…";
+    try {
+      const res = await apiFetch("/run", { method: "POST" });
+      if (!res) return;
+      if (res.status === 409) {
+        btn.textContent = "ALREADY RUNNING";
+        setTimeout(() => { btn.disabled = false; btn.textContent = "▶ RUN NOW"; }, 3000);
+        return;
+      }
+      // Poll health until analysis_running goes false, then reload data
+      const poll = setInterval(async () => {
+        try {
+          const h = await fetch("/health");
+          const hj = await h.json();
+          if (!hj.analysis_running) {
+            clearInterval(poll);
+            btn.disabled = false;
+            btn.textContent = "▶ RUN NOW";
+            loadData();
+          }
+        } catch { clearInterval(poll); btn.disabled = false; btn.textContent = "▶ RUN NOW"; }
+      }, 4000);
+    } catch {
+      btn.disabled = false;
+      btn.textContent = "▶ RUN NOW";
+    }
+  }
+
+  async function loadHistory(name) {
+    const el = document.getElementById("sentiment-history-body");
+    if (!el) return;
+    try {
+      const res = await apiFetch("/history/" + encodeURIComponent(name));
+      if (!res) return;
+      const rows = await res.json();
+      if (!rows.length) { el.innerHTML = '<div class="loading" style="padding:8px 0">No history yet.</div>'; return; }
+      el.innerHTML = rows.slice(0, 15).map(r => {
+        const color = SENTIMENT_COLORS[r.sentiment] || "#fbbf24";
+        return `<div class="hist-bar-row">
+          <span class="hist-bar-label">${r.run_at}</span>
+          <span class="hist-bar-dot" style="background:${color}"></span>
+          <span class="hist-bar-sentiment" style="color:${color}">${SENTIMENT_LABELS[r.sentiment] || r.sentiment}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:8px;color:#6a5a40;margin-left:auto">${r.articles} articles</span>
+        </div>`;
+      }).join("");
+    } catch { el.innerHTML = '<div class="loading" style="padding:8px 0">Failed to load history.</div>'; }
+  }
+
+
+  function showForgot() {
+    document.getElementById("login-form").style.display = "none";
+    document.getElementById("register-form").style.display = "none";
+    document.getElementById("forgot-form").style.display = "";
+    document.getElementById("reset-form").style.display = "none";
+    document.getElementById("forgot-msg").textContent = "";
+    document.getElementById("forgot-msg").style.color = "#f87171";
+  }
+
+  async function submitForgot() {
+    const email  = document.getElementById("forgot-email").value.trim();
+    const btn    = document.getElementById("forgot-btn");
+    const msgEl  = document.getElementById("forgot-msg");
+    btn.disabled = true; msgEl.textContent = "";
+    try {
+      const res  = await fetch("/auth/forgot-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+      const data = await res.json();
+      msgEl.style.color   = "#4ade80";
+      msgEl.textContent   = data.message || "Reset link sent.";
+    } catch { msgEl.style.color = "#f87171"; msgEl.textContent = "Connection error."; }
+    finally  { btn.disabled = false; }
+  }
+
+  async function submitReset() {
+    const token    = new URLSearchParams(window.location.hash.replace("#reset?","")).get("token") || "";
+    const password = document.getElementById("reset-password").value;
+    const btn      = document.getElementById("reset-btn");
+    const msgEl    = document.getElementById("reset-msg");
+    btn.disabled = true; msgEl.textContent = "";
+    try {
+      const res  = await fetch("/auth/reset-password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, password }) });
+      const data = await res.json();
+      if (!res.ok) { msgEl.style.color = "#f87171"; msgEl.textContent = data.error || "Reset failed."; return; }
+      msgEl.style.color = "#4ade80";
+      msgEl.textContent = "Password updated. Signing in...";
+      setTimeout(() => { window.location.hash = ""; showLogin(); }, 1500);
+    } catch { msgEl.style.color = "#f87171"; msgEl.textContent = "Connection error."; }
+    finally  { btn.disabled = false; }
+  }
+
+  async function resendVerification() {
+    const msgEl = document.getElementById("verify-msg");
+    msgEl.textContent = "Sending...";
+    try {
+      const res = await apiFetch("/auth/resend-verification", { method: "POST" });
+      if (!res) return;
+      msgEl.textContent = "Sent! Check your inbox.";
+    } catch { msgEl.textContent = "Failed to send."; }
+  }
+
+  function checkVerificationBanner(emailVerified) {
+    const banner = document.getElementById("verify-banner");
+    if (emailVerified === false) {
+      banner.classList.remove("hidden");
+    } else {
+      banner.classList.add("hidden");
+    }
+  }
+
   // Check auth on load
+
+  // Handle reset password link
+  if (window.location.hash.startsWith("#reset?token=")) {
+    document.getElementById("login-form").style.display = "none";
+    document.getElementById("register-form").style.display = "none";
+    document.getElementById("forgot-form").style.display = "none";
+    document.getElementById("reset-form").style.display = "";
+    document.getElementById("login-overlay").classList.remove("hidden");
+  }
+
+  // Handle email verified redirect
+  if (window.location.search.includes("verified=1")) {
+    history.replaceState(null, "", "/app");
+    // will load data below, banner will be hidden
+  }
+
   if (!getAccess()) {
     showLoginOverlay();
   } else {
     loadData();
     loadPrices();
+    // Check verification status
+    apiFetch("/auth/me").then(r => r && r.json()).then(d => d && checkVerificationBanner(d.email_verified)).catch(()=>{});
   }
   setInterval(loadData, 5 * 60 * 1000);
   setInterval(loadPrices, 2 * 60 * 1000);

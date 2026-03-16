@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd:*)",
+      "WebFetch(domain:commodex-chel.onrender.com)",
+      "Bash(ls:*)"
+    ]
+  }
+}
