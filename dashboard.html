@@ -18,16 +18,9 @@
     .refresh-btn { background: none; border: 1px solid #3a3428; color: #c8a870; padding: 4px 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; }
     .refresh-btn:hover { color: #e8d8b0; border-color: #5a4a38; }
 
-    .prices-bar { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 0 24px; height: 44px; display: flex; align-items: center; gap: 4px; overflow-x: auto; }
-    .price-chip { display: flex; align-items: center; gap: 8px; padding: 5px 12px; border: 1px solid #222018; border-radius: 3px; background: #111009; min-width: 150px; flex-shrink: 0; cursor: pointer; transition: all 0.15s; }
-    .price-chip:hover, .price-chip.active { border-color: var(--chip-color); background: #151310; }
-    .price-name { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1.5px; font-weight: 500; }
-    .price-value { font-family: 'DM Mono', monospace; font-size: 11px; color: #e8d8b0; margin-left: auto; }
-    .price-change { font-family: 'DM Mono', monospace; font-size: 9px; padding: 1px 4px; border-radius: 2px; }
-    .price-change.up { color: #4ade80; background: #16301a; }
-    .price-change.down { color: #f87171; background: #301616; }
-    .price-change.flat { color: #fbbf24; background: #302616; }
-    .prices-ts { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: #5a4a30; flex-shrink: 0; }
+    /* TradingView ticker tape */
+    .prices-bar { background: #0d0c0a; border-bottom: 1px solid #2a2820; height: 46px; overflow: hidden; }
+    .prices-bar .tradingview-widget-container { height: 46px; }
 
     .tabs { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 0 24px; display: flex; overflow-x: auto; }
     .tab { padding: 10px 16px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #8a7a60; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
@@ -36,24 +29,18 @@
 
     .commodity-header { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 14px 24px; display: flex; align-items: center; gap: 20px; }
     .comm-name { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; }
-    .comm-price-block { display: flex; flex-direction: column; gap: 2px; }
-    .comm-price { font-family: 'DM Mono', monospace; font-size: 22px; color: #e8d8b0; }
-    .comm-change { font-family: 'DM Mono', monospace; font-size: 11px; }
-    .comm-change.up { color: #4ade80; }
-    .comm-change.down { color: #f87171; }
-    .comm-change.flat { color: #fbbf24; }
     .divider { width: 1px; height: 32px; background: #2a2820; }
     .sentiment-block { display: flex; flex-direction: column; gap: 5px; }
     .sentiment-label { font-family: 'DM Mono', monospace; font-size: 8px; color: #8a7a60; letter-spacing: 2px; }
     .sentiment-meter { display: flex; gap: 3px; align-items: center; }
-    .sentiment-step { height: 6px; width: 28px; border-radius: 1px; background: #2a2820; transition: background 0.3s; }
+    .sentiment-step { height: 6px; width: 28px; border-radius: 1px; background: #2a2820; }
     .sentiment-text { font-family: 'DM Mono', monospace; font-size: 10px; margin-left: 8px; letter-spacing: 1px; }
     .analysis-ts { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; margin-left: auto; text-align: right; line-height: 1.6; }
 
     .main { display: flex; height: calc(100vh - 140px); min-height: 500px; }
 
     .news-col { width: 20%; border-right: 1px solid #2a2820; display: flex; flex-direction: column; overflow: hidden; }
-    .col-header { padding: 10px 16px; border-bottom: 1px solid #2a2820; font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2.5px; color: #8a7a60; display: flex; align-items: center; gap: 8px; }
+    .col-header { padding: 10px 16px; border-bottom: 1px solid #2a2820; font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2.5px; color: #8a7a60; display: flex; align-items: center; }
     .col-count { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: #6a5a40; }
     .news-list { flex: 1; overflow-y: auto; }
     .news-item { padding: 11px 16px; border-bottom: 1px solid #161412; cursor: pointer; transition: background 0.1s; text-decoration: none; display: block; }
@@ -74,23 +61,6 @@
     .briefing-text { font-size: 13px; line-height: 1.9; color: #c4b490; font-weight: 300; }
     .briefing-text p { margin-bottom: 14px; }
     .briefing-text p:last-child { margin-bottom: 0; }
-
-    .drivers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .drivers-box { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 12px; }
-    .drivers-box-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; margin-bottom: 10px; }
-    .drivers-box.up .drivers-box-label { color: #4ade80; }
-    .drivers-box.down .drivers-box-label { color: #f87171; }
-    .driver-item { font-size: 11px; color: #c4b490; line-height: 1.5; padding: 4px 0; border-bottom: 1px solid #1a1816; display: flex; align-items: flex-start; gap: 6px; }
-    .driver-item:last-child { border-bottom: none; }
-    .driver-arrow { font-size: 9px; flex-shrink: 0; margin-top: 2px; }
-    .drivers-box.up .driver-arrow { color: #4ade80; }
-    .drivers-box.down .driver-arrow { color: #f87171; }
-
-    .levels-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .level-box { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 12px; }
-    .level-box-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 6px; }
-    .level-value { font-family: 'DM Mono', monospace; font-size: 16px; color: #e8d8b0; }
-    .level-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; margin-top: 3px; }
 
     .takeaway-box { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 16px; }
     .takeaway-bias { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; margin-bottom: 12px; padding: 5px 10px; border-radius: 3px; display: inline-block; }
@@ -116,8 +86,27 @@
   </div>
 </div>
 
-<div class="prices-bar" id="prices-bar">
-  <span style="font-family:'DM Mono',monospace;font-size:9px;color:#6a5a40">FETCHING PRICES...</span>
+<!-- TradingView Ticker Tape -->
+<div class="prices-bar">
+  <div class="tradingview-widget-container">
+    <div class="tradingview-widget-container__widget"></div>
+    <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
+    {
+      "symbols": [
+        {"proName": "COMEX:GC1!", "title": "Gold"},
+        {"proName": "NYMEX:CL1!", "title": "Crude Oil"},
+        {"proName": "COMEX:SI1!", "title": "Silver"},
+        {"proName": "COMEX:HG1!", "title": "Copper"},
+        {"proName": "NYMEX:NG1!", "title": "Natural Gas"}
+      ],
+      "showSymbolLogo": false,
+      "isTransparent": true,
+      "displayMode": "compact",
+      "colorTheme": "dark",
+      "locale": "en"
+    }
+    </script>
+  </div>
 </div>
 
 <div class="tabs" id="tabs"></div>
@@ -147,60 +136,7 @@
     "Silver": "#8faabf", "Copper": "#b87040", "Natural Gas": "#5a9e8f"
   };
 
-  const PRICE_SYMBOLS = {
-    "Gold":        { sym: "GC=F",  unit: "oz",    label: "GOLD",      decimals: 1 },
-    "Silver":      { sym: "SI=F",  unit: "oz",    label: "SILVER",    decimals: 3 },
-    "Crude Oil":   { sym: "CL=F",  unit: "bbl",   label: "CRUDE OIL", decimals: 2 },
-    "Copper":      { sym: "HG=F",  unit: "lb",    label: "COPPER",    decimals: 4 },
-    "Natural Gas": { sym: "NG=F",  unit: "MMBtu", label: "NAT. GAS",  decimals: 3 }
-  };
-
-  let data = {}, activeTab = "Gold", priceCache = {};
-
-  async function loadPrices() {
-    const syms = Object.values(PRICE_SYMBOLS).map(s => encodeURIComponent(s.sym)).join('%2C');
-    const url = "https://query1.finance.yahoo.com/v7/finance/quote?symbols=" + syms + "&fields=regularMarketPrice,regularMarketChangePercent";
-    const proxy = "https://api.allorigins.win/raw?url=" + encodeURIComponent(url);
-    try {
-      const res = await fetch(proxy);
-      const json = await res.json();
-      const quotes = json?.quoteResponse?.result || [];
-      quotes.forEach(q => { priceCache[q.symbol] = q; });
-      renderPricesBar();
-      renderCommodityHeader(activeTab);
-    } catch(e) {
-      document.getElementById("prices-bar").innerHTML = '<span style="font-family:\'DM Mono\',monospace;font-size:9px;color:#6a5a40">PRICES UNAVAILABLE</span>';
-    }
-  }
-
-  function getPriceData(name) {
-    const cfg = PRICE_SYMBOLS[name];
-    const q = priceCache[cfg?.sym];
-    if (!q) return null;
-    return { price: q.regularMarketPrice?.toFixed(cfg.decimals), change: q.regularMarketChangePercent, cfg };
-  }
-
-  function renderPricesBar() {
-    const bar = document.getElementById("prices-bar");
-    let html = "";
-    Object.keys(COLORS).forEach(name => {
-      const color = COLORS[name];
-      const pd = getPriceData(name);
-      const cfg = PRICE_SYMBOLS[name];
-      const price = pd ? "$" + pd.price : "—";
-      const chg = pd ? pd.change : null;
-      const chgClass = chg > 0 ? "up" : chg < 0 ? "down" : "flat";
-      const chgStr = chg != null ? (chg >= 0 ? "▲ " : "▼ ") + Math.abs(chg).toFixed(2) + "%" : "—";
-      html += `<div class="price-chip ${name === activeTab ? 'active' : ''}" style="--chip-color:${color}" onclick="switchTab('${name}')">
-        <span class="price-name" style="color:${color}">${cfg.label}</span>
-        <span class="price-value">${price}</span>
-        <span class="price-change ${chgClass}">${chgStr}</span>
-      </div>`;
-    });
-    const now = new Date().toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"});
-    html += `<span class="prices-ts">LIVE · ${now}</span>`;
-    bar.innerHTML = html;
-  }
+  let data = {}, activeTab = "Gold";
 
   const SENTIMENTS = ["STRONG_BEARISH", "BEARISH", "NEUTRAL", "BULLISH", "STRONG_BULLISH"];
   const SENTIMENT_LABELS = { "STRONG_BEARISH": "STRONG BEARISH", "BEARISH": "BEARISH", "NEUTRAL": "NEUTRAL", "BULLISH": "BULLISH", "STRONG_BULLISH": "STRONG BULLISH" };
@@ -222,20 +158,10 @@
 
   function renderCommodityHeader(name) {
     const color = COLORS[name];
-    const pd = getPriceData(name);
     const d = data[name];
     const sentiment = d?.analysis?.sentiment || "NEUTRAL";
-    const price = pd ? "$" + pd.price : "—";
-    const chg = pd ? pd.change : null;
-    const chgClass = chg > 0 ? "up" : chg < 0 ? "down" : "flat";
-    const chgStr = chg != null ? (chg >= 0 ? "▲ " : "▼ ") + Math.abs(chg).toFixed(2) + "%" : "";
     document.getElementById("commodity-header").innerHTML = `
       <div class="comm-name" style="color:${color}">${name}</div>
-      <div class="divider"></div>
-      <div class="comm-price-block">
-        <div class="comm-price">${price}</div>
-        <div class="comm-change ${chgClass}">${chgStr}</div>
-      </div>
       <div class="divider"></div>
       ${renderSentimentMeter(sentiment)}
       <div class="analysis-ts">${d ? "Generated " + d.timestamp + "<br>" + d.count + " articles" : ""}</div>
@@ -249,9 +175,6 @@
     const briefingHtml = (a.briefing || "")
       .split(/\n{2,}/).map(p => p.replace(/\n/g, " ").trim()).filter(p => p.length > 10)
       .map(p => `<p>${p}</p>`).join("") || "<p>No briefing available.</p>";
-    const upDrivers = (a.drivers?.up || []).map(d => `<div class="driver-item"><span class="driver-arrow">▲</span><span>${d}</span></div>`).join("") || '<div class="driver-item"><span>No data</span></div>';
-    const downDrivers = (a.drivers?.down || []).map(d => `<div class="driver-item"><span class="driver-arrow">▼</span><span>${d}</span></div>`).join("") || '<div class="driver-item"><span>No data</span></div>';
-    const lv = a.levels || {};
     const tk = a.takeaway || {};
     const bias = tk.bias || "Neutral";
     const biasColor = bias.toLowerCase().includes("bull") ? "#4ade80" : bias.toLowerCase().includes("bear") ? "#f87171" : "#fbbf24";
@@ -259,22 +182,6 @@
       <div class="section-card">
         <div class="section-label">INVESTMENT BRIEFING</div>
         <div class="briefing-text">${briefingHtml}</div>
-      </div>
-      <div>
-        <div class="section-label">WHAT IS MOVING THIS MARKET</div>
-        <div class="drivers-grid">
-          <div class="drivers-box up"><div class="drivers-box-label">▲ UPWARD PRESSURES</div>${upDrivers}</div>
-          <div class="drivers-box down"><div class="drivers-box-label">▼ DOWNWARD PRESSURES</div>${downDrivers}</div>
-        </div>
-      </div>
-      <div>
-        <div class="section-label">KEY TRADING LEVELS</div>
-        <div class="levels-grid">
-          <div class="level-box"><div class="level-box-label">RESISTANCE</div><div class="level-value" style="color:#f87171">${lv.resistance || "—"}</div><div class="level-sub">COMEX / NYMEX</div></div>
-          <div class="level-box"><div class="level-box-label">SUPPORT</div><div class="level-value" style="color:#4ade80">${lv.support || "—"}</div><div class="level-sub">COMEX / NYMEX</div></div>
-          <div class="level-box"><div class="level-box-label">MCX RESISTANCE</div><div class="level-value" style="color:#f87171">${lv.mcx_resistance || "—"}</div><div class="level-sub">MCX India</div></div>
-          <div class="level-box"><div class="level-box-label">MCX SUPPORT</div><div class="level-value" style="color:#4ade80">${lv.mcx_support || "—"}</div><div class="level-sub">MCX India</div></div>
-        </div>
       </div>
       <div>
         <div class="section-label">TRADER TAKEAWAY</div>
@@ -300,7 +207,6 @@
 
   function renderNews(name) {
     const d = data[name];
-    const color = COLORS[name];
     const articles = d?.articles || [];
     document.getElementById("news-count").textContent = articles.length + " ARTICLES";
     if (!articles.length) { document.getElementById("news-list").innerHTML = '<div class="loading">No articles found.</div>'; return; }
@@ -332,7 +238,6 @@
   function switchTab(name) {
     activeTab = name;
     renderTabs();
-    renderPricesBar();
     renderCommodityHeader(name);
     renderAnalysisBody(name);
     renderNews(name);
@@ -353,9 +258,7 @@
   }
 
   loadData();
-  loadPrices();
   setInterval(loadData, 5 * 60 * 1000);
-  setInterval(loadPrices, 2 * 60 * 1000);
 </script>
 </body>
 </html>
