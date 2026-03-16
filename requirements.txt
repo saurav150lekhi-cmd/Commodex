@@ -2,3 +2,6 @@ flask
 anthropic
 feedparser
 schedule
+python-dotenv
+gunicorn
+requests

@@ -1,0 +1,15 @@
+[Unit]
+Description=Commodex Analysis Worker
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/commodex
+Environment=PATH=/opt/commodex/venv/bin
+ExecStart=/opt/commodex/venv/bin/python worker.py
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

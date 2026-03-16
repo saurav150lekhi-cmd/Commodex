@@ -1,0 +1,15 @@
+[Unit]
+Description=Commodex Web Server
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/opt/commodex
+Environment=PATH=/opt/commodex/venv/bin
+ExecStart=/opt/commodex/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5000 --timeout 120 analysis:app
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
