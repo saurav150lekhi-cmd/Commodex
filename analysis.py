@@ -364,10 +364,28 @@ Using BOTH the market data and news above, return ONLY a valid JSON object with 
         messages=[{"role": "user", "content": prompt}]
     )
     raw = message.content[0].text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
+    # Strip markdown code fences
+    if "```" in raw:
+        parts = raw.split("```")
+        for part in parts:
+            part = part.strip()
+            if part.startswith("json"):
+                part = part[4:].strip()
+            if part.startswith("{"):
+                raw = part
+                break
+    # Extract first JSON object by brace matching
+    start = raw.find("{")
+    if start != -1:
+        depth = 0
+        for i, ch in enumerate(raw[start:], start):
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    raw = raw[start:i+1]
+                    break
     return json.loads(raw.strip())
 
 # ══════════════════════════════════════════════════════════════════════════════
