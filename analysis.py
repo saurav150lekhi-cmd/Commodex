@@ -29,7 +29,7 @@ COMMODITIES = {
     "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "gold rises", "gold falls", "gold hits", "gold climbs"],
     "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls"],
     "Silver":      ["silver price", "silver rate", "silver futures", "xag"],
-    "Copper":      ["copper price", "copper futures", "lme copper", "comex copper"],
+    "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "mcx copper", "copper cathode", "copper inventories"],
     "Natural Gas": ["natural gas", "natgas", "lng", "henry hub"],
 }
 
@@ -37,7 +37,7 @@ GOOGLE_SEARCHES = {
     "Gold":        ["gold site:bloomberg.com", "gold site:reuters.com"],
     "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:reuters.com"],
     "Silver":      ["silver site:bloomberg.com"],
-    "Copper":      ["copper LME site:bloomberg.com"],
+    "Copper":      ["copper LME site:bloomberg.com", "copper price site:reuters.com"],
     "Natural Gas": ["natural gas site:bloomberg.com"],
 }
 
@@ -360,7 +360,7 @@ Using BOTH the market data and news above, return ONLY a valid JSON object with 
 
     message = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=1200,
+        max_tokens=2048,
         messages=[{"role": "user", "content": prompt}]
     )
     raw = message.content[0].text.strip()
