@@ -5,9 +5,10 @@ import time
 import threading
 import schedule
 import os
+import logging
 import urllib.request
 import urllib.parse
-from datetime import datetime
+from datetime import datetime, timezone
 from flask import Flask, jsonify, send_from_directory
 from dotenv import load_dotenv
 
@@ -16,8 +17,20 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)),
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 EIA_API_KEY = os.environ.get("EIA_API_KEY", "")
 
+# ── Logging ────────────────────────────────────────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    handlers=[
+        logging.FileHandler("commodex.log"),
+        logging.StreamHandler(),
+    ]
+)
+log = logging.getLogger(__name__)
+
 app = Flask(__name__)
 latest_results = {}
+analysis_status = {"running": False, "last_run": None, "last_error": None}
 
 NEWS_SOURCES = [
     "https://oilprice.com/rss/main",
@@ -420,30 +433,45 @@ STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price lev
 # ══════════════════════════════════════════════════════════════════════════════
 
 def run_analysis():
-    global latest_results
-    print("[" + datetime.now().strftime("%d %b %Y, %I:%M %p") + "] Running analysis...")
+    global latest_results, analysis_status
+    analysis_status["running"] = True
+    analysis_status["last_error"] = None
+    log.info("Analysis cycle started.")
 
-    # Fetch all external data once (shared across commodities)
-    print("Fetching external data...")
-    eia        = fetch_eia_data()
-    cftc       = fetch_cftc_data()
-    imf        = fetch_imf_data()
-    worldbank  = fetch_worldbank_data()
-    print("External data fetched.")
+    try:
+        log.info("Fetching external data...")
+        eia        = fetch_eia_data()
+        cftc       = fetch_cftc_data()
+        imf        = fetch_imf_data()
+        worldbank  = fetch_worldbank_data()
+        log.info("External data fetched.")
 
-    all_articles = fetch_all_articles()
-    news = filter_by_commodity(all_articles)
+        all_articles = fetch_all_articles()
+        news = filter_by_commodity(all_articles)
 
-    results = {}
-    for commodity, articles in news.items():
-        print("Analysing " + commodity + " (" + str(len(articles)) + " articles)...")
-        macro_context = build_macro_context(eia, cftc, imf, worldbank, commodity)
-        try:
-            if articles:
-                analysis = analyse_commodity(commodity, articles, macro_context)
-            else:
+        results = {}
+        for commodity, articles in news.items():
+            log.info("Analysing %s (%d articles)...", commodity, len(articles))
+            macro_context = build_macro_context(eia, cftc, imf, worldbank, commodity)
+            try:
+                if articles:
+                    analysis = analyse_commodity(commodity, articles, macro_context)
+                else:
+                    analysis = {
+                        "market_summary": "Not enough news to generate analysis.",
+                        "sentiment": "NEUTRAL",
+                        "drivers": {"up": [], "down": []},
+                        "price_action_context": "—",
+                        "trader_takeaways": {"intraday": "—", "next_few_days": "—", "next_few_weeks": "—"},
+                        "confidence": "LOW",
+                        "dominant_narrative": {"theme": "—", "status": "—"},
+                        "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
+                    }
+            except Exception as e:
+                log.error("Error analysing %s: %s", commodity, e)
+                analysis_status["last_error"] = str(e)
                 analysis = {
-                    "market_summary": "Not enough news to generate analysis.",
+                    "market_summary": "Error generating analysis: " + str(e),
                     "sentiment": "NEUTRAL",
                     "drivers": {"up": [], "down": []},
                     "price_action_context": "—",
@@ -452,30 +480,21 @@ def run_analysis():
                     "dominant_narrative": {"theme": "—", "status": "—"},
                     "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
                 }
-        except Exception as e:
-            print("Error analysing " + commodity + ": " + str(e))
-            analysis = {
-                "market_summary": "Error generating analysis: " + str(e),
-                "sentiment": "NEUTRAL",
-                "drivers": {"up": [], "down": []},
-                "price_action_context": "—",
-                "trader_takeaways": {"intraday": "—", "next_few_days": "—", "next_few_weeks": "—"},
-                "confidence": "LOW",
-                "dominant_narrative": {"theme": "—", "status": "—"},
-                "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
+            priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+            sorted_articles = sorted(articles, key=lambda a: priority.get(a.get("impact", "LOW"), 2))
+            results[commodity] = {
+                "analysis":  analysis,
+                "articles":  sorted_articles[:15],
+                "timestamp": datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC"),
+                "count":     len(articles),
             }
-        priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-        sorted_articles = sorted(articles, key=lambda a: priority.get(a.get("impact", "LOW"), 2))
-        results[commodity] = {
-            "analysis":  analysis,
-            "articles":  sorted_articles[:15],
-            "timestamp": datetime.now().strftime("%d %b %Y, %I:%M %p"),
-            "count":     len(articles),
-        }
-    latest_results = results
-    with open("results.json", "w") as f:
-        json.dump(results, f)
-    print("Done. Next run: 09:00, 15:00, 21:00, 23:00 IST.")
+        latest_results = results
+        with open("results.json", "w") as f:
+            json.dump(results, f)
+        analysis_status["last_run"] = datetime.now(timezone.utc).isoformat()
+        log.info("Analysis cycle complete.")
+    finally:
+        analysis_status["running"] = False
 
 # ══════════════════════════════════════════════════════════════════════════════
 # SCHEDULER
@@ -507,6 +526,18 @@ def get_prices():
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
+@app.route("/health")
+def health():
+    response = jsonify({
+        "status": "ok",
+        "analysis_running": analysis_status["running"],
+        "last_run": analysis_status["last_run"],
+        "last_error": analysis_status["last_error"],
+        "commodities": list(latest_results.keys()),
+    })
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    return response
+
 @app.route("/")
 def index():
     return send_from_directory(".", "dashboard.html")
@@ -517,13 +548,13 @@ def index():
 
 if __name__ == "__main__":
     if not ANTHROPIC_API_KEY:
-        print("WARNING: ANTHROPIC_API_KEY not set.")
+        log.warning("ANTHROPIC_API_KEY not set.")
     if not EIA_API_KEY:
-        print("NOTE: EIA_API_KEY not set — energy data will be skipped. Get free key at eia.gov/opendata")
+        log.info("EIA_API_KEY not set — energy data will be skipped.")
     try:
         with open("results.json", "r") as f:
             latest_results = json.load(f)
-        print("Loaded cached results.")
+        log.info("Loaded cached results from results.json.")
     except:
         pass
     run_analysis()
