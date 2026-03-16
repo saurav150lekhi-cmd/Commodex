@@ -6,10 +6,12 @@ import threading
 import schedule
 import os
 import urllib.request
+import urllib.parse
 from datetime import datetime
 from flask import Flask, jsonify, send_from_directory
 
 ANTHROPIC_API_KEY = os.environ.get("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", "")
+EIA_API_KEY = os.environ.get("EIA_API_KEY", "")
 
 app = Flask(__name__)
 latest_results = {}
@@ -51,6 +53,7 @@ MEDIUM_IMPACT_KEYWORDS = [
     "import", "export", "trade", "dollar", "usd", "rupee", "inr", "mcx", "nymex", "comex"
 ]
 
+# ── Article scoring ────────────────────────────────────────────────────────────
 def score_article(article):
     text = (article["title"] + " " + article["summary"]).lower()
     for kw in HIGH_IMPACT_KEYWORDS:
@@ -60,6 +63,197 @@ def score_article(article):
         if kw in text:
             return "MEDIUM"
     return "LOW"
+
+# ── HTTP helper ────────────────────────────────────────────────────────────────
+def fetch_json(url, headers=None, timeout=8):
+    try:
+        req = urllib.request.Request(url, headers=headers or {"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(r.read())
+    except:
+        return None
+
+# ══════════════════════════════════════════════════════════════════════════════
+# EXTERNAL DATA FETCHERS
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── 1. EIA — Energy inventory & production data ────────────────────────────────
+def fetch_eia_data():
+    result = {}
+    if not EIA_API_KEY:
+        return result
+    series = {
+        "crude_inventory":  "PET.WCRSTUS1.W",
+        "crude_production": "PET.WCRFPUS2.W",
+        "natgas_storage":   "NG.NW2_EPG0_SWO_R48_BCF.W",
+    }
+    for key, series_id in series.items():
+        url = f"https://api.eia.gov/v2/seriesid/{series_id}?api_key={EIA_API_KEY}&length=2"
+        data = fetch_json(url)
+        if data:
+            rows = data.get("response", {}).get("data", [])
+            if rows:
+                result[key] = {
+                    "latest": rows[0].get("value"),
+                    "previous": rows[1].get("value") if len(rows) > 1 else None,
+                    "unit": rows[0].get("unit", ""),
+                    "period": rows[0].get("period", ""),
+                }
+    return result
+
+# ── 2. CFTC — Commitment of Traders positioning ────────────────────────────────
+def fetch_cftc_data():
+    result = {}
+    # CFTC publishes free JSON via CFTC public API (Socrata)
+    # Futures only, most recent report
+    commodity_codes = {
+        "Gold":        "088691",
+        "Silver":      "084691",
+        "Crude Oil":   "067651",
+        "Copper":      "085692",
+        "Natural Gas": "023651",
+    }
+    for commodity, code in commodity_codes.items():
+        url = f"https://publicreporting.cftc.gov/resource/jun7-fc8e.json?cftc_contract_market_code={code}&$limit=1&$order=report_date_as_yyyy_mm_dd+DESC"
+        data = fetch_json(url)
+        if data and len(data) > 0:
+            row = data[0]
+            try:
+                nc_long  = int(row.get("noncomm_positions_long_all",  0))
+                nc_short = int(row.get("noncomm_positions_short_all", 0))
+                net = nc_long - nc_short
+                result[commodity] = {
+                    "noncommercial_long":  nc_long,
+                    "noncommercial_short": nc_short,
+                    "net_position":        net,
+                    "positioning":         "NET LONG" if net > 0 else "NET SHORT",
+                    "report_date":         row.get("report_date_as_yyyy_mm_dd", ""),
+                }
+            except:
+                pass
+    return result
+
+# ── 3. IMF — Macro indicators ──────────────────────────────────────────────────
+def fetch_imf_data():
+    result = {}
+    indicators = {
+        "PCPIPCH":      "Inflation Rate (%)",
+        "NGDP_RPCH":    "GDP Growth (%)",
+        "LUR":          "Unemployment Rate (%)",
+    }
+    countries = ["US", "CN", "IN"]
+    for ind_code, ind_name in indicators.items():
+        url = f"https://www.imf.org/external/datamapper/api/v1/{ind_code}/US/CN/IN"
+        data = fetch_json(url)
+        if data:
+            values = data.get("values", {}).get(ind_code, {})
+            result[ind_name] = {}
+            for country in countries:
+                country_data = values.get(country, {})
+                if country_data:
+                    latest_year = max(country_data.keys())
+                    result[ind_name][country] = {
+                        "value": country_data[latest_year],
+                        "year":  latest_year,
+                    }
+    return result
+
+# ── 4. World Bank — Additional macro data ─────────────────────────────────────
+def fetch_worldbank_data():
+    result = {}
+    indicators = {
+        "FP.CPI.TOTL.ZG": "CPI Inflation",
+        "NY.GDP.MKTP.KD.ZG": "GDP Growth",
+    }
+    for code, name in indicators.items():
+        url = f"https://api.worldbank.org/v2/country/US/indicator/{code}?format=json&mrv=1"
+        data = fetch_json(url)
+        if data and len(data) > 1 and data[1]:
+            row = data[1][0]
+            if row.get("value"):
+                result[name] = {
+                    "value":  round(row["value"], 2),
+                    "period": row.get("date", ""),
+                }
+    return result
+
+# ── 5. Live prices via Yahoo Finance (server-side) ────────────────────────────
+def fetch_live_prices():
+    symbols = {
+        "Gold":        "GC=F",
+        "Silver":      "SI=F",
+        "Crude Oil":   "CL=F",
+        "Copper":      "HG=F",
+        "Natural Gas": "NG=F",
+    }
+    prices = {}
+    for name, sym in symbols.items():
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=2d"
+        data = fetch_json(url)
+        if data:
+            try:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta["regularMarketPrice"]
+                prev  = meta["previousClose"]
+                prices[name] = {
+                    "price":  price,
+                    "change": ((price - prev) / prev) * 100,
+                }
+            except:
+                prices[name] = {"price": None, "change": None}
+        else:
+            prices[name] = {"price": None, "change": None}
+    return prices
+
+# ── Build macro context string for Claude ─────────────────────────────────────
+def build_macro_context(eia, cftc, imf, worldbank, commodity_name):
+    lines = []
+
+    # IMF data
+    if imf:
+        lines.append("MACRO INDICATORS (IMF):")
+        for ind_name, countries in imf.items():
+            for country, val in countries.items():
+                lines.append(f"  {country} {ind_name}: {val['value']}% ({val['year']})")
+
+    # World Bank
+    if worldbank:
+        lines.append("WORLD BANK (US):")
+        for name, val in worldbank.items():
+            lines.append(f"  {name}: {val['value']}% ({val['period']})")
+
+    # EIA
+    if eia and commodity_name in ["Crude Oil", "Natural Gas"]:
+        lines.append("EIA SUPPLY DATA:")
+        if "crude_inventory" in eia and commodity_name == "Crude Oil":
+            d = eia["crude_inventory"]
+            chg = ""
+            if d.get("latest") and d.get("previous"):
+                diff = float(d["latest"]) - float(d["previous"])
+                chg = f" (change: {diff:+.0f})"
+            lines.append(f"  US Crude Inventory: {d['latest']} {d['unit']}{chg} ({d['period']})")
+        if "crude_production" in eia and commodity_name == "Crude Oil":
+            d = eia["crude_production"]
+            lines.append(f"  US Crude Production: {d['latest']} {d['unit']} ({d['period']})")
+        if "natgas_storage" in eia and commodity_name == "Natural Gas":
+            d = eia["natgas_storage"]
+            chg = ""
+            if d.get("latest") and d.get("previous"):
+                diff = float(d["latest"]) - float(d["previous"])
+                chg = f" (change: {diff:+.0f})"
+            lines.append(f"  US NatGas Storage: {d['latest']} {d['unit']}{chg} ({d['period']})")
+
+    # CFTC
+    if cftc and commodity_name in cftc:
+        d = cftc[commodity_name]
+        lines.append("CFTC POSITIONING (Non-Commercial):")
+        lines.append(f"  Long: {d['noncommercial_long']:,} | Short: {d['noncommercial_short']:,} | Net: {d['net_position']:+,} ({d['positioning']}) as of {d['report_date']}")
+
+    return "\n".join(lines) if lines else "No external data available."
+
+# ══════════════════════════════════════════════════════════════════════════════
+# NEWS FETCHERS
+# ══════════════════════════════════════════════════════════════════════════════
 
 def fetch_all_articles():
     all_articles = []
@@ -119,7 +313,11 @@ def filter_by_commodity(articles):
                     break
     return result
 
-def analyse_commodity(commodity_name, articles):
+# ══════════════════════════════════════════════════════════════════════════════
+# CLAUDE ANALYSIS
+# ══════════════════════════════════════════════════════════════════════════════
+
+def analyse_commodity(commodity_name, articles, macro_context):
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
     headlines = "\n".join(
         "- " + a["title"] + " (" + a["source"] + ")"
@@ -131,13 +329,16 @@ def analyse_commodity(commodity_name, articles):
 COMMODITY: """ + commodity_name + """
 TIME: """ + datetime.now().strftime("%d %b %Y, %I:%M %p") + """ IST
 
+LIVE MARKET DATA:
+""" + macro_context + """
+
 RECENT NEWS:
 """ + headlines + """
 
-Return ONLY a valid JSON object with exactly this structure. No markdown, no explanation, just the JSON:
+Using BOTH the market data and news above, return ONLY a valid JSON object with exactly this structure. No markdown, no explanation, just the JSON:
 
 {
-  "briefing": "3-4 paragraph plain text investment briefing covering market situation, macro drivers, India angle. No markdown, no bullet points.",
+  "briefing": "3-4 paragraph plain text investment briefing covering market situation, macro drivers, supply/demand, India angle. Reference specific data points from the market data provided. No markdown, no bullet points.",
   "sentiment": "STRONG_BULLISH or BULLISH or NEUTRAL or BEARISH or STRONG_BEARISH",
   "drivers": {
     "up": ["driver 1", "driver 2", "driver 3"],
@@ -155,9 +356,7 @@ Return ONLY a valid JSON object with exactly this structure. No markdown, no exp
     "short_term": "One sentence view for next 1-2 weeks.",
     "medium_term": "One sentence view for next 1-3 months."
   }
-}
-
-Base all values on the news provided and current macro context. Be specific with price levels for """ + commodity_name + """ as of today."""
+}"""
 
     message = client.messages.create(
         model="claude-sonnet-4-20250514",
@@ -171,17 +370,32 @@ Base all values on the news provided and current macro context. Be specific with
             raw = raw[4:]
     return json.loads(raw.strip())
 
+# ══════════════════════════════════════════════════════════════════════════════
+# MAIN ANALYSIS RUNNER
+# ══════════════════════════════════════════════════════════════════════════════
+
 def run_analysis():
     global latest_results
     print("[" + datetime.now().strftime("%d %b %Y, %I:%M %p") + "] Running analysis...")
+
+    # Fetch all external data once (shared across commodities)
+    print("Fetching external data...")
+    eia        = fetch_eia_data()
+    cftc       = fetch_cftc_data()
+    imf        = fetch_imf_data()
+    worldbank  = fetch_worldbank_data()
+    print("External data fetched.")
+
     all_articles = fetch_all_articles()
     news = filter_by_commodity(all_articles)
+
     results = {}
     for commodity, articles in news.items():
         print("Analysing " + commodity + " (" + str(len(articles)) + " articles)...")
+        macro_context = build_macro_context(eia, cftc, imf, worldbank, commodity)
         try:
             if articles:
-                analysis = analyse_commodity(commodity, articles)
+                analysis = analyse_commodity(commodity, articles, macro_context)
             else:
                 analysis = {
                     "briefing": "Not enough news to generate analysis.",
@@ -212,6 +426,10 @@ def run_analysis():
         json.dump(results, f)
     print("Done. Next run: 09:00, 15:00, 21:00, 23:00 IST.")
 
+# ══════════════════════════════════════════════════════════════════════════════
+# SCHEDULER
+# ══════════════════════════════════════════════════════════════════════════════
+
 def scheduler_loop():
     schedule.every().day.at("09:00").do(run_analysis)
     schedule.every().day.at("15:00").do(run_analysis)
@@ -221,6 +439,10 @@ def scheduler_loop():
         schedule.run_pending()
         time.sleep(30)
 
+# ══════════════════════════════════════════════════════════════════════════════
+# FLASK ROUTES
+# ══════════════════════════════════════════════════════════════════════════════
+
 @app.route("/data")
 def get_data():
     response = jsonify(latest_results)
@@ -229,23 +451,7 @@ def get_data():
 
 @app.route("/prices")
 def get_prices():
-    symbols = {
-        "Gold": "GC=F", "Silver": "SI=F",
-        "Crude Oil": "CL=F", "Copper": "HG=F", "Natural Gas": "NG=F"
-    }
-    prices = {}
-    for name, sym in symbols.items():
-        try:
-            url = "https://query1.finance.yahoo.com/v8/finance/chart/" + sym + "?interval=1d&range=2d"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=5) as r:
-                d = json.loads(r.read())
-            meta = d["chart"]["result"][0]["meta"]
-            price = meta["regularMarketPrice"]
-            prev = meta["previousClose"]
-            prices[name] = {"price": price, "change": ((price - prev) / prev) * 100}
-        except:
-            prices[name] = {"price": None, "change": None}
+    prices = fetch_live_prices()
     response = jsonify(prices)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
@@ -254,9 +460,15 @@ def get_prices():
 def index():
     return send_from_directory(".", "dashboard.html")
 
+# ══════════════════════════════════════════════════════════════════════════════
+# START
+# ══════════════════════════════════════════════════════════════════════════════
+
 if __name__ == "__main__":
     if not ANTHROPIC_API_KEY:
         print("WARNING: ANTHROPIC_API_KEY not set.")
+    if not EIA_API_KEY:
+        print("NOTE: EIA_API_KEY not set — energy data will be skipped. Get free key at eia.gov/opendata")
     try:
         with open("results.json", "r") as f:
             latest_results = json.load(f)
