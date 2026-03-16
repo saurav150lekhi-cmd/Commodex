@@ -17,6 +17,25 @@
     .header-ts { font-family: 'DM Mono', monospace; font-size: 9px; color: #8a7a60; }
     .refresh-btn { background: none; border: 1px solid #3a3428; color: #c8a870; padding: 4px 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; }
     .refresh-btn:hover { color: #e8d8b0; border-color: #5a4a38; }
+    .signout-btn { background: none; border: none; color: #6a5a40; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; }
+    .signout-btn:hover { color: #c8a870; }
+
+    /* Login overlay */
+    .login-overlay { position: fixed; inset: 0; background: rgba(10,9,8,0.97); z-index: 999; display: flex; align-items: center; justify-content: center; }
+    .login-overlay.hidden { display: none; }
+    .login-box { width: 360px; border: 1px solid #2a2820; border-radius: 6px; padding: 36px; background: #0d0c0a; }
+    .login-logo { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 300; color: #e8d8b0; margin-bottom: 4px; }
+    .login-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: #c8a870; letter-spacing: 3px; margin-bottom: 32px; }
+    .login-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 6px; display: block; }
+    .login-input { width: 100%; background: #0a0908; border: 1px solid #2a2820; color: #d4c4a0; padding: 9px 12px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 12px; margin-bottom: 16px; outline: none; }
+    .login-input:focus { border-color: #5a4a38; }
+    .login-btn { width: 100%; background: #c8a870; color: #0a0908; border: none; padding: 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; cursor: pointer; margin-top: 4px; }
+    .login-btn:hover { background: #e8d8b0; }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error { font-family: 'DM Mono', monospace; font-size: 10px; color: #f87171; margin-top: 12px; min-height: 16px; text-align: center; }
+    .login-toggle { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; text-align: center; margin-top: 20px; cursor: pointer; }
+    .login-toggle span { color: #c8a870; cursor: pointer; }
+    .login-toggle span:hover { color: #e8d8b0; }
 
     .tabs { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 0 24px; display: flex; overflow-x: auto; }
     .tab { padding: 10px 16px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #8a7a60; border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
@@ -92,6 +111,33 @@
     <div class="live-dot"></div>
     <span class="header-ts" id="last-updated">Loading...</span>
     <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+    <button class="signout-btn" onclick="signOut()">SIGN OUT</button>
+  </div>
+</div>
+
+<!-- Login overlay -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">Commodex</div>
+    <div class="login-sub">RESEARCH TERMINAL</div>
+    <div id="login-form">
+      <label class="login-label">EMAIL</label>
+      <input class="login-input" type="email" id="login-email" placeholder="you@example.com" />
+      <label class="login-label">PASSWORD</label>
+      <input class="login-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')submitLogin()" />
+      <button class="login-btn" id="login-btn" onclick="submitLogin()">SIGN IN</button>
+      <div class="login-error" id="login-error"></div>
+      <div class="login-toggle">No account? <span onclick="showRegister()">Register</span></div>
+    </div>
+    <div id="register-form" style="display:none">
+      <label class="login-label">EMAIL</label>
+      <input class="login-input" type="email" id="reg-email" placeholder="you@example.com" />
+      <label class="login-label">PASSWORD</label>
+      <input class="login-input" type="password" id="reg-password" placeholder="Min 8 characters" onkeydown="if(event.key==='Enter')submitRegister()" />
+      <button class="login-btn" id="reg-btn" onclick="submitRegister()">CREATE ACCOUNT</button>
+      <div class="login-error" id="reg-error"></div>
+      <div class="login-toggle">Have an account? <span onclick="showLogin()">Sign in</span></div>
+    </div>
   </div>
 </div>
 
@@ -117,6 +163,100 @@
 </div>
 
 <script>
+  // ── Auth helpers ─────────────────────────────────────────────────────────────
+  const getAccess  = () => localStorage.getItem("access_token");
+  const getRefresh = () => localStorage.getItem("refresh_token");
+
+  function authHeaders() {
+    const t = getAccess();
+    return t ? { "Authorization": "Bearer " + t, "Content-Type": "application/json" } : { "Content-Type": "application/json" };
+  }
+
+  async function refreshToken() {
+    const rt = getRefresh();
+    if (!rt) return false;
+    try {
+      const res = await fetch("/auth/refresh", { method: "POST", headers: { "Authorization": "Bearer " + rt } });
+      if (!res.ok) return false;
+      const d = await res.json();
+      localStorage.setItem("access_token", d.access_token);
+      return true;
+    } catch { return false; }
+  }
+
+  async function apiFetch(url) {
+    let res = await fetch(url, { headers: authHeaders() });
+    if (res.status === 401) {
+      const ok = await refreshToken();
+      if (ok) res = await fetch(url, { headers: authHeaders() });
+      else { showLoginOverlay(); return null; }
+    }
+    return res;
+  }
+
+  function showLoginOverlay() {
+    document.getElementById("login-overlay").classList.remove("hidden");
+    showLogin();
+  }
+
+  function hideLoginOverlay() {
+    document.getElementById("login-overlay").classList.add("hidden");
+  }
+
+  function showLogin() {
+    document.getElementById("login-form").style.display = "";
+    document.getElementById("register-form").style.display = "none";
+    document.getElementById("login-error").textContent = "";
+  }
+
+  function showRegister() {
+    document.getElementById("login-form").style.display = "none";
+    document.getElementById("register-form").style.display = "";
+    document.getElementById("reg-error").textContent = "";
+  }
+
+  async function submitLogin() {
+    const email    = document.getElementById("login-email").value.trim();
+    const password = document.getElementById("login-password").value;
+    const btn      = document.getElementById("login-btn");
+    const errEl    = document.getElementById("login-error");
+    btn.disabled = true; errEl.textContent = "";
+    try {
+      const res  = await fetch("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || "Login failed."; return; }
+      localStorage.setItem("access_token",  data.access_token);
+      localStorage.setItem("refresh_token", data.refresh_token);
+      hideLoginOverlay();
+      loadData(); loadPrices();
+    } catch { errEl.textContent = "Connection error."; }
+    finally  { btn.disabled = false; }
+  }
+
+  async function submitRegister() {
+    const email    = document.getElementById("reg-email").value.trim();
+    const password = document.getElementById("reg-password").value;
+    const btn      = document.getElementById("reg-btn");
+    const errEl    = document.getElementById("reg-error");
+    btn.disabled = true; errEl.textContent = "";
+    try {
+      const res  = await fetch("/auth/register", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+      const data = await res.json();
+      if (!res.ok) { errEl.textContent = data.error || "Registration failed."; return; }
+      errEl.style.color = "#4ade80";
+      errEl.textContent = "Account created. Sign in below.";
+      setTimeout(showLogin, 1200);
+    } catch { errEl.textContent = "Connection error."; }
+    finally  { btn.disabled = false; }
+  }
+
+  function signOut() {
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    showLoginOverlay();
+  }
+
+  // ── App ───────────────────────────────────────────────────────────────────────
   const COLORS = {
     "Gold": "#c9a84c", "Crude Oil": "#b85c38",
     "Silver": "#8faabf", "Copper": "#b87040", "Natural Gas": "#5a9e8f"
@@ -130,7 +270,8 @@
 
   async function loadPrices() {
     try {
-      const res = await fetch("/prices");
+      const res = await apiFetch("/prices");
+      if (!res) return;
       priceCache = await res.json();
       renderCommodityHeader(activeTab);
     } catch(e) {}
@@ -311,9 +452,10 @@
 
   async function loadData() {
     try {
-      const res = await fetch("/data");
+      const res = await apiFetch("/data");
+      if (!res) return;
       data = await res.json();
-      document.getElementById("last-updated").textContent = new Date().toLocaleTimeString("en-IN", {hour:"2-digit", minute:"2-digit"}) + " IST";
+      document.getElementById("last-updated").textContent = new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit"}) + " UTC";
       renderTabs();
       renderCommodityHeader(activeTab);
       renderAnalysisBody(activeTab);
@@ -323,8 +465,13 @@
     }
   }
 
-  loadData();
-  loadPrices();
+  // Check auth on load
+  if (!getAccess()) {
+    showLoginOverlay();
+  } else {
+    loadData();
+    loadPrices();
+  }
   setInterval(loadData, 5 * 60 * 1000);
   setInterval(loadPrices, 2 * 60 * 1000);
 </script>

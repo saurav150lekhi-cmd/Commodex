@@ -5,3 +5,7 @@ schedule
 python-dotenv
 gunicorn
 requests
+flask-sqlalchemy
+psycopg2-binary
+flask-jwt-extended
+bcrypt

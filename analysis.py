@@ -8,14 +8,24 @@ import os
 import logging
 import urllib.request
 import urllib.parse
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, send_from_directory
+from flask_jwt_extended import JWTManager, jwt_required
 from dotenv import load_dotenv
+from db import db
+from models import User, AnalysisRun
+from auth import auth_bp
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
-EIA_API_KEY = os.environ.get("EIA_API_KEY", "")
+EIA_API_KEY       = os.environ.get("EIA_API_KEY", "")
+DATABASE_URL      = os.environ.get("DATABASE_URL", "sqlite:///commodex.db")
+JWT_SECRET_KEY    = os.environ.get("JWT_SECRET_KEY", "change-me-in-production")
+
+# Fix Render's postgres:// URI (SQLAlchemy requires postgresql://)
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 # ── Logging ────────────────────────────────────────────────────────────────────
 logging.basicConfig(
@@ -28,9 +38,28 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# ── Flask app ──────────────────────────────────────────────────────────────────
 app = Flask(__name__)
-latest_results = {}
+app.config["SQLALCHEMY_DATABASE_URI"]        = DATABASE_URL
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+app.config["JWT_SECRET_KEY"]                 = JWT_SECRET_KEY
+app.config["JWT_ACCESS_TOKEN_EXPIRES"]       = timedelta(minutes=30)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"]      = timedelta(days=7)
+
+db.init_app(app)
+JWTManager(app)
+app.register_blueprint(auth_bp)
+
+latest_results  = {}
 analysis_status = {"running": False, "last_run": None, "last_error": None}
+
+# Runs whether started via gunicorn or python directly
+with app.app_context():
+    try:
+        db.create_all()
+        log.info("Database tables ready.")
+    except Exception as e:
+        log.error("Database init failed: %s", e)
 
 NEWS_SOURCES = [
     "https://oilprice.com/rss/main",
@@ -489,9 +518,30 @@ def run_analysis():
                 "count":     len(articles),
             }
         latest_results = results
-        with open("results.json", "w") as f:
-            json.dump(results, f)
-        analysis_status["last_run"] = datetime.now(timezone.utc).isoformat()
+        # Write to DB
+        run_at = datetime.now(timezone.utc)
+        try:
+            for commodity, payload in results.items():
+                row = AnalysisRun(
+                    commodity     = commodity,
+                    run_at        = run_at,
+                    data          = payload,
+                    article_count = payload.get("count", 0),
+                    sentiment     = payload.get("analysis", {}).get("sentiment", "NEUTRAL"),
+                )
+                db.session.add(row)
+            db.session.commit()
+            log.info("Results saved to database.")
+        except Exception as db_err:
+            log.error("DB write failed: %s", db_err)
+            db.session.rollback()
+        # Fallback file write
+        try:
+            with open("results.json", "w") as f:
+                json.dump(results, f)
+        except Exception:
+            pass
+        analysis_status["last_run"] = run_at.isoformat()
         log.info("Analysis cycle complete.")
     finally:
         analysis_status["running"] = False
@@ -514,12 +564,14 @@ def scheduler_loop():
 # ══════════════════════════════════════════════════════════════════════════════
 
 @app.route("/data")
+@jwt_required()
 def get_data():
     response = jsonify(latest_results)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
 @app.route("/prices")
+@jwt_required()
 def get_prices():
     prices = fetch_live_prices()
     response = jsonify(prices)
@@ -546,17 +598,42 @@ def index():
 # START
 # ══════════════════════════════════════════════════════════════════════════════
 
+def load_latest_from_db():
+    """Populate latest_results from the most recent DB row per commodity."""
+    global latest_results
+    try:
+        loaded = {}
+        for commodity in ["Gold", "Crude Oil", "Silver", "Copper", "Natural Gas"]:
+            row = (AnalysisRun.query
+                   .filter_by(commodity=commodity)
+                   .order_by(AnalysisRun.run_at.desc())
+                   .first())
+            if row:
+                loaded[commodity] = row.data
+        if loaded:
+            latest_results = loaded
+            log.info("Loaded latest results from database.")
+        else:
+            raise ValueError("No DB rows found.")
+    except Exception as e:
+        log.warning("DB load failed (%s), falling back to results.json.", e)
+        try:
+            with open("results.json", "r") as f:
+                latest_results = json.load(f)
+            log.info("Loaded cached results from results.json.")
+        except Exception:
+            log.warning("No cached results found — dashboard will be empty until first analysis.")
+
+
 if __name__ == "__main__":
     if not ANTHROPIC_API_KEY:
         log.warning("ANTHROPIC_API_KEY not set.")
     if not EIA_API_KEY:
         log.info("EIA_API_KEY not set — energy data will be skipped.")
-    try:
-        with open("results.json", "r") as f:
-            latest_results = json.load(f)
-        log.info("Loaded cached results from results.json.")
-    except:
-        pass
+    with app.app_context():
+        db.create_all()
+        log.info("Database tables ready.")
+        load_latest_from_db()
     run_analysis()
     thread = threading.Thread(target=scheduler_loop, daemon=True)
     thread.start()
