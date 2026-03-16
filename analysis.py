@@ -35,9 +35,9 @@ COMMODITIES = {
 }
 
 GOOGLE_SEARCHES = {
-    "Gold":        ["gold site:bloomberg.com", "gold site:ft.com", "gold site:argusmedia.com"],
+    "Gold":        ["gold site:bloomberg.com", "gold site:ft.com", "gold site:argusmedia.com", "gold site:kitco.com"],
     "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:ft.com", "crude oil site:argusmedia.com"],
-    "Silver":      ["silver site:bloomberg.com", "silver site:ft.com"],
+    "Silver":      ["silver site:bloomberg.com", "silver site:ft.com", "silver site:kitco.com", "gold silver site:kitco.com"],
     "Copper":      ["copper site:bloomberg.com", "copper site:ft.com", "copper site:argusmedia.com"],
     "Natural Gas": ["natural gas site:bloomberg.com", "natural gas site:ft.com", "natural gas site:argusmedia.com"],
 }
@@ -285,6 +285,8 @@ def fetch_all_articles():
                     label = "Financial Times"
                 elif "argusmedia.com" in search:
                     label = "Argus Media"
+                elif "kitco.com" in search:
+                    label = "Kitco"
                 else:
                     label = "Google News"
                 for entry in feed.entries[:8]:
