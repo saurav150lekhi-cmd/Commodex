@@ -20,28 +20,26 @@ app = Flask(__name__)
 latest_results = {}
 
 NEWS_SOURCES = [
-    "https://economictimes.indiatimes.com/news/international/rssfeeds/2647163.cms",
-    "https://economictimes.indiatimes.com/markets/rssfeeds/1977021501.cms",
+    "https://oilprice.com/rss/main",
+    "https://www.mining.com/feed/",
     "https://feeds.reuters.com/reuters/commoditiesNews",
     "https://feeds.reuters.com/reuters/businessNews",
-    "https://www.livemint.com/rss/markets",
-    "https://www.livemint.com/rss/money",
 ]
 
 COMMODITIES = {
     "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "gold rises", "gold falls", "gold hits", "gold climbs"],
     "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls"],
-    "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "mcx silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
-    "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "mcx copper", "copper cathode", "copper inventories"],
-    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "mcx gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports"],
+    "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
+    "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories"],
+    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports"],
 }
 
 GOOGLE_SEARCHES = {
-    "Gold":        ["gold site:bloomberg.com", "gold site:reuters.com"],
-    "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:reuters.com"],
-    "Silver":      ["silver site:bloomberg.com", "silver price site:reuters.com"],
-    "Copper":      ["copper LME site:bloomberg.com", "copper price site:reuters.com"],
-    "Natural Gas": ["natural gas site:bloomberg.com", "natural gas site:reuters.com"],
+    "Gold":        ["gold site:bloomberg.com", "gold site:ft.com", "gold site:argusmedia.com"],
+    "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:ft.com", "crude oil site:argusmedia.com"],
+    "Silver":      ["silver site:bloomberg.com", "silver site:ft.com"],
+    "Copper":      ["copper site:bloomberg.com", "copper site:ft.com", "copper site:argusmedia.com"],
+    "Natural Gas": ["natural gas site:bloomberg.com", "natural gas site:ft.com", "natural gas site:argusmedia.com"],
 }
 
 HIGH_IMPACT_KEYWORDS = [
@@ -53,7 +51,7 @@ HIGH_IMPACT_KEYWORDS = [
 
 MEDIUM_IMPACT_KEYWORDS = [
     "forecast", "outlook", "estimate", "analyst", "report", "weekly", "monthly",
-    "import", "export", "trade", "dollar", "usd", "rupee", "inr", "mcx", "nymex", "comex"
+    "import", "export", "trade", "dollar", "usd", "nymex", "comex"
 ]
 
 # ── Article scoring ────────────────────────────────────────────────────────────
@@ -277,16 +275,16 @@ def fetch_all_articles():
     for commodity, searches in GOOGLE_SEARCHES.items():
         for search in searches:
             try:
-                url = "https://news.google.com/rss/search?q=" + search.replace(" ", "+") + "&hl=en-IN&gl=IN&ceid=IN:en"
+                url = "https://news.google.com/rss/search?q=" + search.replace(" ", "+") + "&hl=en-US&gl=US&ceid=US:en"
                 feed = feedparser.parse(url)
                 if "bloomberg.com" in search:
                     label = "Bloomberg"
                 elif "reuters.com" in search:
                     label = "Reuters"
-                elif "wsj.com" in search:
-                    label = "Wall Street Journal"
-                elif "livemint.com" in search:
-                    label = "Mint"
+                elif "ft.com" in search:
+                    label = "Financial Times"
+                elif "argusmedia.com" in search:
+                    label = "Argus Media"
                 else:
                     label = "Google News"
                 for entry in feed.entries[:8]:
@@ -327,9 +325,9 @@ def analyse_commodity(commodity_name, articles, macro_context):
         for a in articles[:15]
     ) or "No news available."
 
-    prompt = """You are a senior commodity analyst at a hedge fund. Analyse the data below for """ + commodity_name + """ using the 10-step pipeline, then return only the final JSON from Step 10.
+    prompt = """You are a senior commodity analyst at a global hedge fund. Analyse the data below for """ + commodity_name + """ using the 10-step pipeline, then return only the final JSON from Step 10. All prices and levels are in USD only.
 
-TIME: """ + datetime.now().strftime("%d %b %Y, %I:%M %p") + """ IST
+TIME: """ + datetime.now().strftime("%d %b %Y, %I:%M %p") + """ UTC
 
 LIVE MARKET DATA:
 """ + macro_context + """
@@ -349,7 +347,7 @@ STEP 4 - DRIVER IDENTIFICATION: Identify 3-5 primary market drivers across these
 
 STEP 5 - PRICE ACTION CONTEXT: Determine if current price movement confirms, contradicts, or is unclear relative to the identified drivers. Never invent explanations if evidence is weak.
 
-STEP 6 - MARKET SUMMARY: Write a concise professional analyst narrative of what is currently happening in this market.
+STEP 6 - MARKET SUMMARY: Write a concise professional analyst narrative of what is currently happening in this market, covering the global market situation, macro drivers, supply/demand dynamics, and regional impact across US, Europe, and China.
 
 STEP 7 - TRADER TAKEAWAYS: Generate observational insights for three timeframes: Intraday, Next Few Days, Next Few Weeks. Never give buy/sell recommendations.
 
@@ -357,10 +355,10 @@ STEP 8 - DRIVER CONFIDENCE: Assign HIGH, MEDIUM or LOW confidence based on numbe
 
 STEP 9 - MARKET NARRATIVE TRACKING: Identify the dominant narrative (e.g. inflation hedge, supply disruption) and whether it is Strengthening, Stable, Weakening or Shifting.
 
-STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. No markdown, no explanation, no text before or after the JSON:
+STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price levels in USD. No markdown, no explanation, no text before or after the JSON:
 
 {
-  "market_summary": "concise professional narrative of current market situation",
+  "market_summary": "concise professional narrative covering global market situation, macro drivers, supply/demand, and regional impact across US, Europe, and China",
   "sentiment": "STRONG_BULLISH or BULLISH or NEUTRAL or BEARISH or STRONG_BEARISH",
   "drivers": {
     "up": ["driver 1", "driver 2", "driver 3"],
