@@ -59,10 +59,10 @@
     .comm-change.flat { color: #fbbf24; }
     .divider { width: 1px; height: 32px; background: #2a2820; }
     .sentiment-block { display: flex; flex-direction: column; gap: 5px; }
-    .sentiment-label { font-family: 'DM Mono', monospace; font-size: 8px; color: #8a7a60; letter-spacing: 2px; }
+    .sentiment-label { font-family: 'DM Mono', monospace; font-size: 9px; color: #8a7a60; letter-spacing: 3px; }
     .sentiment-meter { display: flex; gap: 3px; align-items: center; }
     .sentiment-step { height: 6px; width: 28px; border-radius: 1px; background: #2a2820; }
-    .sentiment-text { font-family: 'DM Mono', monospace; font-size: 10px; margin-left: 8px; letter-spacing: 1px; }
+    .sentiment-text { font-family: 'Fraunces', serif; font-size: 28px; font-weight: 300; letter-spacing: 1px; }
     .analysis-ts { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; margin-left: auto; text-align: right; line-height: 1.6; }
 
     .main { display: flex; height: calc(100vh - 100px); min-height: 500px; }
@@ -450,17 +450,6 @@
         </div>
       </div>
 
-      <div>
-        <div class="section-label">TAKEAWAY</div>
-        <div class="takeaway-box">
-          <span class="takeaway-bias" style="background:${biasColor}20;color:${biasColor};border:1px solid ${biasColor}40">${bias.toUpperCase()}</span>
-          <div class="takeaway-grid">
-            <div><div class="takeaway-item-label">STRATEGY</div><div class="takeaway-item-value">${tk.strategy || "—"}</div></div>
-            <div><div class="takeaway-item-label">SHORT TERM · 1-2W</div><div class="takeaway-item-value">${tk.short_term || "—"}</div></div>
-            <div><div class="takeaway-item-label">MEDIUM TERM · 1-3M</div><div class="takeaway-item-value">${tk.medium_term || "—"}</div></div>
-          </div>
-        </div>
-      </div>
 
       <div id="sentiment-history-section">
         <div class="section-label">SENTIMENT HISTORY</div>
