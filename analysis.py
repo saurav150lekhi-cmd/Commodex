@@ -536,7 +536,7 @@ def fetch_all_articles():
                     label = "Natural Gas Intelligence"
                 else:
                     label = "Google News"
-                for entry in feed.entries[:8]:
+                for entry in feed.entries[:15]:
                     all_articles.append({
                         "title":     entry.get("title", "").strip(),
                         "summary":   entry.get("summary", "").strip(),
@@ -724,7 +724,7 @@ def run_analysis():
             sorted_articles = sorted(articles, key=lambda a: (a.get("published", ""), -priority.get(a.get("impact", "LOW"), 2)), reverse=True)
             results[commodity] = {
                 "analysis":  analysis,
-                "articles":  sorted_articles[:15],
+                "articles":  sorted_articles[:25],
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "count":     len(articles),
             }
