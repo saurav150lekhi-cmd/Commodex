@@ -47,7 +47,7 @@ app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"]        = DATABASE_URL
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 app.config["JWT_SECRET_KEY"]                 = JWT_SECRET_KEY
-app.config["JWT_ACCESS_TOKEN_EXPIRES"]       = timedelta(minutes=30)
+app.config["JWT_ACCESS_TOKEN_EXPIRES"]       = timedelta(hours=24)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"]      = timedelta(days=7)
 
 db.init_app(app)
