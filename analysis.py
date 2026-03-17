@@ -17,7 +17,7 @@ from db import db
 from models import User, AnalysisRun, UserAlert
 from auth import auth_bp
 from admin import admin_bp
-from email_utils import send_alert_email
+from email_utils import send_alert_email, send_analysis_notification_email
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
 
@@ -772,6 +772,17 @@ def run_analysis():
             pass
         analysis_status["last_run"] = run_at.isoformat()
         log.info("Analysis cycle complete.")
+        # Send digest emails to users who opted in
+        try:
+            summaries = {
+                c: (results[c].get("analysis", {}).get("sentiment", "NEUTRAL") if c in results else "NEUTRAL")
+                for c in COMMODITIES
+            }
+            subscribers = User.query.filter_by(notify_on_analysis=True, is_active=True).all()
+            for u in subscribers:
+                send_analysis_notification_email(u.email, summaries)
+        except Exception as e:
+            log.error("Analysis notification emails failed: %s", e)
     finally:
         analysis_status["running"] = False
 

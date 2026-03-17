@@ -489,6 +489,15 @@
             <span id="alert-label-${name.replace(/ /g,'-')}" style="font-family:'DM Mono',monospace;font-size:9px;color:#6a5a40;letter-spacing:1px">OFF</span>
           </label>
         </div>
+        <div class="section-card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;margin-top:8px">
+          <span style="font-size:12px;color:#8a7a60;font-weight:300">Email me when a <strong style="color:#c4b490">new analysis</strong> is ready (every 6 hrs)</span>
+          <label style="margin-left:auto;display:flex;align-items:center;gap:8px;cursor:pointer">
+            <div class="toggle-wrap" onclick="toggleNotify()" id="notify-toggle" style="width:36px;height:18px;border-radius:9px;background:#2a2820;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0">
+              <div class="toggle-knob" style="width:14px;height:14px;border-radius:7px;background:#6a5a40;position:absolute;top:2px;left:2px;transition:all 0.2s"></div>
+            </div>
+            <span id="notify-label" style="font-family:'DM Mono',monospace;font-size:9px;color:#6a5a40;letter-spacing:1px">OFF</span>
+          </label>
+        </div>
       </div>
     `;
   }
@@ -743,6 +752,46 @@
   };
 
   if (getAccess()) loadAlerts();
+
+  // ── Analysis notifications ───────────────────────────────────────────────
+  let notifyEnabled = false;
+
+  async function loadNotify() {
+    try {
+      const res = await apiFetch("/auth/notify");
+      if (!res || !res.ok) return;
+      const data = await res.json();
+      notifyEnabled = data.enabled;
+      updateNotifyToggle();
+    } catch {}
+  }
+
+  function updateNotifyToggle() {
+    const wrap  = document.getElementById("notify-toggle");
+    const label = document.getElementById("notify-label");
+    if (!wrap || !label) return;
+    wrap.style.background = notifyEnabled ? "#c8a870" : "#2a2820";
+    wrap.querySelector(".toggle-knob").style.background = notifyEnabled ? "#0a0908" : "#6a5a40";
+    wrap.querySelector(".toggle-knob").style.left       = notifyEnabled ? "20px" : "2px";
+    label.textContent  = notifyEnabled ? "ON" : "OFF";
+    label.style.color  = notifyEnabled ? "#c8a870" : "#6a5a40";
+  }
+
+  async function toggleNotify() {
+    notifyEnabled = !notifyEnabled;
+    updateNotifyToggle();
+    try {
+      await apiFetch("/auth/notify", { method: "POST", body: JSON.stringify({ enabled: notifyEnabled }) });
+    } catch {}
+  }
+
+  const _origHideLogin2 = hideLoginOverlay;
+  hideLoginOverlay = function() {
+    _origHideLogin2();
+    loadNotify();
+  };
+
+  if (getAccess()) loadNotify();
 </script>
 </body>
 </html>

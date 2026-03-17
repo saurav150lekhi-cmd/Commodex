@@ -87,6 +87,43 @@ _COMMODITY_COLORS = {
 }
 
 
+def send_analysis_notification_email(to, summaries):
+    """Send a digest email when a new analysis cycle completes."""
+    rows = ""
+    for commodity, sentiment in summaries.items():
+        color = _COMMODITY_COLORS.get(commodity, "#c8a870")
+        sent_label = _SENTIMENT_LABELS.get(sentiment, sentiment)
+        sent_color = _SENTIMENT_COLORS.get(sentiment, "#fbbf24")
+        rows += f"""
+        <tr>
+          <td style="padding:10px 16px;border-bottom:1px solid #1e1c18;font-size:11px;letter-spacing:1px;color:{color}">{commodity.upper()}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #1e1c18;font-size:11px;color:{sent_color};letter-spacing:1px">{sent_label.upper()}</td>
+        </tr>"""
+    link = f"{APP_URL}/app"
+    html = f"""
+    <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:560px;margin:0 auto">
+      <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
+      <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
+      <div style="font-size:11px;letter-spacing:2px;color:#c8a870;margin-bottom:16px">NEW ANALYSIS READY</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #1e1c18;border-radius:4px;margin-bottom:24px">
+        <thead>
+          <tr style="background:#0d0c0a">
+            <th style="padding:8px 16px;text-align:left;font-size:9px;letter-spacing:2px;color:#6a5a40;font-weight:normal">COMMODITY</th>
+            <th style="padding:8px 16px;text-align:left;font-size:9px;letter-spacing:2px;color:#6a5a40;font-weight:normal">SENTIMENT</th>
+          </tr>
+        </thead>
+        <tbody>{rows}</tbody>
+      </table>
+      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px;border-radius:3px">OPEN TERMINAL</a>
+      <p style="margin-top:28px;color:#6a5a40;font-size:10px;line-height:1.6">
+        You're receiving this because you enabled analysis notifications.<br>
+        To unsubscribe, open the Commodex terminal and toggle off notifications.
+      </p>
+    </div>
+    """
+    return send_email(to, "Commodex · New analysis ready", html)
+
+
 def send_alert_email(to, commodity, new_sentiment, old_sentiment, summary=""):
     comm_color = _COMMODITY_COLORS.get(commodity, "#c8a870")
     new_label  = _SENTIMENT_LABELS.get(new_sentiment, new_sentiment)

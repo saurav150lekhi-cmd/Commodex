@@ -165,6 +165,27 @@ def get_alerts():
     ])
 
 
+@auth_bp.route("/notify", methods=["GET"])
+@jwt_required()
+def get_notify():
+    user = User.query.get(int(get_jwt_identity()))
+    if not user:
+        return _error("User not found.", 404)
+    return jsonify({"enabled": user.notify_on_analysis})
+
+
+@auth_bp.route("/notify", methods=["POST"])
+@jwt_required()
+def set_notify():
+    user = User.query.get(int(get_jwt_identity()))
+    if not user:
+        return _error("User not found.", 404)
+    data = request.get_json(silent=True) or {}
+    user.notify_on_analysis = bool(data.get("enabled", False))
+    db.session.commit()
+    return jsonify({"enabled": user.notify_on_analysis})
+
+
 @auth_bp.route("/alerts", methods=["POST"])
 @jwt_required()
 def set_alert():

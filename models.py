@@ -11,6 +11,7 @@ class User(db.Model):
     password_hash      = db.Column(db.String(255), nullable=False)
     is_active          = db.Column(db.Boolean, default=True)
     is_admin           = db.Column(db.Boolean, default=False)
+    notify_on_analysis = db.Column(db.Boolean, default=False)
     email_verified     = db.Column(db.Boolean, default=False)
     verification_token = db.Column(db.String(64), nullable=True)
     created_at         = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
