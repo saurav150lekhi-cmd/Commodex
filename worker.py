@@ -17,10 +17,10 @@ with app.app_context():
     else:
         print(f"Recent analysis found ({latest.run_at.strftime('%H:%M UTC')}) — skipping startup run.")
 
-schedule.every().day.at("00:30").do(lambda: _run())
+schedule.every().day.at("01:30").do(lambda: _run())
 schedule.every().day.at("06:30").do(lambda: _run())
-schedule.every().day.at("12:30").do(lambda: _run())
-schedule.every().day.at("18:30").do(lambda: _run())
+schedule.every().day.at("11:30").do(lambda: _run())
+schedule.every().day.at("16:30").do(lambda: _run())
 
 
 def _run():
@@ -28,7 +28,7 @@ def _run():
         run_analysis()
 
 
-print("Scheduler running. Next runs at 06:00, 12:00, 18:00, 00:00 IST.")
+print("Scheduler running. Next runs at 07:00, 12:00, 17:00, 22:00 IST.")
 while True:
     schedule.run_pending()
     time.sleep(30)
