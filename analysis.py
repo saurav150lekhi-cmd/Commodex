@@ -67,23 +67,24 @@ with app.app_context():
         log.error("Database init failed: %s", e)
 
 NEWS_SOURCES = [
-    # ── Tier 1 — Established commodity/market RSS ──────────────────────────────
-    "https://oilprice.com/rss/main",
-    "https://www.mining.com/feed/",
-    "https://feeds.reuters.com/reuters/commoditiesNews",
-    "https://feeds.reuters.com/reuters/businessNews",
-    "https://www.cnbc.com/id/23103686/device/rss/rss.html",
-    "https://feeds.content.dowjones.io/public/rss/mw_topstories",
-    "https://www.investing.com/rss/news_25.rss",
-    "https://www.rigzone.com/news/rss/rigzone_latest.aspx",
-    # ── Tier 2 — Additional free feeds ────────────────────────────────────────
-    "https://www.kitco.com/rss/kitco-news.rss",                     # Kitco direct RSS
-    "https://www.hellenicshippingnews.com/feed/",                   # Hellenic Shipping (energy/metals)
-    "https://www.spglobal.com/commodityinsights/en/rss-feed",       # S&P Global Commodity Insights
-    "https://feeds.feedburner.com/PlattsOilgram",                   # Platts Oilgram
-    "https://www.hartenergy.com/rss",                               # Hart Energy (oil & gas)
-    "https://www.naturalgasintel.com/feed/",                        # Natural Gas Intelligence
-    "https://seekingalpha.com/tag/commodities.xml",                 # Seeking Alpha commodities
+    # ── Tier 1 — Confirmed working feeds ───────────────────────────────────────
+    "https://oilprice.com/rss/main",                                # OilPrice (15 entries)
+    "https://www.cnbc.com/id/23103686/device/rss/rss.html",         # CNBC Markets (18 entries)
+    "https://feeds.content.dowjones.io/public/rss/mw_topstories",  # MarketWatch (10 entries)
+    "https://www.investing.com/rss/news_25.rss",                    # Investing.com (10 entries)
+    "https://www.rigzone.com/news/rss/rigzone_latest.aspx",         # Rigzone oil & gas (20 entries)
+    "https://www.hellenicshippingnews.com/feed/",                   # Hellenic Shipping energy/metals (20)
+    "https://www.naturalgasintel.com/feed/",                        # Natural Gas Intelligence (10)
+    "https://seekingalpha.com/tag/commodities.xml",                 # Seeking Alpha commodities (20)
+    # ── Tier 2 — Additional reliable feeds ────────────────────────────────────
+    "https://www.eia.gov/rss/news.xml",                             # EIA official energy news
+    "https://www.iea.org/news/rss.xml",                             # IEA energy news
+    "https://www.resourceworld.com/feed/",                          # Resource World mining/metals
+    "https://goldsilver.com/feed/",                                 # Gold & Silver news
+    "https://www.silverseek.com/rss.xml",                           # Silver news
+    "https://www.24hgold.com/rss/RSSenglish.ashx",                  # 24h Gold news
+    "https://www.fxstreet.com/rss/news",                            # FX Street commodities/macro
+    "https://www.mining.com/feed/",                                 # Mining.com (retry — intermittent)
 ]
 
 COMMODITIES = {
