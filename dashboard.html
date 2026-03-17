@@ -330,16 +330,10 @@
   const SENTIMENT_COLORS = { "STRONG_BEARISH": "#ef4444", "BEARISH": "#f87171", "NEUTRAL": "#fbbf24", "BULLISH": "#86efac", "STRONG_BULLISH": "#22c55e" };
 
   function renderSentimentMeter(sentiment) {
-    const idx = SENTIMENTS.indexOf(sentiment);
     const color = SENTIMENT_COLORS[sentiment] || "#fbbf24";
-    let steps = "";
-    for (let i = 0; i < 5; i++) {
-      const stepColor = i <= idx ? SENTIMENT_COLORS[SENTIMENTS[i]] : "#2a2820";
-      steps += `<div class="sentiment-step" style="background:${stepColor}"></div>`;
-    }
     return `<div class="sentiment-block">
       <div class="sentiment-label">SENTIMENT</div>
-      <div class="sentiment-meter">${steps}<span class="sentiment-text" style="color:${color}">${SENTIMENT_LABELS[sentiment] || "NEUTRAL"}</span></div>
+      <div class="sentiment-meter"><span class="sentiment-text" style="color:${color}">${SENTIMENT_LABELS[sentiment] || "NEUTRAL"}</span></div>
     </div>`;
   }
 
