@@ -1003,6 +1003,14 @@ def load_latest_from_db():
             log.warning("No cached results found — dashboard will be empty until first analysis.")
 
 
+# Load latest results from DB at startup (runs for both gunicorn and direct run)
+with app.app_context():
+    try:
+        db.create_all()
+        load_latest_from_db()
+    except Exception as _e:
+        log.warning("Startup DB load failed: %s", _e)
+
 if __name__ == "__main__":
     if not ANTHROPIC_API_KEY:
         log.warning("ANTHROPIC_API_KEY not set.")
