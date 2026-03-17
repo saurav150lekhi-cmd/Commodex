@@ -853,7 +853,7 @@ def get_history(commodity):
             .all())
     result = [
         {
-            "run_at":    r.run_at.strftime("%d %b %Y, %H:%M UTC"),
+            "run_at":    r.run_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "sentiment": r.sentiment,
             "articles":  r.article_count,
         }

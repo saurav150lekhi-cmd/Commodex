@@ -585,8 +585,9 @@
       if (!rows.length) { el.innerHTML = '<div class="loading" style="padding:8px 0">No history yet.</div>'; return; }
       el.innerHTML = rows.slice(0, 15).map(r => {
         const color = SENTIMENT_COLORS[r.sentiment] || "#fbbf24";
+        const ts = r.run_at ? new Date(r.run_at).toLocaleString(undefined, {day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "—";
         return `<div class="hist-bar-row">
-          <span class="hist-bar-label">${r.run_at}</span>
+          <span class="hist-bar-label">${ts}</span>
           <span class="hist-bar-dot" style="background:${color}"></span>
           <span class="hist-bar-sentiment" style="color:${color}">${SENTIMENT_LABELS[r.sentiment] || r.sentiment}</span>
           <span style="font-family:'DM Mono',monospace;font-size:8px;color:#6a5a40;margin-left:auto">${r.articles} articles</span>
