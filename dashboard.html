@@ -692,6 +692,7 @@
   if (!getAccess()) {
     showLoginOverlay();
   } else {
+    hideLoginOverlay();
     loadData();
     loadPrices();
     // Check verification status
