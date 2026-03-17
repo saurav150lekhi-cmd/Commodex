@@ -198,6 +198,12 @@
     <div class="analysis-body" id="analysis-body">
       <div class="loading">Fetching analysis...</div>
     </div>
+    <div id="sentiment-history-section" style="margin-top:16px">
+      <div class="section-label">SENTIMENT HISTORY</div>
+      <div id="sentiment-history-body" class="section-card" style="min-height:48px">
+        <div class="loading" style="padding:8px 0">Loading history...</div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -273,7 +279,7 @@
       localStorage.setItem("access_token",  data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
       hideLoginOverlay();
-      loadData(); loadPrices();
+      loadData().then(() => loadHistory(activeTab)); loadPrices();
       if (data.email_verified === false) {
         checkVerificationBanner(false);
       }
@@ -451,13 +457,6 @@
       </div>
 
 
-      <div id="sentiment-history-section">
-        <div class="section-label">SENTIMENT HISTORY</div>
-        <div id="sentiment-history-body" class="section-card" style="min-height:48px">
-          <div class="loading" style="padding:8px 0">Loading history...</div>
-        </div>
-      </div>
-
       <div>
         <div class="section-label">EMAIL ALERTS</div>
         <div class="section-card" id="alerts-card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px">
@@ -539,7 +538,7 @@
       renderCommodityHeader(activeTab);
       renderAnalysisBody(activeTab);
       renderNews(activeTab);
-      loadHistory(activeTab);
+      // History only reloads on tab switch — not on every 5-min poll
     } catch(e) {
     }
   }
@@ -677,7 +676,7 @@
     showLoginOverlay();
   } else {
     hideLoginOverlay();
-    loadData();
+    loadData().then(() => loadHistory(activeTab));
     loadPrices();
     // Check verification status
     apiFetch("/auth/me").then(r => r && r.json()).then(d => d && checkVerificationBanner(d.email_verified)).catch(()=>{});

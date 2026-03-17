@@ -62,3 +62,22 @@ class AnalysisRun(db.Model):
     __table_args__ = (
         db.Index("ix_analysis_runs_commodity_run_at", "commodity", run_at.desc()),
     )
+
+
+class NewsArticle(db.Model):
+    __tablename__ = "news_articles"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    commodity  = db.Column(db.String(50), nullable=False, index=True)
+    title      = db.Column(db.Text, nullable=False)
+    url        = db.Column(db.String(500))
+    summary    = db.Column(db.Text)
+    source     = db.Column(db.String(100))
+    published  = db.Column(db.String(50))
+    impact     = db.Column(db.String(10), default="LOW")
+    fetched_at = db.Column(db.DateTime(timezone=True), nullable=False, index=True)
+    url_hash   = db.Column(db.String(64), nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("url_hash", "commodity", name="uq_article_commodity"),
+    )

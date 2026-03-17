@@ -7,6 +7,7 @@ import threading
 import schedule
 import os
 import logging
+import hashlib
 import urllib.request
 import urllib.parse
 from datetime import datetime, timezone, timedelta
@@ -14,7 +15,7 @@ from flask import Flask, jsonify, send_from_directory
 from flask_jwt_extended import JWTManager, jwt_required
 from dotenv import load_dotenv
 from db import db
-from models import User, AnalysisRun, UserAlert
+from models import User, AnalysisRun, UserAlert, NewsArticle
 from auth import auth_bp
 from admin import admin_bp
 from email_utils import send_alert_email, send_analysis_notification_email
@@ -564,6 +565,70 @@ def filter_by_commodity(articles):
                     break
     return result
 
+def fetch_and_store_news():
+    """Fetch fresh articles from RSS/Google News and persist to DB. No AI cost."""
+    log.info("News fetch started...")
+    try:
+        all_articles = fetch_all_articles()
+        by_commodity = filter_by_commodity(all_articles)
+        now = datetime.now(timezone.utc)
+        cutoff = now - timedelta(days=7)
+        # Prune articles older than 7 days
+        NewsArticle.query.filter(NewsArticle.fetched_at < cutoff).delete()
+        db.session.commit()
+        saved = 0
+        for commodity, articles in by_commodity.items():
+            for a in articles:
+                key = (a.get("url") or a["title"]) + "|" + commodity
+                url_hash = hashlib.md5(key.encode()).hexdigest()
+                exists = db.session.query(
+                    NewsArticle.query.filter_by(url_hash=url_hash, commodity=commodity).exists()
+                ).scalar()
+                if not exists:
+                    db.session.add(NewsArticle(
+                        commodity  = commodity,
+                        title      = a["title"],
+                        url        = a.get("url", ""),
+                        summary    = a.get("summary", ""),
+                        source     = a.get("source", ""),
+                        published  = a.get("published", ""),
+                        impact     = a.get("impact", score_article(a)),
+                        fetched_at = now,
+                        url_hash   = url_hash,
+                    ))
+                    saved += 1
+        db.session.commit()
+        log.info("News fetch complete: %d new articles saved.", saved)
+    except Exception as e:
+        log.error("News fetch failed: %s", e)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def _get_fresh_articles(commodity, hours=24):
+    """Return articles for a commodity from the last `hours` hours."""
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=hours)
+    rows = (NewsArticle.query
+            .filter_by(commodity=commodity)
+            .filter(NewsArticle.fetched_at >= cutoff)
+            .order_by(NewsArticle.fetched_at.desc())
+            .limit(100)
+            .all())
+    priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
+    articles = [
+        {"title": r.title, "url": r.url, "summary": r.summary,
+         "source": r.source, "published": r.published, "impact": r.impact}
+        for r in rows
+    ]
+    articles.sort(
+        key=lambda a: (a.get("published", ""), -priority.get(a.get("impact", "LOW"), 2)),
+        reverse=True,
+    )
+    return articles
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # CLAUDE ANALYSIS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -687,8 +752,14 @@ def run_analysis():
                  lme_copper["value"] if lme_copper else "unavailable",
                  bdi["value"] if bdi else "unavailable")
 
-        all_articles = fetch_all_articles()
-        news = filter_by_commodity(all_articles)
+        # Use pre-fetched articles from DB (news poller runs every 15 min)
+        # Fall back to live fetch if DB has nothing yet
+        news = {c: _get_fresh_articles(c) for c in COMMODITIES}
+        total_from_db = sum(len(v) for v in news.values())
+        if total_from_db == 0:
+            log.info("No articles in DB yet — falling back to live fetch for this run.")
+            all_articles = fetch_all_articles()
+            news = filter_by_commodity(all_articles)
 
         results = {}
         for commodity, articles in news.items():
@@ -813,10 +884,20 @@ _last_db_reload = 0
 def get_data():
     global _last_db_reload
     now = time.time()
-    if now - _last_db_reload > 600:  # reload from DB every 10 minutes
+    if now - _last_db_reload > 600:  # reload analysis from DB every 10 minutes
         load_latest_from_db()
         _last_db_reload = now
-    response = jsonify(latest_results)
+
+    # Overlay with fresh articles from news poller (last 24h)
+    result = {}
+    for commodity, payload in latest_results.items():
+        fresh = _get_fresh_articles(commodity, hours=24)
+        if fresh:
+            result[commodity] = {**payload, "articles": fresh[:25], "count": len(fresh)}
+        else:
+            result[commodity] = payload
+
+    response = jsonify(result)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
