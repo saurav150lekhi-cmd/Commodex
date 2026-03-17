@@ -805,9 +805,16 @@ def scheduler_loop():
 # FLASK ROUTES
 # ══════════════════════════════════════════════════════════════════════════════
 
+_last_db_reload = 0
+
 @app.route("/data")
 @jwt_required()
 def get_data():
+    global _last_db_reload
+    now = time.time()
+    if now - _last_db_reload > 600:  # reload from DB every 10 minutes
+        load_latest_from_db()
+        _last_db_reload = now
     response = jsonify(latest_results)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
