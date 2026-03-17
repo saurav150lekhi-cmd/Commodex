@@ -287,28 +287,30 @@ def fetch_worldbank_data():
 # ── 5. Live prices via Yahoo Finance (server-side) ────────────────────────────
 def fetch_live_prices():
     symbols = {
-        "Gold":        "GC=F",
-        "Silver":      "SI=F",
-        "Crude Oil":   "CL=F",
-        "Copper":      "HG=F",
-        "Natural Gas": "NG=F",
+        "Gold":        "gc.f",
+        "Silver":      "si.f",
+        "Crude Oil":   "cl.f",
+        "Copper":      "hg.f",
+        "Natural Gas": "ng.f",
     }
     prices = {}
     for name, sym in symbols.items():
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?interval=1d&range=2d"
-        data = fetch_json(url)
-        if data:
-            try:
-                meta  = data["chart"]["result"][0]["meta"]
-                price = meta["regularMarketPrice"]
-                prev  = meta["previousClose"]
+        try:
+            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                row   = lines[-1].split(",")
+                close = float(row[6])
+                open_ = float(row[3])
                 prices[name] = {
-                    "price":  price,
-                    "change": ((price - prev) / prev) * 100,
+                    "price":  close,
+                    "change": ((close - open_) / open_) * 100,
                 }
-            except:
+            else:
                 prices[name] = {"price": None, "change": None}
-        else:
+        except:
             prices[name] = {"price": None, "change": None}
     return prices
 
