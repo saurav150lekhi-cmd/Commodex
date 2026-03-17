@@ -719,7 +719,7 @@ def run_analysis():
                     "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
                 }
             priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-            sorted_articles = sorted(articles, key=lambda a: priority.get(a.get("impact", "LOW"), 2))
+            sorted_articles = sorted(articles, key=lambda a: (a.get("published", ""), -priority.get(a.get("impact", "LOW"), 2)), reverse=True)
             results[commodity] = {
                 "analysis":  analysis,
                 "articles":  sorted_articles[:15],
