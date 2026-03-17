@@ -10,6 +10,7 @@ class User(db.Model):
     email              = db.Column(db.String(255), unique=True, nullable=False)
     password_hash      = db.Column(db.String(255), nullable=False)
     is_active          = db.Column(db.Boolean, default=True)
+    is_admin           = db.Column(db.Boolean, default=False)
     email_verified     = db.Column(db.Boolean, default=False)
     verification_token = db.Column(db.String(64), nullable=True)
     created_at         = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
@@ -32,6 +33,19 @@ class PasswordResetToken(db.Model):
 
     def is_valid(self):
         return not self.used and datetime.now(timezone.utc) < self.expires_at
+
+
+class UserAlert(db.Model):
+    __tablename__ = "user_alerts"
+
+    id        = db.Column(db.Integer, primary_key=True)
+    user_id   = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)
+    enabled   = db.Column(db.Boolean, default=True)
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "commodity", name="uq_user_alert"),
+    )
 
 
 class AnalysisRun(db.Model):

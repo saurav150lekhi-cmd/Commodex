@@ -62,3 +62,64 @@ def send_reset_email(to, token):
     </div>
     """
     return send_email(to, "Reset your Commodex password", html)
+
+
+_SENTIMENT_LABELS = {
+    "STRONG_BULLISH": "Strong Bullish",
+    "BULLISH":        "Bullish",
+    "NEUTRAL":        "Neutral",
+    "BEARISH":        "Bearish",
+    "STRONG_BEARISH": "Strong Bearish",
+}
+_SENTIMENT_COLORS = {
+    "STRONG_BULLISH": "#22c55e",
+    "BULLISH":        "#86efac",
+    "NEUTRAL":        "#fbbf24",
+    "BEARISH":        "#f87171",
+    "STRONG_BEARISH": "#ef4444",
+}
+_COMMODITY_COLORS = {
+    "Gold":        "#c9a84c",
+    "Silver":      "#8faabf",
+    "Crude Oil":   "#b85c38",
+    "Copper":      "#b87040",
+    "Natural Gas": "#5a9e8f",
+}
+
+
+def send_alert_email(to, commodity, new_sentiment, old_sentiment, summary=""):
+    comm_color = _COMMODITY_COLORS.get(commodity, "#c8a870")
+    new_label  = _SENTIMENT_LABELS.get(new_sentiment, new_sentiment)
+    old_label  = _SENTIMENT_LABELS.get(old_sentiment, old_sentiment)
+    new_color  = _SENTIMENT_COLORS.get(new_sentiment, "#fbbf24")
+    old_color  = _SENTIMENT_COLORS.get(old_sentiment, "#fbbf24")
+    link       = f"{APP_URL}/app"
+    summary_block = f'<p style="margin:16px 0 0;line-height:1.7;color:#c4b490;font-size:12px">{summary}</p>' if summary else ""
+    html = f"""
+    <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:560px;margin:0 auto">
+      <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
+      <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
+      <div style="font-size:11px;letter-spacing:2px;color:{comm_color};margin-bottom:12px">{commodity.upper()} · SENTIMENT ALERT</div>
+      <div style="background:#0d0c0a;border:1px solid #2a2820;border-left:3px solid {comm_color};border-radius:4px;padding:16px 20px;margin-bottom:20px">
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#6a5a40;letter-spacing:1px;margin-bottom:4px">PREVIOUS</div>
+            <div style="font-size:13px;color:{old_color};letter-spacing:1px">{old_label.upper()}</div>
+          </div>
+          <div style="color:#3a3428;font-size:18px">→</div>
+          <div style="text-align:center">
+            <div style="font-size:9px;color:#6a5a40;letter-spacing:1px;margin-bottom:4px">NOW</div>
+            <div style="font-size:16px;font-weight:bold;color:{new_color};letter-spacing:1px">{new_label.upper()}</div>
+          </div>
+        </div>
+        {summary_block}
+      </div>
+      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px;border-radius:3px">OPEN TERMINAL</a>
+      <p style="margin-top:28px;color:#6a5a40;font-size:10px;line-height:1.6">
+        You're receiving this because you subscribed to {commodity} alerts.<br>
+        To manage alerts, open the Commodex terminal and go to Settings.
+      </p>
+    </div>
+    """
+    subject = f"Commodex · {commodity} sentiment shifted to {new_label}"
+    return send_email(to, subject, html)

@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commodex Analytics</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0a0908; color: #d4c4a0; font-family: 'DM Sans', sans-serif; min-height: 100vh; }
+
+    /* ── Login overlay ── */
+    .login-overlay { position: fixed; inset: 0; background: rgba(10,9,8,0.97); z-index: 999; display: flex; align-items: center; justify-content: center; }
+    .login-overlay.hidden { display: none; }
+    .login-box { width: 360px; border: 1px solid #2a2820; border-radius: 6px; padding: 36px; background: #0d0c0a; }
+    .login-logo { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 300; color: #e8d8b0; margin-bottom: 4px; }
+    .login-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: #c8a870; letter-spacing: 3px; margin-bottom: 28px; }
+    .login-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 6px; display: block; }
+    .login-input { width: 100%; background: #0a0908; border: 1px solid #2a2820; color: #d4c4a0; padding: 9px 12px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 12px; margin-bottom: 16px; outline: none; }
+    .login-input:focus { border-color: #5a4a38; }
+    .login-btn { width: 100%; background: #c8a870; color: #0a0908; border: none; padding: 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; cursor: pointer; }
+    .login-btn:hover { background: #e8d8b0; }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error { font-family: 'DM Mono', monospace; font-size: 10px; color: #f87171; margin-top: 12px; min-height: 16px; text-align: center; }
+    .login-toggle { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; text-align: center; margin-top: 16px; }
+    .login-toggle span { color: #c8a870; cursor: pointer; }
+    .login-toggle span:hover { color: #e8d8b0; }
+
+    /* ── Header ── */
+    .header { background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; }
+    .logo { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: #e8d8b0; }
+    .logo-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: #c8a870; letter-spacing: 3px; }
+    .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .header-btn { background: none; border: 1px solid #3a3428; color: #8a7a60; padding: 4px 12px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; text-decoration: none; display: inline-block; }
+    .header-btn:hover { color: #c8a870; border-color: #5a4a38; }
+    .signout-btn { background: none; border: none; color: #6a5a40; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; }
+    .signout-btn:hover { color: #c8a870; }
+
+    /* ── Period selector ── */
+    .toolbar { background: #0d0c0a; border-bottom: 1px solid #1e1c18; padding: 10px 24px; display: flex; align-items: center; gap: 16px; }
+    .toolbar-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #6a5a40; }
+    .period-btn { background: none; border: 1px solid #2a2820; color: #6a5a40; padding: 4px 12px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; }
+    .period-btn.active { background: #c8a87015; color: #c8a870; border-color: #c8a87050; }
+    .period-btn:hover { color: #c8a870; }
+    .toolbar-ts { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 9px; color: #3a3428; }
+
+    /* ── Content ── */
+    .content { padding: 24px; display: flex; flex-direction: column; gap: 20px; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Stat cards ── */
+    .stat-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 18px 20px; }
+    .stat-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #6a5a40; margin-bottom: 8px; }
+    .stat-value { font-family: 'DM Mono', monospace; font-size: 28px; color: #e8d8b0; line-height: 1; margin-bottom: 4px; }
+    .stat-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: #8a7a60; }
+    .stat-card.accent .stat-value { color: #c8a870; }
+
+    /* ── Charts ── */
+    .chart-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 20px; }
+    .chart-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 16px; }
+    .two-col { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    /* ── Commodity grid ── */
+    .comm-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+    .comm-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 16px; }
+    .comm-name { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; margin-bottom: 12px; }
+    .comm-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .comm-row-label { font-family: 'DM Mono', monospace; font-size: 8px; color: #6a5a40; letter-spacing: 1px; }
+    .comm-row-val { font-family: 'DM Mono', monospace; font-size: 9px; color: #c4b490; }
+
+    /* ── Recent runs table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #6a5a40; padding: 8px 12px; border-bottom: 1px solid #1e1c18; text-align: left; white-space: nowrap; }
+    td { font-family: 'DM Mono', monospace; font-size: 10px; color: #c4b490; padding: 9px 12px; border-bottom: 1px solid #161412; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #0a0908; }
+
+    /* ── Badges ── */
+    .badge { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1px; padding: 2px 7px; border-radius: 2px; display: inline-block; }
+
+    /* ── Score bar ── */
+    .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+    .score-bar-track { flex: 1; height: 4px; background: #1a1816; border-radius: 2px; position: relative; }
+    .score-bar-fill { height: 100%; border-radius: 2px; position: absolute; }
+    .score-val { font-family: 'DM Mono', monospace; font-size: 9px; width: 32px; text-align: right; }
+
+    ::-webkit-scrollbar { width: 3px; height: 3px; }
+    ::-webkit-scrollbar-thumb { background: #3a3428; border-radius: 1px; }
+    .loading { font-family: 'DM Mono', monospace; font-size: 10px; color: #6a5a40; padding: 24px; text-align: center; letter-spacing: 1px; }
+  </style>
+</head>
+<body>
+
+<!-- Login overlay -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">Commodex</div>
+    <div class="login-sub">ANALYTICS</div>
+    <label class="login-label">EMAIL</label>
+    <input class="login-input" type="email" id="login-email" placeholder="you@example.com" />
+    <label class="login-label">PASSWORD</label>
+    <input class="login-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    <button class="login-btn" id="login-btn" onclick="doLogin()">SIGN IN</button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-toggle">Back to terminal? <span onclick="window.location='/app'">Open App</span></div>
+  </div>
+</div>
+
+<!-- Header -->
+<header class="header">
+  <span class="logo">Commodex</span>
+  <span class="logo-sub">ANALYTICS</span>
+  <div class="header-right">
+    <a href="/app" class="header-btn">↗ TERMINAL</a>
+    <button class="signout-btn" onclick="doSignOut()">SIGN OUT</button>
+  </div>
+</header>
+
+<!-- Toolbar -->
+<div class="toolbar">
+  <span class="toolbar-label">PERIOD</span>
+  <button class="period-btn" data-days="7"  onclick="setPeriod(7)">7 DAYS</button>
+  <button class="period-btn active" data-days="14" onclick="setPeriod(14)">14 DAYS</button>
+  <button class="period-btn" data-days="30" onclick="setPeriod(30)">30 DAYS</button>
+  <span class="toolbar-ts" id="last-updated"></span>
+</div>
+
+<!-- Content -->
+<div class="content">
+
+  <!-- Stat cards -->
+  <div class="stat-row" id="stat-row">
+    <div class="loading" style="grid-column:1/-1">Loading analytics...</div>
+  </div>
+
+  <!-- Sentiment trend chart — full width -->
+  <div class="chart-card">
+    <div class="chart-title">SENTIMENT TREND · ALL COMMODITIES</div>
+    <canvas id="sentiment-chart" height="90"></canvas>
+  </div>
+
+  <!-- Article volume + Sentiment distribution -->
+  <div class="two-col">
+    <div class="chart-card">
+      <div class="chart-title">ARTICLE VOLUME PER RUN</div>
+      <canvas id="volume-chart" height="140"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">SENTIMENT DISTRIBUTION</div>
+      <canvas id="dist-chart" height="140"></canvas>
+    </div>
+  </div>
+
+  <!-- Per-commodity cards -->
+  <div>
+    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:2px;color:#6a5a40;margin-bottom:12px">LATEST SNAPSHOT PER COMMODITY</div>
+    <div class="comm-grid" id="comm-grid">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Average sentiment score bars -->
+  <div class="chart-card">
+    <div class="chart-title">AVERAGE SENTIMENT SCORE · PERIOD</div>
+    <div id="score-bars" style="display:flex;flex-direction:column;gap:12px;padding:4px 0">
+      <div class="loading">Loading...</div>
+    </div>
+  </div>
+
+  <!-- Recent runs table -->
+  <div class="chart-card">
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+      <div class="chart-title" style="margin-bottom:0">RECENT ANALYSIS RUNS</div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>COMMODITY</th>
+            <th>RUN AT</th>
+            <th>SENTIMENT</th>
+            <th>CONFIDENCE</th>
+            <th>ARTICLES</th>
+          </tr>
+        </thead>
+        <tbody id="runs-tbody">
+          <tr><td colspan="5" class="loading">Loading...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Auth ──────────────────────────────────────────────────────────────────────
+const getAccess  = () => localStorage.getItem("access_token");
+const getRefresh = () => localStorage.getItem("refresh_token");
+
+function authHeaders() {
+  const t = getAccess();
+  return t ? { "Authorization": "Bearer " + t, "Content-Type": "application/json" }
+           : { "Content-Type": "application/json" };
+}
+
+async function refreshToken() {
+  const rt = getRefresh();
+  if (!rt) return false;
+  try {
+    const res = await fetch("/auth/refresh", { method: "POST", headers: { "Authorization": "Bearer " + rt } });
+    if (!res.ok) return false;
+    const d = await res.json();
+    localStorage.setItem("access_token", d.access_token);
+    return true;
+  } catch { return false; }
+}
+
+async function apiFetch(url) {
+  let res = await fetch(url, { headers: authHeaders() });
+  if (res.status === 401) {
+    const ok = await refreshToken();
+    if (ok) res = await fetch(url, { headers: authHeaders() });
+    else { showLogin(); return null; }
+  }
+  return res;
+}
+
+function showLogin() { document.getElementById("login-overlay").classList.remove("hidden"); }
+function hideLogin() { document.getElementById("login-overlay").classList.add("hidden"); }
+
+async function doLogin() {
+  const email    = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const btn      = document.getElementById("login-btn");
+  const errEl    = document.getElementById("login-error");
+  btn.disabled = true; errEl.textContent = "";
+  try {
+    const res  = await fetch("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || "Login failed."; return; }
+    localStorage.setItem("access_token",  data.access_token);
+    localStorage.setItem("refresh_token", data.refresh_token);
+    hideLogin();
+    loadAll();
+  } catch { errEl.textContent = "Connection error."; }
+  finally  { btn.disabled = false; }
+}
+
+function doSignOut() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  showLogin();
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const COLORS = {
+  "Gold":        "#c9a84c",
+  "Crude Oil":   "#b85c38",
+  "Silver":      "#8faabf",
+  "Copper":      "#b87040",
+  "Natural Gas": "#5a9e8f",
+};
+const COMMODITIES = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"];
+
+const SENT_COLOR = {
+  "STRONG_BULLISH": "#22c55e",
+  "BULLISH":        "#86efac",
+  "NEUTRAL":        "#fbbf24",
+  "BEARISH":        "#f87171",
+  "STRONG_BEARISH": "#ef4444",
+};
+const SENT_LABEL = {
+  "STRONG_BULLISH": "STRONG BULLISH",
+  "BULLISH":        "BULLISH",
+  "NEUTRAL":        "NEUTRAL",
+  "BEARISH":        "BEARISH",
+  "STRONG_BEARISH": "STRONG BEARISH",
+};
+const CONF_COLOR = { "HIGH": "#4ade80", "MEDIUM": "#fbbf24", "LOW": "#f87171" };
+const NAR_COLOR  = { "Strengthening": "#4ade80", "Stable": "#fbbf24", "Weakening": "#f87171", "Shifting": "#a78bfa" };
+
+function sentBadge(s) {
+  const c = SENT_COLOR[s] || "#fbbf24";
+  return `<span class="badge" style="background:${c}18;color:${c};border:1px solid ${c}30">${SENT_LABEL[s] || s}</span>`;
+}
+function confBadge(c) {
+  const col = CONF_COLOR[c] || "#fbbf24";
+  return `<span class="badge" style="background:${col}18;color:${col};border:1px solid ${col}30">${c}</span>`;
+}
+
+// ── Chart instances ───────────────────────────────────────────────────────────
+let sentimentChart = null, volumeChart = null, distChart = null;
+
+Chart.defaults.color = "#6a5a40";
+Chart.defaults.borderColor = "#1e1c18";
+Chart.defaults.font.family = "'DM Mono', monospace";
+Chart.defaults.font.size   = 9;
+
+// ── Period ────────────────────────────────────────────────────────────────────
+let activeDays = 14;
+
+function setPeriod(days) {
+  activeDays = days;
+  document.querySelectorAll(".period-btn").forEach(b => {
+    b.classList.toggle("active", parseInt(b.dataset.days) === days);
+  });
+  loadAll();
+}
+
+// ── Load all ──────────────────────────────────────────────────────────────────
+async function loadAll() {
+  const [overviewRes, historyRes] = await Promise.all([
+    apiFetch(`/analytics/overview?days=${activeDays}`),
+    apiFetch(`/analytics/history?days=${activeDays}`),
+  ]);
+  if (!overviewRes || !historyRes) return;
+  const overview = await overviewRes.json();
+  const history  = await historyRes.json();
+  document.getElementById("last-updated").textContent =
+    "UPDATED " + new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }) + " UTC";
+  renderStats(overview);
+  renderSentimentChart(history);
+  renderVolumeChart(history);
+  renderDistChart(overview.sentiment_distribution);
+  renderCommGrid(overview.latest);
+  renderScoreBars(overview.avg_scores);
+  renderRunsTable(history);
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
+function renderStats(d) {
+  const bullish = d.most_bullish ? `<span style="color:${COLORS[d.most_bullish]}">${d.most_bullish.toUpperCase()}</span>` : "—";
+  const bearish = d.most_bearish ? `<span style="color:${COLORS[d.most_bearish]}">${d.most_bearish.toUpperCase()}</span>` : "—";
+  document.getElementById("stat-row").innerHTML = `
+    <div class="stat-card accent">
+      <div class="stat-label">ANALYSIS RUNS</div>
+      <div class="stat-value">${d.total_runs}</div>
+      <div class="stat-sub">LAST ${activeDays} DAYS</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">AVG ARTICLES / RUN</div>
+      <div class="stat-value">${d.avg_articles}</div>
+      <div class="stat-sub">PER COMMODITY</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">MOST BULLISH</div>
+      <div class="stat-value" style="font-size:16px;padding-top:4px">${bullish}</div>
+      <div class="stat-sub">AVG SCORE ${d.avg_scores?.[d.most_bullish] ?? "—"}</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">MOST BEARISH</div>
+      <div class="stat-value" style="font-size:16px;padding-top:4px">${bearish}</div>
+      <div class="stat-sub">AVG SCORE ${d.avg_scores?.[d.most_bearish] ?? "—"}</div>
+    </div>
+  `;
+}
+
+// ── Sentiment trend chart ─────────────────────────────────────────────────────
+function renderSentimentChart(history) {
+  // Collect all unique dates across commodities
+  const allDates = [...new Set(
+    Object.values(history).flatMap(pts => pts.map(p => p.date))
+  )].sort();
+
+  const datasets = COMMODITIES.map(name => {
+    const pts  = history[name] || [];
+    const map  = Object.fromEntries(pts.map(p => [p.date, p.score]));
+    return {
+      label:           name,
+      data:            allDates.map(d => map[d] ?? null),
+      borderColor:     COLORS[name],
+      backgroundColor: COLORS[name] + "20",
+      borderWidth:     2,
+      pointRadius:     3,
+      pointHoverRadius:5,
+      spanGaps:        true,
+      tension:         0.3,
+    };
+  });
+
+  if (sentimentChart) sentimentChart.destroy();
+  sentimentChart = new Chart(document.getElementById("sentiment-chart"), {
+    type: "line",
+    data: { labels: allDates, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: "index", intersect: false },
+      plugins: {
+        legend: {
+          labels: { color: "#8a7a60", boxWidth: 10, padding: 16 }
+        },
+        tooltip: {
+          backgroundColor: "#0d0c0a",
+          borderColor: "#2a2820",
+          borderWidth: 1,
+          titleColor: "#e8d8b0",
+          bodyColor: "#c4b490",
+          callbacks: {
+            label: ctx => {
+              const score = ctx.raw;
+              const labels = ["STRONG BEARISH","BEARISH","NEUTRAL","BULLISH","STRONG BULLISH"];
+              const label = labels[score + 2] || score;
+              return ` ${ctx.dataset.label}: ${label}`;
+            }
+          }
+        },
+      },
+      scales: {
+        x: { ticks: { maxTicksLimit: 10, maxRotation: 0 }, grid: { color: "#1a1816" } },
+        y: {
+          min: -2.5, max: 2.5,
+          ticks: {
+            stepSize: 1,
+            callback: v => ["","STRONG BEAR","BEAR","NEUTRAL","BULL","STRONG BULL",""][v + 3] || v
+          },
+          grid: { color: "#1a1816" },
+        }
+      }
+    }
+  });
+}
+
+// ── Article volume chart ──────────────────────────────────────────────────────
+function renderVolumeChart(history) {
+  // Group by date, sum articles across commodities
+  const dateMap = {};
+  COMMODITIES.forEach(name => {
+    (history[name] || []).forEach(p => {
+      if (!dateMap[p.date]) dateMap[p.date] = {};
+      dateMap[p.date][name] = (dateMap[p.date][name] || 0) + p.articles;
+    });
+  });
+  const dates    = Object.keys(dateMap).sort();
+  const datasets = COMMODITIES.map(name => ({
+    label:           name,
+    data:            dates.map(d => dateMap[d]?.[name] || 0),
+    backgroundColor: COLORS[name] + "80",
+    borderColor:     COLORS[name],
+    borderWidth:     1,
+  }));
+
+  if (volumeChart) volumeChart.destroy();
+  volumeChart = new Chart(document.getElementById("volume-chart"), {
+    type: "bar",
+    data: { labels: dates, datasets },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { labels: { color: "#8a7a60", boxWidth: 8, padding: 12 } },
+        tooltip: { backgroundColor: "#0d0c0a", borderColor: "#2a2820", borderWidth: 1, titleColor: "#e8d8b0", bodyColor: "#c4b490" },
+      },
+      scales: {
+        x: { stacked: true, ticks: { maxTicksLimit: 8, maxRotation: 0 }, grid: { color: "#1a1816" } },
+        y: { stacked: true, grid: { color: "#1a1816" } },
+      }
+    }
+  });
+}
+
+// ── Sentiment distribution doughnut ──────────────────────────────────────────
+function renderDistChart(dist) {
+  const order  = ["STRONG_BULLISH","BULLISH","NEUTRAL","BEARISH","STRONG_BEARISH"];
+  const labels = order.map(s => SENT_LABEL[s]);
+  const data   = order.map(s => dist[s] || 0);
+  const colors = order.map(s => SENT_COLOR[s]);
+
+  if (distChart) distChart.destroy();
+  distChart = new Chart(document.getElementById("dist-chart"), {
+    type: "doughnut",
+    data: {
+      labels,
+      datasets: [{ data, backgroundColor: colors.map(c => c + "cc"), borderColor: colors, borderWidth: 1 }]
+    },
+    options: {
+      responsive: true,
+      cutout: "65%",
+      plugins: {
+        legend: { position: "bottom", labels: { color: "#8a7a60", boxWidth: 8, padding: 10, font: { size: 8 } } },
+        tooltip: { backgroundColor: "#0d0c0a", borderColor: "#2a2820", borderWidth: 1, titleColor: "#e8d8b0", bodyColor: "#c4b490" },
+      }
+    }
+  });
+}
+
+// ── Commodity snapshot cards ──────────────────────────────────────────────────
+function renderCommGrid(latest) {
+  if (!latest || !Object.keys(latest).length) {
+    document.getElementById("comm-grid").innerHTML = '<div class="loading">No data yet.</div>';
+    return;
+  }
+  document.getElementById("comm-grid").innerHTML = COMMODITIES.map(name => {
+    const d = latest[name];
+    if (!d) return `<div class="comm-card"><div class="comm-name" style="color:${COLORS[name]}">${name.toUpperCase()}</div><div style="font-family:'DM Mono',monospace;font-size:9px;color:#3a3428">NO DATA</div></div>`;
+    const sc  = SENT_COLOR[d.sentiment] || "#fbbf24";
+    const nc  = NAR_COLOR[d.nar_status] || "#8a7a60";
+    const cc  = CONF_COLOR[d.confidence] || "#fbbf24";
+    return `<div class="comm-card" style="border-left: 3px solid ${COLORS[name]}40">
+      <div class="comm-name" style="color:${COLORS[name]}">${name.toUpperCase()}</div>
+      <div class="comm-row">
+        <span class="comm-row-label">SENTIMENT</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:${sc}">${SENT_LABEL[d.sentiment] || d.sentiment}</span>
+      </div>
+      <div class="comm-row">
+        <span class="comm-row-label">CONFIDENCE</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:${cc}">${d.confidence}</span>
+      </div>
+      <div class="comm-row">
+        <span class="comm-row-label">NARRATIVE</span>
+        <span class="comm-row-val" style="font-size:8px;max-width:80px;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${d.narrative}">${d.narrative}</span>
+      </div>
+      <div class="comm-row">
+        <span class="comm-row-label">STATUS</span>
+        <span style="font-family:'DM Mono',monospace;font-size:8px;color:${nc}">${d.nar_status}</span>
+      </div>
+      <div class="comm-row" style="margin-bottom:0">
+        <span class="comm-row-label">ARTICLES</span>
+        <span class="comm-row-val">${d.articles}</span>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+// ── Score bars ────────────────────────────────────────────────────────────────
+function renderScoreBars(avgScores) {
+  if (!avgScores || !Object.keys(avgScores).length) {
+    document.getElementById("score-bars").innerHTML = '<div class="loading">No data yet.</div>';
+    return;
+  }
+  document.getElementById("score-bars").innerHTML = COMMODITIES.map(name => {
+    const score = avgScores[name] ?? 0;
+    const color = COLORS[name];
+    // Map -2..2 to 0..100% with midpoint at 50%
+    const pct   = ((score + 2) / 4) * 100;
+    const mid   = 50;
+    const left  = Math.min(pct, mid);
+    const width = Math.abs(pct - mid);
+    const barLeft = score >= 0 ? mid : pct;
+    return `<div style="display:flex;align-items:center;gap:12px">
+      <span style="font-family:'DM Mono',monospace;font-size:9px;color:${color};width:100px;flex-shrink:0">${name.toUpperCase()}</span>
+      <div style="flex:1;height:6px;background:#1a1816;border-radius:3px;position:relative">
+        <div style="position:absolute;left:50%;width:1px;height:6px;background:#2a2820;top:0"></div>
+        <div style="position:absolute;left:${barLeft}%;width:${width}%;height:6px;background:${color};border-radius:3px;top:0"></div>
+      </div>
+      <span style="font-family:'DM Mono',monospace;font-size:9px;color:${score >= 0 ? '#4ade80' : '#f87171'};width:36px;text-align:right;flex-shrink:0">${score >= 0 ? '+' : ''}${score}</span>
+    </div>`;
+  }).join("");
+}
+
+// ── Recent runs table ─────────────────────────────────────────────────────────
+function renderRunsTable(history) {
+  // Flatten all runs, sort by date desc
+  const all = [];
+  COMMODITIES.forEach(name => {
+    (history[name] || []).forEach(p => all.push({ ...p, commodity: name }));
+  });
+  all.sort((a, b) => b.date.localeCompare(a.date));
+  const rows = all.slice(0, 50);
+
+  if (!rows.length) {
+    document.getElementById("runs-tbody").innerHTML = '<tr><td colspan="5" class="loading">No runs in this period.</td></tr>';
+    return;
+  }
+  document.getElementById("runs-tbody").innerHTML = rows.map(r => {
+    const cc = COLORS[r.commodity] || "#c8a870";
+    return `<tr>
+      <td><span style="font-family:'DM Mono',monospace;font-size:8px;color:${cc}">${r.commodity.toUpperCase()}</span></td>
+      <td style="color:#6a5a40">${r.date}</td>
+      <td>${sentBadge(r.sentiment)}</td>
+      <td>${confBadge(r.confidence)}</td>
+      <td style="color:#6a5a40">${r.articles}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+if (!getAccess()) {
+  showLogin();
+} else {
+  loadAll();
+}
+</script>
+</body>
+</html>

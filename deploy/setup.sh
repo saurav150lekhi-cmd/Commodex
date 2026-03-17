@@ -1,14 +1,20 @@
 #!/bin/bash
-# Commodex EC2 setup script
-# Run once on a fresh Ubuntu 22.04 EC2 instance:
-#   sudo bash setup.sh
+# Commodex Vultr setup script
+# Run once on a fresh Ubuntu 22.04 VPS as root:
+#   bash setup.sh
 #
 # After running:
-#   1. Edit /opt/commodex/.env with your API keys + DB URL
+#   1. Edit /opt/commodex/.env with your API keys
 #   2. sudo systemctl start commodex commodex-worker
 #   3. (Optional) sudo certbot --nginx -d YOUR_DOMAIN  ← for HTTPS
 
 set -e
+
+echo ""
+echo "=========================================================="
+echo "  Commodex — Vultr VPS Setup"
+echo "=========================================================="
+echo ""
 
 # ── System packages ────────────────────────────────────────────────────────────
 echo "==> Updating system..."
@@ -17,7 +23,28 @@ apt-get update -y && apt-get upgrade -y
 echo "==> Installing dependencies..."
 apt-get install -y python3 python3-pip python3-venv nginx git \
     certbot python3-certbot-nginx \
-    libpq-dev python3-dev build-essential
+    postgresql postgresql-contrib \
+    libpq-dev python3-dev build-essential ufw
+
+# ── PostgreSQL ─────────────────────────────────────────────────────────────────
+echo "==> Setting up PostgreSQL..."
+systemctl start postgresql
+systemctl enable postgresql
+
+# Create DB and user
+sudo -u postgres psql -c "CREATE USER commodex WITH PASSWORD 'commodex_pass';" 2>/dev/null || echo "  User already exists."
+sudo -u postgres psql -c "CREATE DATABASE commodex OWNER commodex;" 2>/dev/null || echo "  Database already exists."
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE commodex TO commodex;" 2>/dev/null
+
+echo "  PostgreSQL ready: postgresql://commodex:commodex_pass@localhost:5432/commodex"
+echo "  *** Change the password in .env before going live ***"
+
+# ── Firewall ───────────────────────────────────────────────────────────────────
+echo "==> Configuring firewall..."
+ufw allow 22/tcp   # SSH
+ufw allow 80/tcp   # HTTP
+ufw allow 443/tcp  # HTTPS
+ufw --force enable
 
 # ── App ────────────────────────────────────────────────────────────────────────
 echo "==> Cloning repo..."
@@ -40,19 +67,13 @@ pip install -r requirements.txt
 if [ ! -f .env ]; then
     cp .env.example .env
     echo ""
-    echo "*** IMPORTANT: Edit /opt/commodex/.env before starting services."
-    echo ""
-    echo "    Required keys:"
-    echo "      ANTHROPIC_API_KEY=sk-ant-..."
-    echo "      JWT_SECRET_KEY=<random 32+ char string>"
-    echo ""
-    echo "    For PostgreSQL on RDS (recommended):"
-    echo "      DATABASE_URL=postgresql://user:password@YOUR-RDS-ENDPOINT:5432/commodex"
-    echo ""
-    echo "    For local SQLite (dev/testing only):"
-    echo "      DATABASE_URL=sqlite:///commodex.db"
+    echo "*** .env created from template. Edit it now: ***"
+    echo "    nano /opt/commodex/.env"
     echo ""
 fi
+
+# ── Logs ───────────────────────────────────────────────────────────────────────
+touch /var/log/commodex-access.log /var/log/commodex-error.log
 
 # ── systemd ────────────────────────────────────────────────────────────────────
 echo "==> Installing systemd services..."
@@ -67,10 +88,8 @@ echo "==> Installing nginx config..."
 cp deploy/nginx.conf /etc/nginx/sites-available/commodex
 ln -sf /etc/nginx/sites-available/commodex /etc/nginx/sites-enabled/commodex
 rm -f /etc/nginx/sites-enabled/default
-nginx -t && systemctl restart nginx
-
-# ACME challenge dir for certbot
 mkdir -p /var/www/certbot
+nginx -t && systemctl restart nginx
 
 # ── Summary ────────────────────────────────────────────────────────────────────
 echo ""
@@ -78,31 +97,42 @@ echo "=========================================================="
 echo "  Setup complete!"
 echo "=========================================================="
 echo ""
-echo "  Next steps:"
+echo "  NEXT STEPS:"
 echo ""
-echo "  1. Edit /opt/commodex/.env"
+echo "  1. Edit your environment variables:"
+echo "       nano /opt/commodex/.env"
+echo ""
+echo "     Required:"
 echo "       ANTHROPIC_API_KEY=sk-ant-..."
 echo "       JWT_SECRET_KEY=<random 32+ char string>"
-echo "       DATABASE_URL=postgresql://user:pass@host:5432/commodex"
-echo "       EIA_API_KEY=<optional>"
+echo "       DATABASE_URL=postgresql://commodex:commodex_pass@localhost:5432/commodex"
+echo "       APP_URL=http://139.84.223.215   (or your domain)"
+echo ""
+echo "     For email alerts (SMTP):"
+echo "       SMTP_HOST=smtp.gmail.com"
+echo "       SMTP_PORT=587"
+echo "       SMTP_USER=your@gmail.com"
+echo "       SMTP_PASS=your_app_password"
+echo "       FROM_EMAIL=your@gmail.com"
+echo ""
+echo "     Optional:"
+echo "       EIA_API_KEY=<from eia.gov>"
+echo "       FRED_API_KEY=<from fred.stlouisfed.org>"
 echo ""
 echo "  2. Start services:"
-echo "       sudo systemctl start commodex commodex-worker"
-echo "       sudo systemctl status commodex commodex-worker"
+echo "       systemctl start commodex commodex-worker"
+echo "       systemctl status commodex commodex-worker"
 echo ""
-echo "  3. (Optional) HTTPS with Let's Encrypt:"
-echo "       sudo certbot --nginx -d YOUR_DOMAIN"
-echo "       Then uncomment the HTTPS block in /etc/nginx/sites-available/commodex"
+echo "  3. Promote yourself to admin:"
+echo "       First register at http://139.84.223.215/app"
+echo "       Then: curl -X POST http://localhost:5000/admin/api/setup \\"
+echo "               -H 'Content-Type: application/json' \\"
+echo "               -d '{\"email\":\"your@email.com\"}'"
 echo ""
-echo "  4. AWS Security Group — open inbound ports:"
-echo "       22   (SSH)"
-echo "       80   (HTTP)"
-echo "       443  (HTTPS)"
+echo "  4. (Optional) HTTPS with Let's Encrypt:"
+echo "       certbot --nginx -d YOUR_DOMAIN"
 echo ""
-echo "  5. If using RDS — open port 5432 in the RDS security group"
-echo "     and allow inbound from the EC2 instance's security group."
-echo ""
-echo "  Logs:"
-echo "       sudo journalctl -u commodex -f"
-echo "       sudo journalctl -u commodex-worker -f"
+echo "  5. Watch logs:"
+echo "       journalctl -u commodex -f"
+echo "       journalctl -u commodex-worker -f"
 echo ""

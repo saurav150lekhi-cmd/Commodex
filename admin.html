@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Commodex Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080706; color: #d4c4a0; font-family: 'DM Sans', sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── Login overlay ── */
+    .login-overlay { position: fixed; inset: 0; background: rgba(8,7,6,0.98); z-index: 999; display: flex; align-items: center; justify-content: center; }
+    .login-overlay.hidden { display: none; }
+    .login-box { width: 360px; border: 1px solid #2a2820; border-radius: 6px; padding: 36px; background: #0d0c0a; }
+    .login-logo { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 300; color: #e8d8b0; margin-bottom: 2px; }
+    .login-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: #e05858; letter-spacing: 3px; margin-bottom: 28px; }
+    .login-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #8a7a60; margin-bottom: 6px; display: block; }
+    .login-input { width: 100%; background: #0a0908; border: 1px solid #2a2820; color: #d4c4a0; padding: 9px 12px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 12px; margin-bottom: 16px; outline: none; }
+    .login-input:focus { border-color: #5a4a38; }
+    .login-btn { width: 100%; background: #c8a870; color: #0a0908; border: none; padding: 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; cursor: pointer; margin-top: 4px; }
+    .login-btn:hover { background: #e8d8b0; }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .login-error { font-family: 'DM Mono', monospace; font-size: 10px; color: #f87171; margin-top: 12px; min-height: 16px; text-align: center; }
+
+    /* ── Top bar ── */
+    .topbar { height: 48px; background: #0d0c0a; border-bottom: 1px solid #2a2820; padding: 0 20px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; position: sticky; top: 0; z-index: 50; }
+    .topbar-logo { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 300; color: #e8d8b0; }
+    .topbar-badge { font-family: 'DM Mono', monospace; font-size: 8px; background: #e05858; color: #fff; padding: 2px 7px; border-radius: 2px; letter-spacing: 2px; }
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+    .topbar-user { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; }
+    .topbar-btn { background: none; border: 1px solid #3a3428; color: #8a7a60; padding: 4px 12px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; text-decoration: none; }
+    .topbar-btn:hover { color: #c8a870; border-color: #5a4a38; }
+    .topbar-sep { width: 1px; height: 20px; background: #2a2820; }
+
+    /* ── Layout ── */
+    .shell { display: flex; flex: 1; min-height: 0; }
+
+    /* ── Sidebar ── */
+    .sidebar { width: 200px; background: #0a0908; border-right: 1px solid #1e1c18; display: flex; flex-direction: column; flex-shrink: 0; }
+    .nav-group { padding: 16px 0 8px; }
+    .nav-label { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 3px; color: #3a3428; padding: 0 16px; margin-bottom: 4px; }
+    .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 16px; cursor: pointer; border-left: 2px solid transparent; transition: all 0.1s; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; color: #6a5a40; }
+    .nav-item:hover { color: #d4c4a0; background: #0d0c0a; }
+    .nav-item.active { color: #c8a870; border-left-color: #c8a870; background: #0d0c0a; }
+    .nav-icon { font-size: 13px; width: 16px; text-align: center; flex-shrink: 0; }
+
+    /* ── Main content ── */
+    .content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+    /* ── Section visibility ── */
+    .section { display: none; flex-direction: column; gap: 20px; }
+    .section.active { display: flex; }
+
+    /* ── Page title ── */
+    .page-title { font-family: 'Fraunces', serif; font-size: 22px; font-weight: 300; color: #e8d8b0; margin-bottom: 2px; }
+    .page-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; letter-spacing: 1.5px; }
+
+    /* ── Stat cards ── */
+    .stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .stat-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 18px 20px; }
+    .stat-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #6a5a40; margin-bottom: 8px; }
+    .stat-value { font-family: 'DM Mono', monospace; font-size: 28px; color: #e8d8b0; line-height: 1; margin-bottom: 4px; }
+    .stat-sub { font-family: 'DM Mono', monospace; font-size: 9px; color: #8a7a60; }
+    .stat-card.accent { border-color: #c8a87040; }
+    .stat-card.accent .stat-value { color: #c8a870; }
+
+    /* ── Mini bar chart ── */
+    .mini-chart { display: flex; align-items: flex-end; gap: 3px; height: 32px; margin-top: 8px; }
+    .mini-bar { flex: 1; background: #c8a87040; border-radius: 1px; min-height: 2px; transition: background 0.2s; }
+    .mini-bar:hover { background: #c8a870; }
+
+    /* ── Card ── */
+    .card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; }
+    .card-header { padding: 12px 16px; border-bottom: 1px solid #1e1c18; display: flex; align-items: center; gap: 8px; }
+    .card-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #8a7a60; }
+    .card-body { padding: 16px; }
+    .card-action { margin-left: auto; }
+
+    /* ── Two-col layout ── */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #6a5a40; padding: 8px 12px; border-bottom: 1px solid #1e1c18; text-align: left; white-space: nowrap; }
+    td { font-family: 'DM Mono', monospace; font-size: 10px; color: #c4b490; padding: 9px 12px; border-bottom: 1px solid #161412; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #0a0908; }
+    .search-bar { background: #080706; border: 1px solid #2a2820; color: #d4c4a0; padding: 7px 12px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 11px; width: 240px; outline: none; }
+    .search-bar:focus { border-color: #5a4a38; }
+
+    /* ── Badges ── */
+    .badge { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1px; padding: 2px 8px; border-radius: 2px; display: inline-block; white-space: nowrap; }
+    .badge-green  { background: #22c55e18; color: #4ade80; border: 1px solid #22c55e30; }
+    .badge-red    { background: #ef444418; color: #f87171; border: 1px solid #ef444430; }
+    .badge-amber  { background: #fbbf2418; color: #fbbf24; border: 1px solid #fbbf2430; }
+    .badge-blue   { background: #60a5fa18; color: #60a5fa; border: 1px solid #60a5fa30; }
+    .badge-purple { background: #a78bfa18; color: #a78bfa; border: 1px solid #a78bfa30; }
+    .badge-gold   { background: #c8a87018; color: #c8a870; border: 1px solid #c8a87030; }
+    .badge-plain  { background: #2a282018; color: #8a7a60; border: 1px solid #2a282030; }
+
+    /* ── Action buttons ── */
+    .act-btn { background: none; border: 1px solid #2a2820; color: #8a7a60; padding: 3px 9px; border-radius: 2px; font-family: 'DM Mono', monospace; font-size: 8px; cursor: pointer; letter-spacing: 1px; transition: all 0.1s; white-space: nowrap; }
+    .act-btn:hover { color: #e8d8b0; border-color: #5a4a38; }
+    .act-btn.danger:hover { color: #f87171; border-color: #f8717140; }
+    .act-btn.success:hover { color: #4ade80; border-color: #4ade8040; }
+    .act-btn.primary { background: #c8a870; color: #0a0908; border-color: #c8a870; }
+    .act-btn.primary:hover { background: #e8d8b0; border-color: #e8d8b0; }
+
+    /* ── Sentiment dots ── */
+    .sent-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+
+    /* ── Activity feed ── */
+    .feed-item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid #161412; }
+    .feed-item:last-child { border-bottom: none; }
+    .feed-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 5px; }
+    .feed-text { font-size: 11px; color: #c4b490; line-height: 1.5; }
+    .feed-time { font-family: 'DM Mono', monospace; font-size: 8px; color: #6a5a40; white-space: nowrap; margin-left: auto; padding-left: 8px; }
+
+    /* ── Health panel ── */
+    .health-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #161412; }
+    .health-row:last-child { border-bottom: none; }
+    .health-key { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; width: 160px; flex-shrink: 0; letter-spacing: 1px; }
+    .health-val { font-family: 'DM Mono', monospace; font-size: 10px; color: #c4b490; }
+    .pulse { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .pulse-red { background: #ef4444; animation: pulse 1s infinite; }
+
+    /* ── Sentiment dist bar ── */
+    .dist-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+    .dist-label { font-family: 'DM Mono', monospace; font-size: 9px; color: #8a7a60; width: 120px; flex-shrink: 0; }
+    .dist-bar-wrap { flex: 1; background: #1a1816; border-radius: 2px; height: 6px; overflow: hidden; }
+    .dist-bar { height: 100%; border-radius: 2px; transition: width 0.4s; }
+    .dist-count { font-family: 'DM Mono', monospace; font-size: 9px; color: #6a5a40; width: 30px; text-align: right; flex-shrink: 0; }
+
+    /* ── Preview section ── */
+    .preview-bar { background: #140c04; border: 1px solid #c8a87030; border-radius: 4px 4px 0 0; padding: 8px 16px; display: flex; align-items: center; gap: 10px; }
+    .preview-bar-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: #c8a870; }
+    .preview-iframe { width: 100%; height: calc(100vh - 200px); min-height: 600px; border: 1px solid #c8a87030; border-top: none; border-radius: 0 0 4px 4px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 3px; }
+    ::-webkit-scrollbar-thumb { background: #3a3428; border-radius: 1px; }
+
+    .loading-text { font-family: 'DM Mono', monospace; font-size: 10px; color: #6a5a40; padding: 16px; letter-spacing: 1px; }
+    .error-text { font-family: 'DM Mono', monospace; font-size: 10px; color: #f87171; padding: 8px 0; }
+
+    /* ── Run button in system ── */
+    .run-btn { background: #c8a870; border: none; color: #0a0908; padding: 8px 20px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; cursor: pointer; letter-spacing: 1.5px; }
+    .run-btn:hover { background: #e8d8b0; }
+    .run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<!-- Login overlay -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">Commodex</div>
+    <div class="login-sub">ADMIN PANEL</div>
+    <label class="login-label">EMAIL</label>
+    <input class="login-input" type="email" id="login-email" placeholder="admin@example.com" />
+    <label class="login-label">PASSWORD</label>
+    <input class="login-input" type="password" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()" />
+    <button class="login-btn" id="login-btn" onclick="doLogin()">SIGN IN</button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<!-- Top bar -->
+<header class="topbar">
+  <span class="topbar-logo">Commodex</span>
+  <span class="topbar-badge">ADMIN</span>
+  <div class="topbar-right">
+    <span class="topbar-user" id="topbar-user"></span>
+    <div class="topbar-sep"></div>
+    <a href="/app" target="_blank" class="topbar-btn">↗ OPEN APP</a>
+    <button class="topbar-btn" onclick="doSignOut()">SIGN OUT</button>
+  </div>
+</header>
+
+<!-- Shell -->
+<div class="shell">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="nav-group">
+      <div class="nav-label">MAIN</div>
+      <div class="nav-item active" data-section="overview" onclick="switchSection('overview')">
+        <span class="nav-icon">◈</span> OVERVIEW
+      </div>
+      <div class="nav-item" data-section="users" onclick="switchSection('users')">
+        <span class="nav-icon">◎</span> USERS
+      </div>
+      <div class="nav-item" data-section="analysis" onclick="switchSection('analysis')">
+        <span class="nav-icon">▦</span> ANALYSIS
+      </div>
+      <div class="nav-item" data-section="system" onclick="switchSection('system')">
+        <span class="nav-icon">◐</span> SYSTEM
+      </div>
+    </div>
+    <div class="nav-group">
+      <div class="nav-label">VIEW</div>
+      <div class="nav-item" data-section="preview" onclick="switchSection('preview')">
+        <span class="nav-icon">◫</span> USER PREVIEW
+      </div>
+    </div>
+  </nav>
+
+  <!-- Content -->
+  <main class="content" id="content">
+
+    <!-- ── OVERVIEW ── -->
+    <div class="section active" id="section-overview">
+      <div>
+        <div class="page-title">Overview</div>
+        <div class="page-sub">PLATFORM ANALYTICS · REAL-TIME</div>
+      </div>
+
+      <div class="stat-grid" id="stat-grid">
+        <div class="loading-text">Loading stats...</div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">SIGN-UP TREND · LAST 14 DAYS</span>
+          </div>
+          <div class="card-body">
+            <div id="signup-chart" style="display:flex;align-items:flex-end;gap:4px;height:60px"></div>
+            <div id="signup-labels" style="display:flex;gap:4px;margin-top:4px"></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">SENTIMENT DISTRIBUTION · ALL RUNS</span>
+          </div>
+          <div class="card-body" id="sentiment-dist">
+            <div class="loading-text">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">RECENT ANALYSIS RUNS</span>
+        </div>
+        <div class="card-body" id="recent-runs">
+          <div class="loading-text">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── USERS ── -->
+    <div class="section" id="section-users">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div>
+          <div class="page-title">Users</div>
+          <div class="page-sub">ACCOUNT MANAGEMENT</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <input class="search-bar" type="text" id="user-search" placeholder="Search email..." oninput="filterUsers()" />
+          <button class="act-btn" onclick="loadUsers()">↻ REFRESH</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap">
+            <table id="users-table">
+              <thead>
+                <tr>
+                  <th>EMAIL</th>
+                  <th>VERIFIED</th>
+                  <th>ACTIVE</th>
+                  <th>ADMIN</th>
+                  <th>JOINED</th>
+                  <th>ACTIONS</th>
+                </tr>
+              </thead>
+              <tbody id="users-tbody">
+                <tr><td colspan="6" class="loading-text">Loading users...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ANALYSIS ── -->
+    <div class="section" id="section-analysis">
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+        <div>
+          <div class="page-title">Analysis History</div>
+          <div class="page-sub">ALL COMMODITY RUNS</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+          <select id="days-filter" onchange="loadAnalysis()" style="background:#080706;border:1px solid #2a2820;color:#d4c4a0;padding:6px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:10px;outline:none">
+            <option value="7">LAST 7 DAYS</option>
+            <option value="14">LAST 14 DAYS</option>
+            <option value="30">LAST 30 DAYS</option>
+          </select>
+          <button class="act-btn" onclick="loadAnalysis()">↻ REFRESH</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body" style="padding:0">
+          <div class="table-wrap">
+            <table id="analysis-table">
+              <thead>
+                <tr>
+                  <th>COMMODITY</th>
+                  <th>RUN AT</th>
+                  <th>SENTIMENT</th>
+                  <th>ARTICLES</th>
+                </tr>
+              </thead>
+              <tbody id="analysis-tbody">
+                <tr><td colspan="4" class="loading-text">Loading history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SYSTEM ── -->
+    <div class="section" id="section-system">
+      <div>
+        <div class="page-title">System</div>
+        <div class="page-sub">HEALTH &amp; OPERATIONS</div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">SYSTEM HEALTH</span>
+            <div class="card-action">
+              <button class="act-btn" onclick="loadHealth()">↻ REFRESH</button>
+            </div>
+          </div>
+          <div class="card-body" id="health-panel">
+            <div class="loading-text">Loading...</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">OPERATIONS</span>
+          </div>
+          <div class="card-body" style="display:flex;flex-direction:column;gap:16px">
+            <div>
+              <div style="font-family:'DM Mono',monospace;font-size:9px;color:#8a7a60;letter-spacing:1.5px;margin-bottom:8px">TRIGGER ANALYSIS</div>
+              <div style="font-size:12px;color:#6a5a40;line-height:1.6;margin-bottom:12px">Manually run the full 5-commodity analysis pipeline. Takes ~60 seconds.</div>
+              <button class="run-btn" id="sys-run-btn" onclick="triggerRun()">▶ RUN NOW</button>
+              <div id="run-status" style="font-family:'DM Mono',monospace;font-size:9px;color:#6a5a40;margin-top:8px"></div>
+            </div>
+            <div style="border-top:1px solid #1e1c18;padding-top:16px">
+              <div style="font-family:'DM Mono',monospace;font-size:9px;color:#8a7a60;letter-spacing:1.5px;margin-bottom:8px">PROMOTE FIRST ADMIN</div>
+              <div style="font-size:12px;color:#6a5a40;line-height:1.6;margin-bottom:12px">Only works if no admin exists yet. Enter the email of a registered user.</div>
+              <div style="display:flex;gap:8px">
+                <input class="search-bar" type="email" id="setup-email" placeholder="user@example.com" style="flex:1" />
+                <button class="act-btn primary" onclick="setupAdmin()">PROMOTE</button>
+              </div>
+              <div id="setup-msg" style="font-family:'DM Mono',monospace;font-size:9px;margin-top:8px"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── PREVIEW ── -->
+    <div class="section" id="section-preview">
+      <div>
+        <div class="page-title">User Preview</div>
+        <div class="page-sub">THE DASHBOARD AS YOUR USERS SEE IT</div>
+      </div>
+      <div>
+        <div class="preview-bar">
+          <span class="preview-bar-label">◎ LIVE PREVIEW · /app</span>
+          <span style="font-family:'DM Mono',monospace;font-size:8px;color:#6a5a40;margin-left:auto">Same-origin iframe — uses your login session</span>
+          <a href="/app" target="_blank" class="act-btn" style="margin-left:12px">↗ OPEN FULL</a>
+        </div>
+        <iframe id="preview-frame" class="preview-iframe" src="about:blank"></iframe>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+const getAccess  = () => localStorage.getItem("access_token");
+const getRefresh = () => localStorage.getItem("refresh_token");
+
+function authHeaders() {
+  const t = getAccess();
+  return t ? { "Authorization": "Bearer " + t, "Content-Type": "application/json" }
+           : { "Content-Type": "application/json" };
+}
+
+async function refreshToken() {
+  const rt = getRefresh();
+  if (!rt) return false;
+  try {
+    const res = await fetch("/auth/refresh", { method: "POST", headers: { "Authorization": "Bearer " + rt } });
+    if (!res.ok) return false;
+    const d = await res.json();
+    localStorage.setItem("access_token", d.access_token);
+    return true;
+  } catch { return false; }
+}
+
+async function apiFetch(url, opts) {
+  const options = opts || {};
+  const method  = options.method || "GET";
+  let res = await fetch(url, { method, headers: authHeaders(), body: options.body });
+  if (res.status === 401) {
+    const ok = await refreshToken();
+    if (ok) res = await fetch(url, { method, headers: authHeaders(), body: options.body });
+    else { showLogin(); return null; }
+  }
+  return res;
+}
+
+function showLogin() {
+  document.getElementById("login-overlay").classList.remove("hidden");
+}
+
+function hideLogin() {
+  document.getElementById("login-overlay").classList.add("hidden");
+}
+
+async function doLogin() {
+  const email    = document.getElementById("login-email").value.trim();
+  const password = document.getElementById("login-password").value;
+  const btn      = document.getElementById("login-btn");
+  const errEl    = document.getElementById("login-error");
+  btn.disabled = true; errEl.textContent = "";
+  try {
+    const res  = await fetch("/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error || "Login failed."; return; }
+    localStorage.setItem("access_token",  data.access_token);
+    localStorage.setItem("refresh_token", data.refresh_token);
+    // Check admin
+    const adminRes = await fetch("/admin/api/stats", { headers: authHeaders() });
+    if (adminRes.status === 403) { errEl.textContent = "Access denied — admin only."; localStorage.removeItem("access_token"); localStorage.removeItem("refresh_token"); return; }
+    hideLogin();
+    document.getElementById("topbar-user").textContent = email.toLowerCase();
+    initDashboard();
+  } catch { errEl.textContent = "Connection error."; }
+  finally  { btn.disabled = false; }
+}
+
+function doSignOut() {
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
+  showLogin();
+}
+
+// ── Section switching ─────────────────────────────────────────────────────────
+let currentSection = "overview";
+
+function switchSection(name) {
+  document.querySelectorAll(".nav-item").forEach(el => el.classList.remove("active"));
+  document.querySelector(`[data-section="${name}"]`).classList.add("active");
+  document.querySelectorAll(".section").forEach(el => el.classList.remove("active"));
+  document.getElementById("section-" + name).classList.add("active");
+  currentSection = name;
+
+  if (name === "users")    loadUsers();
+  if (name === "analysis") loadAnalysis();
+  if (name === "system")   loadHealth();
+  if (name === "preview")  loadPreview();
+}
+
+// ── Sentiment helpers ─────────────────────────────────────────────────────────
+const SENTIMENT_COLORS = {
+  "STRONG_BULLISH": "#22c55e",
+  "BULLISH":        "#86efac",
+  "NEUTRAL":        "#fbbf24",
+  "BEARISH":        "#f87171",
+  "STRONG_BEARISH": "#ef4444",
+};
+const SENTIMENT_LABELS = {
+  "STRONG_BULLISH": "STRONG BULLISH",
+  "BULLISH":        "BULLISH",
+  "NEUTRAL":        "NEUTRAL",
+  "BEARISH":        "BEARISH",
+  "STRONG_BEARISH": "STRONG BEARISH",
+};
+const COMMODITY_COLORS = {
+  "Gold": "#c9a84c", "Crude Oil": "#b85c38",
+  "Silver": "#8faabf", "Copper": "#b87040", "Natural Gas": "#5a9e8f"
+};
+
+function sentimentBadge(s) {
+  const c = SENTIMENT_COLORS[s] || "#fbbf24";
+  const l = SENTIMENT_LABELS[s] || s;
+  return `<span style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:1px;padding:2px 8px;border-radius:2px;background:${c}18;color:${c};border:1px solid ${c}30">${l}</span>`;
+}
+
+function commBadge(name) {
+  const c = COMMODITY_COLORS[name] || "#c8a870";
+  return `<span style="font-family:'DM Mono',monospace;font-size:8px;padding:2px 8px;border-radius:2px;background:${c}18;color:${c};border:1px solid ${c}30">${name.toUpperCase()}</span>`;
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────
+async function loadOverview() {
+  const res = await apiFetch("/admin/api/stats");
+  if (!res) return;
+  const d = await res.json();
+
+  // Stat cards
+  const u = d.users;
+  const r = d.runs;
+  const verPct = u.total ? Math.round((u.verified / u.total) * 100) : 0;
+  document.getElementById("stat-grid").innerHTML = `
+    <div class="stat-card accent">
+      <div class="stat-label">TOTAL USERS</div>
+      <div class="stat-value">${u.total}</div>
+      <div class="stat-sub">+${u.new_7d} this week</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">VERIFIED</div>
+      <div class="stat-value">${u.verified}</div>
+      <div class="stat-sub">${verPct}% of total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">ANALYSIS RUNS TODAY</div>
+      <div class="stat-value">${r.today}</div>
+      <div class="stat-sub">${r.total} total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">LAST ANALYSIS</div>
+      <div class="stat-value" style="font-size:14px;padding-top:4px">${r.latest ? r.latest.split(",")[0] : "—"}</div>
+      <div class="stat-sub">${r.latest ? r.latest.split(",")[1]?.trim() || "" : "Never run"}</div>
+    </div>
+  `;
+
+  // Sign-up chart
+  const trend = d.signup_trend || [];
+  const max   = Math.max(...trend.map(t => t.count), 1);
+  const chartEl  = document.getElementById("signup-chart");
+  const labelsEl = document.getElementById("signup-labels");
+  chartEl.innerHTML = trend.map(t => {
+    const h = Math.max(Math.round((t.count / max) * 56), 2);
+    return `<div class="mini-bar" title="${t.date}: ${t.count} signups" style="height:${h}px"></div>`;
+  }).join("");
+  // Show every 3rd label
+  labelsEl.innerHTML = trend.map((t, i) =>
+    `<div style="flex:1;font-family:'DM Mono',monospace;font-size:7px;color:#3a3428;text-align:center;overflow:hidden">${i % 3 === 0 ? t.date : ""}</div>`
+  ).join("");
+
+  // Sentiment distribution
+  const dist   = d.sentiment_distribution || {};
+  const order  = ["STRONG_BULLISH","BULLISH","NEUTRAL","BEARISH","STRONG_BEARISH"];
+  const total  = Object.values(dist).reduce((a, b) => a + b, 0) || 1;
+  document.getElementById("sentiment-dist").innerHTML = order.map(s => {
+    const cnt  = dist[s] || 0;
+    const pct  = Math.round((cnt / total) * 100);
+    const col  = SENTIMENT_COLORS[s] || "#fbbf24";
+    const lbl  = SENTIMENT_LABELS[s] || s;
+    return `<div class="dist-row">
+      <div class="dist-label">${lbl}</div>
+      <div class="dist-bar-wrap"><div class="dist-bar" style="width:${pct}%;background:${col}"></div></div>
+      <div class="dist-count">${cnt}</div>
+    </div>`;
+  }).join("");
+
+  // Recent runs (last 10)
+  const runsRes = await apiFetch("/admin/api/analysis/history?days=1");
+  if (!runsRes) return;
+  const runs = await runsRes.json();
+  const latest10 = runs.slice(0, 10);
+  if (!latest10.length) {
+    document.getElementById("recent-runs").innerHTML = '<div class="loading-text">No runs in the last 24 hours.</div>';
+    return;
+  }
+  document.getElementById("recent-runs").innerHTML = latest10.map(r => {
+    const col = COMMODITY_COLORS[r.commodity] || "#c8a870";
+    const sc  = SENTIMENT_COLORS[r.sentiment] || "#fbbf24";
+    return `<div class="feed-item">
+      <div class="feed-dot" style="background:${col}"></div>
+      <div class="feed-text">
+        ${commBadge(r.commodity)} &nbsp;${sentimentBadge(r.sentiment)}
+        &nbsp;<span style="color:#6a5a40;font-size:10px">${r.article_count} articles</span>
+      </div>
+      <div class="feed-time">${r.run_at}</div>
+    </div>`;
+  }).join("");
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+let allUsers = [];
+
+async function loadUsers() {
+  document.getElementById("users-tbody").innerHTML = '<tr><td colspan="6" class="loading-text">Loading...</td></tr>';
+  const res = await apiFetch("/admin/api/users");
+  if (!res) return;
+  allUsers = await res.json();
+  renderUsers(allUsers);
+}
+
+function renderUsers(users) {
+  if (!users.length) {
+    document.getElementById("users-tbody").innerHTML = '<tr><td colspan="6" class="loading-text">No users found.</td></tr>';
+    return;
+  }
+  document.getElementById("users-tbody").innerHTML = users.map(u => `
+    <tr id="user-row-${u.id}">
+      <td>${u.email}</td>
+      <td>${u.email_verified ? '<span class="badge badge-green">✓ YES</span>' : '<span class="badge badge-red">✗ NO</span>'}</td>
+      <td>${u.is_active ? '<span class="badge badge-green">ACTIVE</span>' : '<span class="badge badge-red">INACTIVE</span>'}</td>
+      <td>${u.is_admin ? '<span class="badge badge-gold">ADMIN</span>' : '<span class="badge badge-plain">USER</span>'}</td>
+      <td style="color:#6a5a40">${u.created_at}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap">
+        ${u.is_active
+          ? `<button class="act-btn danger" onclick="deactivateUser(${u.id})">DEACTIVATE</button>`
+          : `<button class="act-btn success" onclick="activateUser(${u.id})">ACTIVATE</button>`}
+        <button class="act-btn" onclick="toggleAdmin(${u.id})">${u.is_admin ? "REMOVE ADMIN" : "MAKE ADMIN"}</button>
+      </td>
+    </tr>
+  `).join("");
+}
+
+function filterUsers() {
+  const q = document.getElementById("user-search").value.toLowerCase();
+  renderUsers(allUsers.filter(u => u.email.toLowerCase().includes(q)));
+}
+
+async function activateUser(id) {
+  const res = await apiFetch(`/admin/api/users/${id}/activate`, { method: "POST" });
+  if (res && res.ok) loadUsers();
+}
+
+async function deactivateUser(id) {
+  if (!confirm("Deactivate this user?")) return;
+  const res = await apiFetch(`/admin/api/users/${id}/deactivate`, { method: "POST" });
+  if (res && res.ok) loadUsers();
+}
+
+async function toggleAdmin(id) {
+  if (!confirm("Toggle admin status for this user?")) return;
+  const res = await apiFetch(`/admin/api/users/${id}/toggle-admin`, { method: "POST" });
+  if (res && res.ok) loadUsers();
+}
+
+// ── Analysis history ──────────────────────────────────────────────────────────
+async function loadAnalysis() {
+  document.getElementById("analysis-tbody").innerHTML = '<tr><td colspan="4" class="loading-text">Loading...</td></tr>';
+  const days = document.getElementById("days-filter").value;
+  const res  = await apiFetch(`/admin/api/analysis/history?days=${days}`);
+  if (!res) return;
+  const rows = await res.json();
+  if (!rows.length) {
+    document.getElementById("analysis-tbody").innerHTML = '<tr><td colspan="4" class="loading-text">No runs in this period.</td></tr>';
+    return;
+  }
+  document.getElementById("analysis-tbody").innerHTML = rows.map(r => `
+    <tr>
+      <td>${commBadge(r.commodity)}</td>
+      <td style="color:#6a5a40">${r.run_at}</td>
+      <td>${sentimentBadge(r.sentiment)}</td>
+      <td style="color:#6a5a40">${r.article_count ?? "—"}</td>
+    </tr>
+  `).join("");
+}
+
+// ── System health ─────────────────────────────────────────────────────────────
+async function loadHealth() {
+  const res = await fetch("/health");
+  if (!res.ok) { document.getElementById("health-panel").innerHTML = '<div class="error-text">Failed to load health.</div>'; return; }
+  const h = await res.json();
+  const running = h.analysis_running;
+  document.getElementById("health-panel").innerHTML = `
+    <div class="health-row">
+      <span class="health-key">STATUS</span>
+      <div class="${running ? 'pulse pulse-red' : 'pulse'}" style="margin-right:6px"></div>
+      <span class="health-val">${running ? "ANALYSIS RUNNING" : "IDLE"}</span>
+    </div>
+    <div class="health-row">
+      <span class="health-key">LAST RUN</span>
+      <span class="health-val">${h.last_run ? new Date(h.last_run).toUTCString().replace("GMT","UTC") : "Never"}</span>
+    </div>
+    <div class="health-row">
+      <span class="health-key">LAST ERROR</span>
+      <span class="health-val" style="color:${h.last_error ? '#f87171' : '#4ade80'}">${h.last_error || "None"}</span>
+    </div>
+    <div class="health-row">
+      <span class="health-key">COMMODITIES LOADED</span>
+      <span class="health-val">${(h.commodities || []).join(" · ") || "None"}</span>
+    </div>
+  `;
+
+  const runBtn = document.getElementById("sys-run-btn");
+  if (running) { runBtn.disabled = true; runBtn.textContent = "● RUNNING…"; }
+  else         { runBtn.disabled = false; runBtn.textContent = "▶ RUN NOW"; }
+}
+
+async function triggerRun() {
+  const btn      = document.getElementById("sys-run-btn");
+  const statusEl = document.getElementById("run-status");
+  btn.disabled = true; btn.textContent = "● RUNNING…"; statusEl.textContent = "Analysis started...";
+  const res = await apiFetch("/run", { method: "POST" });
+  if (!res) { btn.disabled = false; btn.textContent = "▶ RUN NOW"; return; }
+  if (res.status === 409) { statusEl.textContent = "Already running."; btn.disabled = false; btn.textContent = "▶ RUN NOW"; return; }
+  statusEl.textContent = "Running — polling for completion...";
+  const poll = setInterval(async () => {
+    try {
+      const h  = await fetch("/health");
+      const hj = await h.json();
+      if (!hj.analysis_running) {
+        clearInterval(poll);
+        btn.disabled = false; btn.textContent = "▶ RUN NOW";
+        statusEl.style.color = "#4ade80";
+        statusEl.textContent = "Complete. " + new Date().toUTCString().replace("GMT","UTC");
+        loadHealth();
+        if (currentSection === "overview") loadOverview();
+      }
+    } catch { clearInterval(poll); btn.disabled = false; btn.textContent = "▶ RUN NOW"; }
+  }, 5000);
+}
+
+async function setupAdmin() {
+  const email  = document.getElementById("setup-email").value.trim();
+  const msgEl  = document.getElementById("setup-msg");
+  msgEl.textContent = "";
+  const res  = await fetch("/admin/api/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) });
+  const data = await res.json();
+  msgEl.style.color  = res.ok ? "#4ade80" : "#f87171";
+  msgEl.textContent  = data.message || data.error || "Error";
+}
+
+// ── Preview ───────────────────────────────────────────────────────────────────
+function loadPreview() {
+  const frame = document.getElementById("preview-frame");
+  if (frame.src === "about:blank" || frame.src === "") {
+    frame.src = "/app";
+  }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function initDashboard() {
+  // Load user info
+  const meRes = await apiFetch("/auth/me");
+  if (meRes && meRes.ok) {
+    const me = await meRes.json();
+    document.getElementById("topbar-user").textContent = me.email;
+  }
+  loadOverview();
+}
+
+// Boot
+(async () => {
+  if (!getAccess()) { showLogin(); return; }
+  // Verify admin access
+  const res = await fetch("/admin/api/stats", { headers: authHeaders() });
+  if (res.status === 401) {
+    const ok = await refreshToken();
+    if (!ok) { showLogin(); return; }
+    const res2 = await fetch("/admin/api/stats", { headers: authHeaders() });
+    if (!res2.ok) { showLogin(); return; }
+  } else if (res.status === 403) {
+    document.getElementById("login-error").textContent = "Access denied — admin only.";
+    showLogin();
+    return;
+  }
+  hideLogin();
+  initDashboard();
+})();
+</script>
+</body>
+</html>

@@ -131,6 +131,7 @@
     <div class="live-dot"></div>
     <span class="header-ts" id="last-updated">Loading...</span>
     <button class="refresh-btn" onclick="loadData()">↻ Refresh</button>
+    <a href="/analytics" style="background:none;border:1px solid #3a3428;color:#8a7a60;padding:4px 10px;border-radius:3px;font-family:'DM Mono',monospace;font-size:9px;cursor:pointer;letter-spacing:1px;text-decoration:none">ANALYTICS</a>
     <button class="run-btn" id="run-btn" onclick="triggerRun()">▶ RUN NOW</button>
     <button class="signout-btn" onclick="signOut()">SIGN OUT</button>
   </div>
@@ -476,6 +477,19 @@
           <div class="loading" style="padding:8px 0">Loading history...</div>
         </div>
       </div>
+
+      <div>
+        <div class="section-label">EMAIL ALERTS</div>
+        <div class="section-card" id="alerts-card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px">
+          <span style="font-size:12px;color:#8a7a60;font-weight:300">Notify me when <strong style="color:#c4b490">${name}</strong> sentiment changes</span>
+          <label style="margin-left:auto;display:flex;align-items:center;gap:8px;cursor:pointer">
+            <div class="toggle-wrap" onclick="toggleAlert('${name}')" id="alert-toggle-${name.replace(/ /g,'-')}" style="width:36px;height:18px;border-radius:9px;background:#2a2820;position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0">
+              <div class="toggle-knob" style="width:14px;height:14px;border-radius:7px;background:#6a5a40;position:absolute;top:2px;left:2px;transition:all 0.2s"></div>
+            </div>
+            <span id="alert-label-${name.replace(/ /g,'-')}" style="font-family:'DM Mono',monospace;font-size:9px;color:#6a5a40;letter-spacing:1px">OFF</span>
+          </label>
+        </div>
+      </div>
     `;
   }
 
@@ -524,6 +538,7 @@
     renderAnalysisBody(name);
     renderNews(name);
     loadHistory(name);
+    setTimeout(() => updateAlertToggle(name), 50);
   }
 
   async function loadData() {
@@ -680,6 +695,54 @@
   }
   setInterval(loadData, 5 * 60 * 1000);
   setInterval(loadPrices, 2 * 60 * 1000);
+
+  // ── Email alerts ────────────────────────────────────────────────────────────
+  let alertCache = {};
+
+  async function loadAlerts() {
+    try {
+      const res = await apiFetch("/auth/alerts");
+      if (!res || !res.ok) return;
+      const list = await res.json();
+      alertCache = {};
+      list.forEach(a => { alertCache[a.commodity] = a.enabled; });
+      updateAlertToggle(activeTab);
+    } catch {}
+  }
+
+  function updateAlertToggle(name) {
+    const key    = name.replace(/ /g, '-');
+    const wrap   = document.getElementById("alert-toggle-" + key);
+    const label  = document.getElementById("alert-label-" + key);
+    if (!wrap || !label) return;
+    const on = alertCache[name] === true;
+    wrap.style.background  = on ? "#c8a870" : "#2a2820";
+    wrap.querySelector(".toggle-knob").style.background  = on ? "#0a0908" : "#6a5a40";
+    wrap.querySelector(".toggle-knob").style.left        = on ? "20px" : "2px";
+    label.textContent      = on ? "ON" : "OFF";
+    label.style.color      = on ? "#c8a870" : "#6a5a40";
+  }
+
+  async function toggleAlert(name) {
+    const newState = !(alertCache[name] === true);
+    alertCache[name] = newState;
+    updateAlertToggle(name);
+    try {
+      await apiFetch("/auth/alerts", {
+        method: "POST",
+        body: JSON.stringify({ commodity: name, enabled: newState }),
+      });
+    } catch {}
+  }
+
+  // Load alerts after login
+  const _origHideLogin = hideLoginOverlay;
+  hideLoginOverlay = function() {
+    _origHideLogin();
+    loadAlerts();
+  };
+
+  if (getAccess()) loadAlerts();
 </script>
 </body>
 </html>

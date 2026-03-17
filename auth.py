@@ -3,9 +3,11 @@ import bcrypt
 from flask import Blueprint, request, jsonify, redirect
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from db import db
-from models import User, PasswordResetToken
+from models import User, PasswordResetToken, UserAlert
 from email_utils import send_verification_email, send_reset_email
 import os
+
+VALID_COMMODITIES = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]
 
 auth_bp = Blueprint("auth", __name__, url_prefix="/auth")
 APP_URL = os.environ.get("APP_URL", "http://localhost:5000")
@@ -147,3 +149,38 @@ def reset_password():
     db.session.commit()
 
     return jsonify({"message": "Password updated successfully."}), 200
+
+
+# ── Email alerts ───────────────────────────────────────────────────────────────
+@auth_bp.route("/alerts", methods=["GET"])
+@jwt_required()
+def get_alerts():
+    user_id = int(get_jwt_identity())
+    alerts  = UserAlert.query.filter_by(user_id=user_id).all()
+    # Return all commodities with their enabled state
+    enabled_set = {a.commodity for a in alerts if a.enabled}
+    return jsonify([
+        {"commodity": c, "enabled": c in enabled_set}
+        for c in VALID_COMMODITIES
+    ])
+
+
+@auth_bp.route("/alerts", methods=["POST"])
+@jwt_required()
+def set_alert():
+    user_id   = int(get_jwt_identity())
+    data      = request.get_json(silent=True) or {}
+    commodity = data.get("commodity")
+    enabled   = bool(data.get("enabled", True))
+
+    if commodity not in VALID_COMMODITIES:
+        return _error("Invalid commodity.", 400)
+
+    alert = UserAlert.query.filter_by(user_id=user_id, commodity=commodity).first()
+    if alert:
+        alert.enabled = enabled
+    else:
+        alert = UserAlert(user_id=user_id, commodity=commodity, enabled=enabled)
+        db.session.add(alert)
+    db.session.commit()
+    return jsonify({"commodity": commodity, "enabled": enabled})

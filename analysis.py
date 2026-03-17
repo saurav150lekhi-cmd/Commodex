@@ -1,6 +1,7 @@
 import feedparser
 import anthropic
 import json
+import re
 import time
 import threading
 import schedule
@@ -13,13 +14,16 @@ from flask import Flask, jsonify, send_from_directory
 from flask_jwt_extended import JWTManager, jwt_required
 from dotenv import load_dotenv
 from db import db
-from models import User, AnalysisRun
+from models import User, AnalysisRun, UserAlert
 from auth import auth_bp
+from admin import admin_bp
+from email_utils import send_alert_email
 
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"), override=True)
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 EIA_API_KEY       = os.environ.get("EIA_API_KEY", "")
+FRED_API_KEY      = os.environ.get("FRED_API_KEY", "")
 DATABASE_URL      = os.environ.get("DATABASE_URL", "sqlite:///commodex.db")
 JWT_SECRET_KEY    = os.environ.get("JWT_SECRET_KEY", "change-me-in-production")
 
@@ -49,6 +53,7 @@ app.config["JWT_REFRESH_TOKEN_EXPIRES"]      = timedelta(days=7)
 db.init_app(app)
 JWTManager(app)
 app.register_blueprint(auth_bp)
+app.register_blueprint(admin_bp)
 
 latest_results  = {}
 analysis_status = {"running": False, "last_run": None, "last_error": None}
@@ -62,10 +67,23 @@ with app.app_context():
         log.error("Database init failed: %s", e)
 
 NEWS_SOURCES = [
+    # ── Tier 1 — Established commodity/market RSS ──────────────────────────────
     "https://oilprice.com/rss/main",
     "https://www.mining.com/feed/",
     "https://feeds.reuters.com/reuters/commoditiesNews",
     "https://feeds.reuters.com/reuters/businessNews",
+    "https://www.cnbc.com/id/23103686/device/rss/rss.html",
+    "https://feeds.content.dowjones.io/public/rss/mw_topstories",
+    "https://www.investing.com/rss/news_25.rss",
+    "https://www.rigzone.com/news/rss/rigzone_latest.aspx",
+    # ── Tier 2 — Additional free feeds ────────────────────────────────────────
+    "https://www.kitco.com/rss/kitco-news.rss",                     # Kitco direct RSS
+    "https://www.hellenicshippingnews.com/feed/",                   # Hellenic Shipping (energy/metals)
+    "https://www.spglobal.com/commodityinsights/en/rss-feed",       # S&P Global Commodity Insights
+    "https://feeds.feedburner.com/PlattsOilgram",                   # Platts Oilgram
+    "https://www.hartenergy.com/rss",                               # Hart Energy (oil & gas)
+    "https://www.naturalgasintel.com/feed/",                        # Natural Gas Intelligence
+    "https://seekingalpha.com/tag/commodities.xml",                 # Seeking Alpha commodities
 ]
 
 COMMODITIES = {
@@ -77,11 +95,54 @@ COMMODITIES = {
 }
 
 GOOGLE_SEARCHES = {
-    "Gold":        ["gold site:bloomberg.com", "gold site:ft.com", "gold site:argusmedia.com", "gold site:kitco.com"],
-    "Crude Oil":   ["crude oil site:bloomberg.com", "crude oil site:ft.com", "crude oil site:argusmedia.com"],
-    "Silver":      ["silver site:bloomberg.com", "silver site:ft.com", "silver site:kitco.com", "gold silver site:kitco.com"],
-    "Copper":      ["copper site:bloomberg.com", "copper site:ft.com", "copper site:argusmedia.com"],
-    "Natural Gas": ["natural gas site:bloomberg.com", "natural gas site:ft.com", "natural gas site:argusmedia.com"],
+    "Gold": [
+        "gold site:bloomberg.com",
+        "gold site:ft.com",
+        "gold site:argusmedia.com",
+        "gold site:kitco.com",
+        "gold site:gold.org",
+        "gold site:seekingalpha.com",
+        "gold site:spglobal.com",
+        "gold site:bullionvault.com",
+    ],
+    "Crude Oil": [
+        "crude oil site:bloomberg.com",
+        "crude oil site:ft.com",
+        "crude oil site:argusmedia.com",
+        "crude oil site:rigzone.com",
+        "crude oil site:hartenergy.com",
+        "crude oil site:spglobal.com",
+        "crude oil site:seekingalpha.com",
+        "opec site:reuters.com",
+    ],
+    "Silver": [
+        "silver site:bloomberg.com",
+        "silver site:ft.com",
+        "silver site:kitco.com",
+        "silver site:silverinstitute.org",
+        "silver site:seekingalpha.com",
+        "silver site:spglobal.com",
+        "silver site:bullionvault.com",
+    ],
+    "Copper": [
+        "copper site:bloomberg.com",
+        "copper site:ft.com",
+        "copper site:argusmedia.com",
+        "copper site:mining.com",
+        "copper site:fastmarkets.com",
+        "copper site:spglobal.com",
+        "copper lme site:reuters.com",
+    ],
+    "Natural Gas": [
+        "natural gas site:bloomberg.com",
+        "natural gas site:ft.com",
+        "natural gas site:argusmedia.com",
+        "natural gas site:rigzone.com",
+        "natural gas site:naturalgasintel.com",
+        "natural gas site:hartenergy.com",
+        "natural gas site:spglobal.com",
+        "lng site:reuters.com",
+    ],
 }
 
 HIGH_IMPACT_KEYWORDS = [
@@ -126,9 +187,12 @@ def fetch_eia_data():
     if not EIA_API_KEY:
         return result
     series = {
-        "crude_inventory":  "PET.WCRSTUS1.W",
-        "crude_production": "PET.WCRFPUS2.W",
-        "natgas_storage":   "NG.NW2_EPG0_SWO_R48_BCF.W",
+        "crude_inventory":     "PET.WCRSTUS1.W",
+        "crude_production":    "PET.WCRFPUS2.W",
+        "natgas_storage":      "NG.NW2_EPG0_SWO_R48_BCF.W",
+        "gasoline_inventory":  "PET.WGTSTUS1.W",
+        "distillate_inventory":"PET.WDISTUS1.W",
+        "refinery_utilization":"PET.WPULEUS2.W",
     }
     for key, series_id in series.items():
         url = f"https://api.eia.gov/v2/seriesid/{series_id}?api_key={EIA_API_KEY}&length=2"
@@ -248,9 +312,112 @@ def fetch_live_prices():
             prices[name] = {"price": None, "change": None}
     return prices
 
+
+# ── 6. FRED — DXY, 10Y yield, Industrial Production, CPI ─────────────────────
+def fetch_fred_data():
+    if not FRED_API_KEY:
+        return {}
+    series = {
+        "dxy":   ("DTWEXBGS", "US Dollar Index (DXY)"),
+        "us10y": ("DGS10",    "US 10Y Treasury Yield (%)"),
+        "indpro":("INDPRO",   "US Industrial Production Index"),
+        "cpi":   ("CPIAUCSL", "US CPI (Inflation Index)"),
+    }
+    result = {}
+    for key, (series_id, label) in series.items():
+        url  = (f"https://api.stlouisfed.org/fred/series/observations"
+                f"?series_id={series_id}&api_key={FRED_API_KEY}"
+                f"&limit=2&sort_order=desc&file_type=json")
+        data = fetch_json(url)
+        if data and data.get("observations"):
+            obs = [o for o in data["observations"] if o.get("value") not in (".", None, "")]
+            if obs:
+                try:
+                    latest   = float(obs[0]["value"])
+                    previous = float(obs[1]["value"]) if len(obs) > 1 else None
+                    chg      = round(latest - previous, 3) if previous else None
+                    result[key] = {
+                        "label":    label,
+                        "value":    latest,
+                        "change":   chg,
+                        "date":     obs[0]["date"],
+                    }
+                except:
+                    pass
+    return result
+
+
+# ── 7. LME copper warehouse stocks — scraped from LME website ─────────────────
+def fetch_lme_copper_stocks():
+    try:
+        req = urllib.request.Request(
+            "https://www.lme.com/en/metals/non-ferrous/lme-copper/",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Try several patterns LME uses on their page
+        for pattern in [
+            r'[Ww]arehouse\s+[Ss]tocks?[^0-9]*([\d,]+)\s*[Tt]onnes?',
+            r'([\d,]+)\s*[Tt]onnes?\s*(?:in\s+)?(?:LME\s+)?warehouses?',
+            r'"onWarrant"\s*:\s*"?([\d,]+)"?',
+        ]:
+            m = re.search(pattern, html)
+            if m:
+                return {"value": int(m.group(1).replace(",", "")), "unit": "tonnes"}
+    except:
+        pass
+    return None
+
+
+# ── 8. Baltic Dry Index — Yahoo Finance with Business Insider fallback ─────────
+def fetch_bdi():
+    # Primary: Yahoo Finance
+    data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/%5EBDI?interval=1d&range=2d")
+    if data:
+        try:
+            meta  = data["chart"]["result"][0]["meta"]
+            price = meta["regularMarketPrice"]
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else 0
+            return {"value": price, "change": chg}
+        except:
+            pass
+    # Fallback: Business Insider HTML scrape
+    try:
+        req = urllib.request.Request(
+            "https://markets.businessinsider.com/commodities/baltic-dry-index",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r'"price"\s*:\s*([\d,]+\.?\d*)', html)
+        if m:
+            return {"value": float(m.group(1).replace(",", "")), "change": None}
+    except:
+        pass
+    return None
+
+
 # ── Build macro context string for Claude ─────────────────────────────────────
-def build_macro_context(eia, cftc, imf, worldbank, commodity_name):
+def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name):
     lines = []
+
+    # FRED macro indicators (DXY, 10Y, Industrial Production, CPI)
+    if fred:
+        lines.append("FRED MACRO INDICATORS:")
+        for key, d in fred.items():
+            chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+            lines.append(f"  {d['label']}: {d['value']}{chg_str} ({d['date']})")
+
+    # Baltic Dry Index
+    if bdi:
+        chg_str = f" ({bdi['change']:+.2f}%)" if bdi.get("change") is not None else ""
+        lines.append(f"BALTIC DRY INDEX: {bdi['value']}{chg_str}")
+
+    # LME Copper warehouse stocks
+    if lme_copper and commodity_name in ("Copper", "Gold", "Silver"):
+        lines.append(f"LME COPPER WAREHOUSE STOCKS: {lme_copper['value']:,} {lme_copper['unit']}")
 
     # IMF data
     if imf:
@@ -285,7 +452,23 @@ def build_macro_context(eia, cftc, imf, worldbank, commodity_name):
                 diff = float(d["latest"]) - float(d["previous"])
                 chg = f" (change: {diff:+.0f})"
             lines.append(f"  US NatGas Storage: {d['latest']} {d['unit']}{chg} ({d['period']})")
-
+        if "gasoline_inventory" in eia and commodity_name == "Crude Oil":
+            d = eia["gasoline_inventory"]
+            chg = ""
+            if d.get("latest") and d.get("previous"):
+                diff = float(d["latest"]) - float(d["previous"])
+                chg = f" (change: {diff:+.0f})"
+            lines.append(f"  US Gasoline Inventory: {d['latest']} {d['unit']}{chg} ({d['period']})")
+        if "distillate_inventory" in eia and commodity_name == "Crude Oil":
+            d = eia["distillate_inventory"]
+            chg = ""
+            if d.get("latest") and d.get("previous"):
+                diff = float(d["latest"]) - float(d["previous"])
+                chg = f" (change: {diff:+.0f})"
+            lines.append(f"  US Distillate Inventory: {d['latest']} {d['unit']}{chg} ({d['period']})")
+        if "refinery_utilization" in eia and commodity_name == "Crude Oil":
+            d = eia["refinery_utilization"]
+            lines.append(f"  US Refinery Utilization: {d['latest']} {d['unit']} ({d['period']})")
     # CFTC
     if cftc and commodity_name in cftc:
         d = cftc[commodity_name]
@@ -329,6 +512,26 @@ def fetch_all_articles():
                     label = "Argus Media"
                 elif "kitco.com" in search:
                     label = "Kitco"
+                elif "gold.org" in search:
+                    label = "World Gold Council"
+                elif "rigzone.com" in search:
+                    label = "Rigzone"
+                elif "mining.com" in search:
+                    label = "Mining.com"
+                elif "seekingalpha.com" in search:
+                    label = "Seeking Alpha"
+                elif "spglobal.com" in search:
+                    label = "S&P Global"
+                elif "silverinstitute.org" in search:
+                    label = "Silver Institute"
+                elif "bullionvault.com" in search:
+                    label = "BullionVault"
+                elif "fastmarkets.com" in search:
+                    label = "Fastmarkets"
+                elif "hartenergy.com" in search:
+                    label = "Hart Energy"
+                elif "naturalgasintel.com" in search:
+                    label = "Natural Gas Intelligence"
                 else:
                     label = "Google News"
                 for entry in feed.entries[:8]:
@@ -473,7 +676,13 @@ def run_analysis():
         cftc       = fetch_cftc_data()
         imf        = fetch_imf_data()
         worldbank  = fetch_worldbank_data()
-        log.info("External data fetched.")
+        fred       = fetch_fred_data()
+        lme_copper = fetch_lme_copper_stocks()
+        bdi        = fetch_bdi()
+        log.info("External data fetched. FRED=%d indicators, LME copper=%s, BDI=%s",
+                 len(fred),
+                 lme_copper["value"] if lme_copper else "unavailable",
+                 bdi["value"] if bdi else "unavailable")
 
         all_articles = fetch_all_articles()
         news = filter_by_commodity(all_articles)
@@ -481,7 +690,7 @@ def run_analysis():
         results = {}
         for commodity, articles in news.items():
             log.info("Analysing %s (%d articles)...", commodity, len(articles))
-            macro_context = build_macro_context(eia, cftc, imf, worldbank, commodity)
+            macro_context = build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
@@ -521,6 +730,14 @@ def run_analysis():
         # Write to DB
         run_at = datetime.now(timezone.utc)
         try:
+            prev_sentiments = {}
+            for commodity in results:
+                prev = (AnalysisRun.query
+                        .filter_by(commodity=commodity)
+                        .order_by(AnalysisRun.run_at.desc())
+                        .first())
+                prev_sentiments[commodity] = prev.sentiment if prev else None
+
             for commodity, payload in results.items():
                 row = AnalysisRun(
                     commodity     = commodity,
@@ -532,6 +749,18 @@ def run_analysis():
                 db.session.add(row)
             db.session.commit()
             log.info("Results saved to database.")
+
+            # Fire email alerts for sentiment changes
+            for commodity, payload in results.items():
+                new_sentiment = payload.get("analysis", {}).get("sentiment", "NEUTRAL")
+                old_sentiment = prev_sentiments.get(commodity)
+                if old_sentiment and new_sentiment != old_sentiment:
+                    _send_commodity_alerts(
+                        commodity,
+                        new_sentiment,
+                        old_sentiment,
+                        payload.get("analysis", {}).get("market_summary", ""),
+                    )
         except Exception as db_err:
             log.error("DB write failed: %s", db_err)
             db.session.rollback()
@@ -624,6 +853,100 @@ def health():
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
+def _send_commodity_alerts(commodity, new_sentiment, old_sentiment, summary=""):
+    try:
+        subs = (UserAlert.query
+                .filter_by(commodity=commodity, enabled=True)
+                .join(User, User.id == UserAlert.user_id)
+                .filter(User.is_active == True, User.email_verified == True)
+                .all())
+        for sub in subs:
+            user = User.query.get(sub.user_id)
+            if user:
+                send_alert_email(user.email, commodity, new_sentiment, old_sentiment, summary[:400] if summary else "")
+        if subs:
+            log.info("Sent %d alert(s) for %s: %s → %s", len(subs), commodity, old_sentiment, new_sentiment)
+    except Exception as e:
+        log.error("Alert send failed for %s: %s", commodity, e)
+
+
+SENTIMENT_SCORE = {
+    "STRONG_BULLISH": 2, "BULLISH": 1, "NEUTRAL": 0,
+    "BEARISH": -1, "STRONG_BEARISH": -2,
+}
+
+@app.route("/analytics/overview")
+@jwt_required()
+def analytics_overview():
+    days  = int(request.args.get("days", 30))
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    rows  = AnalysisRun.query.filter(AnalysisRun.run_at >= since).all()
+
+    total_runs   = len(rows)
+    avg_articles = round(sum(r.article_count or 0 for r in rows) / total_runs, 1) if total_runs else 0
+
+    by_comm = {}
+    for r in rows:
+        by_comm.setdefault(r.commodity, []).append(SENTIMENT_SCORE.get(r.sentiment, 0))
+    avg_scores = {c: round(sum(s) / len(s), 2) for c, s in by_comm.items()}
+
+    dist = {}
+    for r in rows:
+        dist[r.sentiment] = dist.get(r.sentiment, 0) + 1
+
+    latest = {}
+    for c in ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]:
+        row = (AnalysisRun.query.filter_by(commodity=c)
+               .order_by(AnalysisRun.run_at.desc()).first())
+        if row:
+            conf = (row.data or {}).get("analysis", {}).get("confidence", "—")
+            narr = (row.data or {}).get("analysis", {}).get("dominant_narrative", {})
+            latest[c] = {
+                "sentiment":  row.sentiment,
+                "confidence": conf,
+                "narrative":  narr.get("theme", "—"),
+                "nar_status": narr.get("status", "—"),
+                "articles":   row.article_count,
+                "run_at":     row.run_at.strftime("%d %b, %H:%M UTC"),
+            }
+
+    return jsonify({
+        "total_runs":             total_runs,
+        "avg_articles":           avg_articles,
+        "most_bullish":           max(avg_scores, key=avg_scores.get) if avg_scores else None,
+        "most_bearish":           min(avg_scores, key=avg_scores.get) if avg_scores else None,
+        "avg_scores":             avg_scores,
+        "sentiment_distribution": dist,
+        "latest":                 latest,
+    })
+
+
+@app.route("/analytics/history")
+@jwt_required()
+def analytics_history():
+    days  = int(request.args.get("days", 30))
+    since = datetime.now(timezone.utc) - timedelta(days=days)
+    rows  = (AnalysisRun.query
+             .filter(AnalysisRun.run_at >= since)
+             .order_by(AnalysisRun.run_at.asc())
+             .all())
+    by_comm = {}
+    for r in rows:
+        by_comm.setdefault(r.commodity, []).append({
+            "date":     r.run_at.strftime("%d %b, %H:%M"),
+            "score":    SENTIMENT_SCORE.get(r.sentiment, 0),
+            "sentiment":r.sentiment,
+            "articles": r.article_count or 0,
+            "confidence": (r.data or {}).get("analysis", {}).get("confidence", "LOW"),
+        })
+    return jsonify(by_comm)
+
+
+@app.route("/analytics")
+def analytics_page():
+    return send_from_directory(".", "analytics.html")
+
+
 @app.route("/")
 def landing():
     return send_from_directory(".", "landing.html")
@@ -632,6 +955,11 @@ def landing():
 @app.route("/app")
 def index():
     return send_from_directory(".", "dashboard.html")
+
+
+@app.route("/admin")
+def admin_panel():
+    return send_from_directory(".", "admin.html")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # START
@@ -669,6 +997,8 @@ if __name__ == "__main__":
         log.warning("ANTHROPIC_API_KEY not set.")
     if not EIA_API_KEY:
         log.info("EIA_API_KEY not set — energy data will be skipped.")
+    if not FRED_API_KEY:
+        log.info("FRED_API_KEY not set — FRED indicators will be skipped.")
     with app.app_context():
         db.create_all()
         log.info("Database tables ready.")

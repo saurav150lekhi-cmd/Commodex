@@ -1,15 +1,18 @@
 [Unit]
 Description=Commodex Web Server
-After=network.target
+After=network.target postgresql.service
 
 [Service]
 Type=simple
-User=ubuntu
+User=root
 WorkingDirectory=/opt/commodex
+EnvironmentFile=/opt/commodex/.env
 Environment=PATH=/opt/commodex/venv/bin
-ExecStart=/opt/commodex/venv/bin/gunicorn --workers 2 --bind 127.0.0.1:5000 --timeout 120 analysis:app
+ExecStart=/opt/commodex/venv/bin/gunicorn --workers 3 --bind 127.0.0.1:5000 --timeout 120 --access-logfile /var/log/commodex-access.log --error-logfile /var/log/commodex-error.log analysis:app
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=multi-user.target
