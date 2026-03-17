@@ -723,7 +723,7 @@ def run_analysis():
             results[commodity] = {
                 "analysis":  analysis,
                 "articles":  sorted_articles[:15],
-                "timestamp": datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC"),
+                "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "count":     len(articles),
             }
         latest_results = results

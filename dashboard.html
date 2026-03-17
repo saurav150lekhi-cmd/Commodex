@@ -362,7 +362,7 @@
       </div>
       <div class="divider"></div>
       ${renderSentimentMeter(sentiment)}
-      <div class="analysis-ts">${d ? "Generated " + d.timestamp + "<br>" + d.count + " articles" : ""}</div>
+      <div class="analysis-ts">${d && d.timestamp ? "Updated " + new Date(d.timestamp).toLocaleString(undefined, {day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) + "<br>" + d.count + " articles" : ""}</div>
     `;
   }
 
