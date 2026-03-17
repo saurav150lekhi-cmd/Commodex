@@ -3,6 +3,7 @@ import anthropic
 import json
 import re
 import time
+import calendar
 import threading
 import schedule
 import os
@@ -485,6 +486,17 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
 # NEWS FETCHERS
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _pub_iso(entry):
+    """Return a sortable ISO UTC string from a feedparser entry's publish date."""
+    parsed = entry.get("published_parsed")
+    if parsed:
+        try:
+            return datetime.utcfromtimestamp(calendar.timegm(parsed)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        except Exception:
+            pass
+    return entry.get("published", "")
+
+
 def fetch_all_articles():
     all_articles = []
     for url in NEWS_SOURCES:
@@ -496,7 +508,7 @@ def fetch_all_articles():
                     "title":     entry.get("title", "").strip(),
                     "summary":   entry.get("summary", "").strip(),
                     "url":       entry.get("link", ""),
-                    "published": entry.get("published", ""),
+                    "published": _pub_iso(entry),
                     "source":    name,
                 })
         except:
@@ -543,7 +555,7 @@ def fetch_all_articles():
                         "title":     entry.get("title", "").strip(),
                         "summary":   entry.get("summary", "").strip(),
                         "url":       entry.get("link", ""),
-                        "published": entry.get("published", ""),
+                        "published": _pub_iso(entry),
                         "source":    label,
                     })
             except:

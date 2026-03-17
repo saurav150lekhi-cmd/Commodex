@@ -198,12 +198,6 @@
     <div class="analysis-body" id="analysis-body">
       <div class="loading">Fetching analysis...</div>
     </div>
-    <div id="sentiment-history-section" style="margin-top:16px">
-      <div class="section-label">SENTIMENT HISTORY</div>
-      <div id="sentiment-history-body" class="section-card" style="min-height:48px">
-        <div class="loading" style="padding:8px 0">Loading history...</div>
-      </div>
-    </div>
   </div>
 </div>
 
@@ -279,7 +273,7 @@
       localStorage.setItem("access_token",  data.access_token);
       localStorage.setItem("refresh_token", data.refresh_token);
       hideLoginOverlay();
-      loadData().then(() => loadHistory(activeTab)); loadPrices();
+      loadData(); loadPrices();
       if (data.email_verified === false) {
         checkVerificationBanner(false);
       }
@@ -525,7 +519,6 @@
     renderCommodityHeader(name);
     renderAnalysisBody(name);
     renderNews(name);
-    loadHistory(name);
     setTimeout(() => updateAlertToggle(name), 50);
   }
 
@@ -574,26 +567,6 @@
     }
   }
 
-  async function loadHistory(name) {
-    const el = document.getElementById("sentiment-history-body");
-    if (!el) return;
-    try {
-      const res = await apiFetch("/history/" + encodeURIComponent(name));
-      if (!res) return;
-      const rows = await res.json();
-      if (!rows.length) { el.innerHTML = '<div class="loading" style="padding:8px 0">No history yet.</div>'; return; }
-      el.innerHTML = rows.slice(0, 15).map(r => {
-        const color = SENTIMENT_COLORS[r.sentiment] || "#fbbf24";
-        const ts = r.run_at ? new Date(r.run_at).toLocaleString(undefined, {day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) : "—";
-        return `<div class="hist-bar-row">
-          <span class="hist-bar-label">${ts}</span>
-          <span class="hist-bar-dot" style="background:${color}"></span>
-          <span class="hist-bar-sentiment" style="color:${color}">${SENTIMENT_LABELS[r.sentiment] || r.sentiment}</span>
-          <span style="font-family:'DM Mono',monospace;font-size:8px;color:#6a5a40;margin-left:auto">${r.articles} articles</span>
-        </div>`;
-      }).join("");
-    } catch { el.innerHTML = '<div class="loading" style="padding:8px 0">Failed to load history.</div>'; }
-  }
 
 
   function showForgot() {
@@ -676,7 +649,7 @@
     showLoginOverlay();
   } else {
     hideLoginOverlay();
-    loadData().then(() => loadHistory(activeTab));
+    loadData();
     loadPrices();
     // Check verification status
     apiFetch("/auth/me").then(r => r && r.json()).then(d => d && checkVerificationBanner(d.email_verified)).catch(()=>{});
