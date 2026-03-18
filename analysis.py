@@ -30,6 +30,7 @@ EIA_API_KEY       = os.environ.get("EIA_API_KEY", "")
 FRED_API_KEY      = os.environ.get("FRED_API_KEY", "")
 DATABASE_URL      = os.environ.get("DATABASE_URL", "sqlite:///commodex.db")
 JWT_SECRET_KEY    = os.environ.get("JWT_SECRET_KEY", "change-me-in-production")
+CALENDAR_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar.json")
 
 # Fix Render's postgres:// URI (SQLAlchemy requires postgresql://)
 if DATABASE_URL.startswith("postgres://"):
@@ -1873,6 +1874,311 @@ def run_analysis():
         analysis_status["running"] = False
 
 # ══════════════════════════════════════════════════════════════════════════════
+# ECONOMIC CALENDAR ENGINE
+# ══════════════════════════════════════════════════════════════════════════════
+
+_CALENDAR_EVENT_FILTERS = [
+    # (keyword, country_code, min_impact, affected_commodities)
+    # country_code "" means match any country
+    ("FOMC",               "USD", "Medium", ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]),
+    ("Federal Reserve",    "USD", "Medium", ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]),
+    ("Interest Rate",      "USD", "High",   ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]),
+    ("Interest Rate",      "EUR", "High",   ["Gold", "Silver", "Crude Oil", "Natural Gas"]),
+    ("ECB",                "EUR", "Medium", ["Gold", "Silver", "Crude Oil", "Natural Gas"]),
+    ("Powell",             "USD", "Medium", ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]),
+    ("CPI",                "USD", "High",   ["Gold", "Silver", "Crude Oil"]),
+    ("PPI",                "USD", "Medium", ["Gold", "Silver"]),
+    ("Non-Farm",           "USD", "High",   ["Gold", "Silver", "Crude Oil"]),
+    ("Unemployment",       "USD", "High",   ["Gold", "Silver"]),
+    ("GDP",                "USD", "High",   ["Copper", "Crude Oil"]),
+    ("GDP",                "CNY", "High",   ["Copper", "Crude Oil"]),
+    ("PMI",                "CNY", "High",   ["Copper", "Crude Oil"]),
+    ("Manufacturing PMI",  "USD", "Medium", ["Copper", "Crude Oil"]),
+    ("Retail Sales",       "USD", "Medium", ["Crude Oil", "Copper"]),
+    ("Crude Oil",          "USD", "Low",    ["Crude Oil"]),
+    ("Inventories",        "USD", "Medium", ["Crude Oil"]),
+    ("Natural Gas",        "USD", "Low",    ["Natural Gas"]),
+    ("OPEC",               "",    "High",   ["Crude Oil"]),
+    ("Commitment",         "USD", "Low",    ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]),
+    ("COT",                "USD", "Low",    ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]),
+    ("Treasury",           "USD", "Medium", ["Gold", "Silver"]),
+    ("Inflation",          "USD", "High",   ["Gold", "Silver", "Crude Oil"]),
+    ("Inflation",          "EUR", "High",   ["Gold", "Silver"]),
+    ("Trade Balance",      "CNY", "Medium", ["Copper", "Crude Oil"]),
+    ("Industrial Production","USD","Medium",["Copper", "Crude Oil"]),
+]
+
+_IMPACT_ORDER = {"High": 3, "Medium": 2, "Low": 1, "Holiday": 0}
+
+def _parse_event_dt(date_str, time_str):
+    """Parse ForexFactory date+time to UTC datetime. Returns None on failure."""
+    try:
+        dt_str = f"{date_str} {time_str}" if time_str and time_str != "All Day" else f"{date_str} 00:00"
+        return datetime.strptime(dt_str, "%Y-%m-%d %H:%M").replace(tzinfo=timezone.utc)
+    except Exception:
+        return None
+
+
+def fetch_economic_calendar():
+    """Fetch this week's economic events from ForexFactory free API (no key needed)."""
+    url = "https://nfs.faireconomy.media/ff_calendar_thisweek.json"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            raw = json.loads(r.read())
+    except Exception as e:
+        log.warning("ForexFactory calendar fetch failed: %s", e)
+        return []
+
+    now    = datetime.now(timezone.utc)
+    events = []
+    seen   = set()
+
+    for item in raw:
+        title   = item.get("title", "")
+        country = item.get("country", "USD")
+        impact  = item.get("impact", "Low")
+        date_s  = item.get("date", "")
+        time_s  = item.get("time", "00:00")
+        if impact == "Holiday":
+            continue
+        # Match against filter list
+        matched_commodities = []
+        matched = False
+        for kw, cc, min_imp, comms in _CALENDAR_EVENT_FILTERS:
+            kw_match = kw.lower() in title.lower()
+            cc_match = (cc == "") or (country.upper() == cc.upper())
+            imp_ok   = _IMPACT_ORDER.get(impact, 0) >= _IMPACT_ORDER.get(min_imp, 0)
+            if kw_match and cc_match and imp_ok:
+                matched = True
+                for c in comms:
+                    if c not in matched_commodities:
+                        matched_commodities.append(c)
+        if not matched:
+            continue
+        dt = _parse_event_dt(date_s, time_s)
+        if dt is None:
+            continue
+        key = f"{title}_{date_s}_{time_s}"
+        if key in seen:
+            continue
+        seen.add(key)
+        events.append({
+            "id":                   key,
+            "event_name":           title,
+            "country":              country,
+            "date":                 date_s,
+            "time":                 time_s,
+            "dt_utc":               dt.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "impact":               impact,
+            "forecast":             item.get("forecast", ""),
+            "actual":               item.get("actual", ""),
+            "previous":             item.get("previous", ""),
+            "affected_commodities": matched_commodities,
+            "pre_event_briefing":   None,
+            "ai_summary":           None,
+            "briefing_sent":        False,
+            "summary_generated":    False,
+        })
+
+    events.sort(key=lambda e: e["dt_utc"])
+    return events
+
+
+def generate_event_summary(event):
+    """Generate a 2-3 sentence post-event AI summary using Claude (Haiku for speed)."""
+    if not ANTHROPIC_API_KEY:
+        return None
+    try:
+        client   = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        actual   = event.get("actual", "")
+        forecast = event.get("forecast", "")
+        previous = event.get("previous", "")
+        comms    = ", ".join(event.get("affected_commodities", []))
+        surprise = ""
+        if actual and forecast:
+            surprise = f"Actual ({actual}) vs Forecast ({forecast}) — {'beat' if actual > forecast else 'missed'} expectations."
+        prompt = f"""You are a commodity market analyst. An economic event just occurred:
+
+Event: {event['event_name']} ({event['country']})
+Actual: {actual or 'not yet available'}
+Forecast: {forecast or 'no consensus'}
+Previous: {previous or 'unknown'}
+{surprise}
+Affected commodities: {comms}
+
+Write 2-3 sentences in plain English:
+1. What the data showed vs expectations
+2. Whether it was a surprise or in-line
+3. Immediate directional impact on the affected commodities
+
+Be direct and precise. Institutional tone. No buy/sell recommendations."""
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return msg.content[0].text.strip()
+    except Exception as e:
+        log.error("generate_event_summary failed: %s", e)
+        return None
+
+
+def generate_pre_event_briefing(event):
+    """Generate a 2-3 sentence 'what to watch' briefing before the event."""
+    if not ANTHROPIC_API_KEY:
+        return None
+    try:
+        client   = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        forecast = event.get("forecast", "")
+        previous = event.get("previous", "")
+        comms    = ", ".join(event.get("affected_commodities", []))
+        prompt = f"""You are a commodity market analyst. An important economic event is happening in 2 hours:
+
+Event: {event['event_name']} ({event['country']})
+Consensus Forecast: {forecast or 'no consensus'}
+Previous: {previous or 'unknown'}
+Affected commodities: {comms}
+
+Write 2-3 sentences covering:
+1. What the market expects and why it matters
+2. What to watch for (beat vs miss scenario)
+3. Which commodity is most exposed
+
+Be concise and direct. No buy/sell recommendations."""
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=200,
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return msg.content[0].text.strip()
+    except Exception as e:
+        log.error("generate_pre_event_briefing failed: %s", e)
+        return None
+
+
+def _load_calendar():
+    """Load calendar.json, return dict with upcoming/past lists."""
+    try:
+        with open(CALENDAR_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {"last_updated": None, "upcoming": [], "past": []}
+
+
+def _save_calendar(data):
+    """Save calendar data to calendar.json."""
+    try:
+        with open(CALENDAR_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        log.error("Failed to save calendar.json: %s", e)
+
+
+def refresh_calendar():
+    """Fetch fresh calendar data and merge with existing (preserving AI summaries). Runs every 6h."""
+    log.info("Refreshing economic calendar...")
+    now       = datetime.now(timezone.utc)
+    fresh     = fetch_economic_calendar()
+    existing  = _load_calendar()
+
+    # Build lookup of existing events by ID to preserve AI content
+    existing_map = {e["id"]: e for e in existing.get("upcoming", []) + existing.get("past", [])}
+
+    upcoming = []
+    past     = []
+    for ev in fresh:
+        ev_dt = datetime.fromisoformat(ev["dt_utc"].replace("Z", "+00:00"))
+        # Merge existing AI content
+        if ev["id"] in existing_map:
+            old = existing_map[ev["id"]]
+            ev["pre_event_briefing"]  = old.get("pre_event_briefing")
+            ev["ai_summary"]          = old.get("ai_summary")
+            ev["briefing_sent"]       = old.get("briefing_sent", False)
+            ev["summary_generated"]   = old.get("summary_generated", False)
+        if ev_dt > now:
+            upcoming.append(ev)
+        else:
+            past.append(ev)
+
+    # Also keep past events from existing that have AI summaries (not in fresh week anymore)
+    fresh_ids = {e["id"] for e in fresh}
+    for ev in existing.get("past", []):
+        if ev["id"] not in fresh_ids and ev.get("ai_summary"):
+            past.append(ev)
+
+    # Sort and trim
+    upcoming.sort(key=lambda e: e["dt_utc"])
+    past.sort(key=lambda e: e["dt_utc"], reverse=True)
+    past = past[:10]  # keep last 10 past events
+
+    # Generate post-event summaries for events 30min+ past without one
+    for ev in past:
+        if ev.get("ai_summary") or ev.get("summary_generated"):
+            continue
+        ev_dt = datetime.fromisoformat(ev["dt_utc"].replace("Z", "+00:00"))
+        if (now - ev_dt).total_seconds() >= 1800:  # 30 min past
+            summary = generate_event_summary(ev)
+            if summary:
+                ev["ai_summary"]        = summary
+                ev["summary_generated"] = True
+                log.info("Generated post-event summary for: %s", ev["event_name"])
+
+    data = {
+        "last_updated": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "upcoming":     upcoming,
+        "past":         past,
+    }
+    _save_calendar(data)
+    log.info("Calendar refreshed: %d upcoming, %d past events.", len(upcoming), len(past))
+    return data
+
+
+def check_upcoming_alerts():
+    """Check for HIGH impact events exactly 2h away. Runs every 15 min via scheduler."""
+    now  = datetime.now(timezone.utc)
+    data = _load_calendar()
+    changed = False
+
+    for ev in data.get("upcoming", []):
+        if ev.get("impact") != "High":
+            continue
+        if ev.get("briefing_sent"):
+            continue
+        ev_dt = datetime.fromisoformat(ev["dt_utc"].replace("Z", "+00:00"))
+        mins_away = (ev_dt - now).total_seconds() / 60
+        if 105 <= mins_away <= 135:  # 1h45m – 2h15m window
+            briefing = generate_pre_event_briefing(ev)
+            if briefing:
+                ev["pre_event_briefing"] = briefing
+                ev["briefing_sent"]      = True
+                changed = True
+                log.info("Pre-event briefing generated for: %s (in %.0f min)", ev["event_name"], mins_away)
+                # Email users who have notifications enabled
+                try:
+                    from email_utils import send_email
+                    users = User.query.filter_by(notify_enabled=True).all()
+                    for u in users:
+                        html = f"""
+                        <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:560px;margin:0 auto">
+                          <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
+                          <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
+                          <div style="font-size:11px;letter-spacing:2px;color:#ef4444;margin-bottom:12px">⚠ HIGH IMPACT EVENT IN ~2 HOURS</div>
+                          <div style="font-size:14px;color:#e8d8b0;margin-bottom:8px">{ev['event_name']} ({ev['country']})</div>
+                          <div style="font-size:11px;color:#6a5a40;margin-bottom:16px">{ev['date']} {ev['time']} UTC</div>
+                          <p style="color:#c4b490;line-height:1.7;font-size:12px">{briefing}</p>
+                          <div style="margin-top:16px;font-size:10px;color:#6a5a40">
+                            Affected: {', '.join(ev['affected_commodities'])}
+                          </div>
+                        </div>"""
+                        send_email(u.email, f"Commodex · Event Alert: {ev['event_name']} in ~2h", html)
+                except Exception as e:
+                    log.error("Alert email failed: %s", e)
+
+    if changed:
+        _save_calendar(data)
+
+# ══════════════════════════════════════════════════════════════════════════════
 # SCHEDULER
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -1884,6 +2190,9 @@ def scheduler_loop():
     schedule.every().day.at("06:30").do(run_analysis)
     schedule.every().day.at("12:30").do(run_analysis)
     schedule.every().day.at("18:30").do(run_analysis)
+    # Calendar: refresh every 6 hours, check alerts every 15 min
+    schedule.every(6).hours.do(lambda: refresh_calendar() if not analysis_status["running"] else None)
+    schedule.every(15).minutes.do(lambda: check_upcoming_alerts() if not analysis_status["running"] else None)
     while True:
         schedule.run_pending()
         time.sleep(30)
@@ -2019,6 +2328,26 @@ def get_history(commodity):
         for r in rows
     ]
     return jsonify(result)
+
+
+@app.route("/calendar")
+@jwt_required()
+def get_calendar():
+    """Return upcoming and past economic events with AI summaries."""
+    data = _load_calendar()
+    now  = datetime.now(timezone.utc)
+    # If stale (>6h) or empty, refresh inline
+    last = data.get("last_updated")
+    if not last or (now - datetime.fromisoformat(last.replace("Z", "+00:00"))).total_seconds() > 21600:
+        try:
+            data = refresh_calendar()
+        except Exception as e:
+            log.warning("Inline calendar refresh failed: %s", e)
+    return jsonify({
+        "upcoming_events": data.get("upcoming", [])[:20],
+        "past_events":     data.get("past", [])[:5],
+        "last_updated":    data.get("last_updated"),
+    })
 
 
 @app.route("/health")

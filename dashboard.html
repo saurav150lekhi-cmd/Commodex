@@ -19,6 +19,9 @@
     --bg: #0c0e14;
     --mono: 'IBM Plex Mono', monospace;
     --sans: 'Inter', system-ui, sans-serif;
+    --gold: #c8a870;
+    --text: #d1d4dc;
+    --text-dim: #a0a8bc;
   }
   html, body { height: 100%; overflow: hidden; }
   body { background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: 12px; display: flex; flex-direction: column; }
@@ -246,6 +249,7 @@
   #main.detail-mode #grid-header { display: none; }
   #main.detail-mode #cards-area { display: none; }
   #main.detail-mode #detail-panel { display: flex; flex: 1; overflow: hidden; }
+  #calendar-view { background: var(--bg); flex-direction: column; flex: 1; overflow: hidden; }
   #detail-panel::-webkit-scrollbar { width: 2px; }
   #detail-panel::-webkit-scrollbar-thumb { background: var(--border); }
   #dp-inner { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
@@ -325,6 +329,24 @@
   .loading-dot:nth-child(2) { animation-delay: 0.2s; }
   .loading-dot:nth-child(3) { animation-delay: 0.4s; }
   .loading-text { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+  /* Calendar */
+  .cal-group-hdr { font-size:9px; font-weight:800; letter-spacing:0.15em; color:var(--gold); margin:20px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+  .cal-event { display:flex; align-items:flex-start; gap:12px; padding:10px 14px; border-bottom:1px solid rgba(30,35,54,0.6); transition:background 0.15s; }
+  .cal-event:hover { background:rgba(200,168,112,0.03); }
+  .cal-impact { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:4px; }
+  .cal-impact.High { background:#ef4444; }
+  .cal-impact.Medium { background:#fbbf24; }
+  .cal-impact.Low { background:rgba(93,100,120,0.5); }
+  .cal-name { font-size:11px; color:var(--text); letter-spacing:0.05em; margin-bottom:3px; }
+  .cal-meta { font-size:9px; color:var(--muted); letter-spacing:0.08em; }
+  .cal-tags { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+  .cal-tag { font-size:8px; letter-spacing:0.1em; padding:2px 6px; border:1px solid var(--border); color:var(--muted); }
+  .cal-summary { font-size:11px; color:var(--text-dim); line-height:1.6; margin-top:8px; padding:10px 12px; background:rgba(200,168,112,0.04); border-left:2px solid var(--border); }
+  .cal-past-card { border:1px solid var(--border); margin-bottom:12px; padding:14px 16px; }
+  .notif-item { padding:10px 14px; border-bottom:1px solid var(--border); font-size:10px; color:var(--text); letter-spacing:0.05em; cursor:pointer; }
+  .notif-item:hover { background:rgba(200,168,112,0.04); }
+  .notif-item.unread { border-left:2px solid #ef4444; }
+  .notif-time { font-size:8px; color:var(--muted); margin-top:2px; }
 </style>
 </head>
 <body>
@@ -399,8 +421,20 @@
         <span class="tb-update-sep">·</span>
         <span id="aiNext" class="tb-update-next">—</span>
       </div>
+      <div class="tb-sep"></div>
+      <div class="tb-update-block" id="nextEventBlock" style="cursor:pointer" onclick="showCalendar()">
+        <span class="tb-update-lbl" style="color:#ef4444">EVENT</span>
+        <span id="nextEventName" class="tb-update-age" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
+        <span class="tb-update-sep">·</span>
+        <span id="nextEventCountdown" class="tb-update-next">—</span>
+      </div>
     </div>
     <div class="tb-right">
+      <div style="position:relative;cursor:pointer" onclick="toggleNotifications()">
+        <span id="bellIcon" style="font-size:14px;color:rgba(93,100,120,0.7);padding:4px 8px;letter-spacing:0.05em">🔔</span>
+        <span id="bellDot" style="display:none;position:absolute;top:2px;right:6px;width:6px;height:6px;background:#ef4444;border-radius:50%"></span>
+      </div>
+      <div class="tb-sep"></div>
       <div class="tb-time" id="clock">00:00:00 UTC</div>
       <div class="tb-sep"></div>
       <button class="tb-user" id="userBtn" onclick="toggleProfile()">ACCOUNT</button>
@@ -411,6 +445,9 @@
   <!-- WATCHLIST BAR -->
   <div id="watchlist">
     <span class="wl-label">◎ WATCHLIST</span>
+    <div class="wl-item" id="wl-calendar-btn" onclick="showCalendar()" style="border-color:rgba(93,100,120,0.3);gap:6px">
+      <span class="wl-name" style="color:rgba(93,100,120,0.7)">📅 CALENDAR</span>
+    </div>
     <div class="wl-item" onclick="openDetail('Gold')">
       <span class="wl-name">GOLD</span>
       <span class="wl-price" id="wp-Gold">—</span>
@@ -550,6 +587,38 @@
         </div>
 
       </div><!-- #content-row -->
+
+      <!-- CALENDAR VIEW -->
+      <div id="calendar-view" style="display:none;padding:24px;overflow-y:auto;flex:1">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+          <div>
+            <div style="font-size:11px;font-weight:800;letter-spacing:0.15em;color:var(--gold)">ECONOMIC CALENDAR</div>
+            <div style="font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:0.1em">HIGH IMPACT EVENTS · COMMODITY RELEVANCE</div>
+          </div>
+          <button onclick="hideCalendar()" style="background:transparent;border:1px solid var(--border);color:var(--muted);font-family:monospace;font-size:9px;letter-spacing:0.12em;padding:6px 14px;cursor:pointer">← BACK</button>
+        </div>
+
+        <!-- Pre-event alert banner -->
+        <div id="cal-alert-banner" style="display:none;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.3);border-left:3px solid #ef4444;padding:12px 16px;margin-bottom:20px;font-size:11px;color:#f87171;letter-spacing:0.05em">
+          <span id="cal-alert-text"></span>
+        </div>
+
+        <div style="font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);margin-bottom:12px">UPCOMING EVENTS</div>
+        <div id="cal-upcoming"></div>
+
+        <div style="font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);margin-top:28px;margin-bottom:12px">PAST EVENTS</div>
+        <div id="cal-past"></div>
+      </div>
+
+      <!-- NOTIFICATION DROPDOWN -->
+      <div id="notif-dropdown" style="display:none;position:fixed;top:48px;right:16px;width:320px;background:#0d0c0a;border:1px solid var(--border);z-index:200;font-family:monospace">
+        <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
+          ALERTS
+          <span onclick="clearNotifications()" style="cursor:pointer;color:rgba(93,100,120,0.5);font-size:8px">CLEAR ALL</span>
+        </div>
+        <div id="notif-list" style="max-height:320px;overflow-y:auto"></div>
+      </div>
+
     </div><!-- #main -->
   </div><!-- #body -->
 </div><!-- #terminal -->
@@ -753,6 +822,7 @@ function enterTerminal() {
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('terminal').classList.add('visible');
   loadAll(); loadProfile(); startClock(); updateMarketBadges();
+  loadCalendar();
 }
 async function tryAutoLogin() {
   if (!accessToken) return false;
@@ -1153,7 +1223,10 @@ async function openDetail(name) {
     }
   } catch {}
 
-  // Switch to full-screen detail view
+  // Switch to full-screen detail view (hide calendar if open)
+  calendarMode = false;
+  document.getElementById('calendar-view').style.display = 'none';
+  document.getElementById('detail-panel').style.display = '';
   document.getElementById('main').classList.add('detail-mode');
   document.querySelectorAll('.scan-cell').forEach(c => c.classList.remove('active-scan'));
   const sc = document.querySelector(`.scan-cell[data-name="${name}"]`);
@@ -1224,6 +1297,222 @@ async function toggleNotify(el) {
 // INIT
 // ══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+// ── Economic Calendar ──────────────────────────────────────────────────────────
+let calendarData = { upcoming_events: [], past_events: [] };
+let calendarMode = false;
+let notifications = JSON.parse(localStorage.getItem('commodex_notifs') || '[]');
+
+function showCalendar() {
+  calendarMode = true;
+  document.getElementById('main').classList.add('detail-mode');
+  document.getElementById('detail-panel').style.display = 'none';
+  document.getElementById('calendar-view').style.display = 'flex';
+  document.getElementById('calendar-view').style.flexDirection = 'column';
+  loadCalendar();
+}
+function hideCalendar() {
+  calendarMode = false;
+  document.getElementById('main').classList.remove('detail-mode');
+  document.getElementById('calendar-view').style.display = 'none';
+}
+
+async function loadCalendar() {
+  try {
+    const res = await fetch('/calendar', { headers: authH() });
+    if (!res.ok) return;
+    calendarData = await res.json();
+    renderCalendar();
+    updateNextEventIndicator();
+  } catch(e) { console.error('loadCalendar', e); }
+}
+
+function renderCalendar() {
+  renderUpcoming();
+  renderPast();
+}
+
+function renderUpcoming() {
+  const container = document.getElementById('cal-upcoming');
+  if (!container) return;
+  const events = calendarData.upcoming_events || [];
+  if (!events.length) { container.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:16px 0">No upcoming events this week</div>'; return; }
+
+  const now = new Date();
+  const groups = { TODAY: [], TOMORROW: [], 'THIS WEEK': [], 'NEXT WEEK': [] };
+
+  events.forEach(ev => {
+    const evDt = new Date(ev.dt_utc);
+    const diff  = evDt - now;
+    const days  = diff / 86400000;
+    const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+    const tomorrowEnd = new Date(todayEnd); tomorrowEnd.setDate(tomorrowEnd.getDate()+1);
+
+    if (evDt <= todayEnd)          groups['TODAY'].push(ev);
+    else if (evDt <= tomorrowEnd)  groups['TOMORROW'].push(ev);
+    else if (days <= 7)            groups['THIS WEEK'].push(ev);
+    else                           groups['NEXT WEEK'].push(ev);
+  });
+
+  let html = '';
+  for (const [grp, evs] of Object.entries(groups)) {
+    if (!evs.length) continue;
+    html += `<div class="cal-group-hdr">${grp}</div>`;
+    evs.forEach(ev => {
+      const tags = ev.affected_commodities.map(c => `<span class="cal-tag">${c.toUpperCase()}</span>`).join('');
+      const forecastStr = ev.forecast ? `<span style="margin-left:8px">F: ${ev.forecast}</span>` : '';
+      const prevStr = ev.previous ? `<span style="margin-left:8px">P: ${ev.previous}</span>` : '';
+      const countdown = getCountdown(ev.dt_utc);
+      const briefing = ev.pre_event_briefing ? `<div class="cal-summary">${ev.pre_event_briefing}</div>` : '';
+      html += `<div class="cal-event">
+        <div class="cal-impact ${ev.impact}"></div>
+        <div style="flex:1">
+          <div class="cal-name">${ev.event_name}</div>
+          <div class="cal-meta">${ev.country} · ${ev.date} ${ev.time} UTC · <span style="color:var(--gold)">${countdown}</span>${forecastStr}${prevStr}</div>
+          <div class="cal-tags">${tags}</div>
+          ${briefing}
+        </div>
+      </div>`;
+    });
+  }
+  container.innerHTML = html;
+}
+
+function renderPast() {
+  const container = document.getElementById('cal-past');
+  if (!container) return;
+  const events = calendarData.past_events || [];
+  if (!events.length) { container.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:16px 0">No recent past events</div>'; return; }
+
+  let html = '';
+  events.forEach(ev => {
+    const tags = ev.affected_commodities.map(c => `<span class="cal-tag">${c.toUpperCase()}</span>`).join('');
+    const actualStr = ev.actual ? `<span style="color:#22c55e;margin-left:8px">A: ${ev.actual}</span>` : '';
+    const forecastStr = ev.forecast ? `<span style="margin-left:8px">F: ${ev.forecast}</span>` : '';
+    const summaryHtml = ev.ai_summary
+      ? `<div class="cal-summary">${ev.ai_summary}</div>`
+      : `<div style="color:var(--muted);font-size:10px;margin-top:8px;font-style:italic">Analysis pending...</div>`;
+    html += `<div class="cal-past-card">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <div class="cal-impact ${ev.impact}"></div>
+        <div class="cal-name">${ev.event_name}</div>
+      </div>
+      <div class="cal-meta">${ev.country} · ${ev.date} ${ev.time} UTC${actualStr}${forecastStr}</div>
+      <div class="cal-tags" style="margin-top:6px">${tags}</div>
+      ${summaryHtml}
+    </div>`;
+  });
+  container.innerHTML = html;
+}
+
+function getCountdown(dtUtc) {
+  const diff = new Date(dtUtc) - new Date();
+  if (diff <= 0) return 'PASSED';
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  if (h > 48) return `${Math.floor(h/24)}d ${h%24}h`;
+  if (h > 0)  return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function updateNextEventIndicator() {
+  const events = (calendarData.upcoming_events || []).filter(e => e.impact === 'High');
+  const el_name      = document.getElementById('nextEventName');
+  const el_countdown = document.getElementById('nextEventCountdown');
+  if (!events.length) {
+    if (el_name) el_name.textContent = 'no events';
+    if (el_countdown) el_countdown.textContent = '—';
+    return;
+  }
+  const next = events[0];
+  if (el_name) el_name.textContent = next.event_name;
+  if (el_countdown) el_countdown.textContent = getCountdown(next.dt_utc);
+  // Check for pre-event alert banner
+  const diff = new Date(next.dt_utc) - new Date();
+  if (diff > 0 && diff < 7200000 && next.pre_event_briefing) {  // within 2h
+    const banner = document.getElementById('cal-alert-banner');
+    const bannerText = document.getElementById('cal-alert-text');
+    if (banner && bannerText) {
+      bannerText.textContent = `EVENT IN ${getCountdown(next.dt_utc)}: ${next.event_name} — ${next.pre_event_briefing}`;
+      banner.style.display = 'block';
+      // Add in-app notification
+      addNotification(`EVENT IN ${getCountdown(next.dt_utc)}: ${next.event_name}`, next.pre_event_briefing, 'pre-event');
+    }
+  }
+}
+
+// Refresh next event countdown every minute
+setInterval(() => {
+  if (calendarData.upcoming_events.length) updateNextEventIndicator();
+  if (calendarMode) renderUpcoming();
+}, 60000);
+
+// Refresh calendar data every 30 min
+setInterval(loadCalendar, 30 * 60 * 1000);
+
+// ── Notification system ───────────────────────────────────────────────────────
+function addNotification(title, body, type) {
+  const n = { id: Date.now(), title, body, type, time: new Date().toISOString(), read: false };
+  notifications.unshift(n);
+  notifications = notifications.slice(0, 20);
+  localStorage.setItem('commodex_notifs', JSON.stringify(notifications));
+  renderBell();
+}
+
+function renderBell() {
+  const unread = notifications.filter(n => !n.read).length;
+  const dot = document.getElementById('bellDot');
+  if (dot) dot.style.display = unread > 0 ? 'block' : 'none';
+}
+
+function toggleNotifications() {
+  const dd = document.getElementById('notif-dropdown');
+  if (!dd) return;
+  const visible = dd.style.display !== 'none';
+  dd.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    renderNotifications();
+    notifications.forEach(n => n.read = true);
+    localStorage.setItem('commodex_notifs', JSON.stringify(notifications));
+    renderBell();
+  }
+}
+
+function renderNotifications() {
+  const list = document.getElementById('notif-list');
+  if (!list) return;
+  if (!notifications.length) {
+    list.innerHTML = '<div style="padding:16px 14px;font-size:10px;color:var(--muted)">No alerts yet</div>';
+    return;
+  }
+  list.innerHTML = notifications.map(n => `
+    <div class="notif-item ${n.read ? '' : 'unread'}">
+      <div>${n.title}</div>
+      <div style="font-size:10px;color:var(--muted);margin-top:2px;line-height:1.5">${n.body || ''}</div>
+      <div class="notif-time">${new Date(n.time).toLocaleString()}</div>
+    </div>
+  `).join('');
+}
+
+function clearNotifications() {
+  notifications = [];
+  localStorage.setItem('commodex_notifs', JSON.stringify(notifications));
+  renderBell();
+  renderNotifications();
+}
+
+// Close notifications when clicking outside
+document.addEventListener('click', (e) => {
+  const dd = document.getElementById('notif-dropdown');
+  if (dd && dd.style.display !== 'none') {
+    if (!dd.contains(e.target) && !e.target.closest('[onclick="toggleNotifications()"]')) {
+      dd.style.display = 'none';
+    }
+  }
+});
+
+// Init on load
+renderBell();
 
 (async function init() {
   const params = new URLSearchParams(window.location.search);
