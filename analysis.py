@@ -105,6 +105,21 @@ NEWS_SOURCES = [
     "https://www.24hgold.com/rss/RSSenglish.ashx",                  # 24h Gold news
     "https://www.fxstreet.com/rss/news",                            # FX Street commodities/macro
     "https://www.mining.com/feed/",                                 # Mining.com (retry — intermittent)
+    # ── Tier 3 — Additional commodity/macro feeds ─────────────────────────────
+    "https://www.kitco.com/rss/",                                   # Kitco precious metals
+    "https://feeds.reuters.com/reuters/businessNews",               # Reuters Business
+    "https://feeds.reuters.com/reuters/companyNews",                # Reuters Company
+    "https://www.platts.com/rss/feeds/oil",                        # S&P Global Platts Oil
+    "https://www.argusmedia.com/rss/feed/commodities",             # Argus Media commodities
+    "https://www.spglobal.com/commodityinsights/en/rss",           # S&P Commodity Insights
+    "https://www.metalsbulletin.com/rss/",                         # Fastmarkets Metal Bulletin
+    "https://www.world-grain.com/rss/",                            # World Grain (macro supply)
+    "https://www.bloomberg.com/feeds/podcast/etf-iq.xml",         # Bloomberg markets
+    "https://finance.yahoo.com/rss/topfinstories",                 # Yahoo Finance top
+    "https://www.ft.com/commodities?format=rss",                   # FT Commodities
+    "https://www.theice.com/rss/news",                             # ICE exchange news
+    "https://www.lme.com/en/news-and-events/news/rss",            # LME news
+    "https://www.cmegroup.com/rss/cme-group-news.xml",            # CME Group news
 ]
 
 COMMODITIES = {
@@ -715,13 +730,16 @@ def _get_fresh_articles(commodity, hours=24):
     priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
     articles = [
         {"title": r.title, "url": r.url, "summary": r.summary,
-         "source": r.source, "published": r.published, "impact": r.impact}
+         "source": r.source, "published": r.published, "impact": r.impact,
+         "_ts": r.fetched_at.timestamp() if r.fetched_at else 0}
         for r in rows
     ]
     articles.sort(
-        key=lambda a: (a.get("published", ""), -priority.get(a.get("impact", "LOW"), 2)),
+        key=lambda a: (a["_ts"], -priority.get(a.get("impact", "LOW"), 2)),
         reverse=True,
     )
+    for a in articles:
+        del a["_ts"]
     return articles
 
 
@@ -890,11 +908,9 @@ def run_analysis():
                     "dominant_narrative": {"theme": "—", "status": "—"},
                     "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
                 }
-            priority = {"HIGH": 0, "MEDIUM": 1, "LOW": 2}
-            sorted_articles = sorted(articles, key=lambda a: (a.get("published", ""), -priority.get(a.get("impact", "LOW"), 2)), reverse=True)
             results[commodity] = {
                 "analysis":  analysis,
-                "articles":  sorted_articles[:25],
+                "articles":  articles[:25],
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "count":     len(articles),
                 "breaking":  commodity in breaking_this_run,

@@ -100,9 +100,11 @@
   .market-badge.open { border-color: rgba(38,166,154,0.4); color: var(--bull); }
   .market-badge.closed { border-color: rgba(239,83,80,0.3); color: var(--bear); }
   .tb-right { display: flex; align-items: center; gap: 16px; }
-  .tb-feed { display: flex; align-items: center; gap: 5px; font-size: 9px; color: rgba(93,100,120,0.9); letter-spacing: 0.08em; }
-  .tb-status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--bull); animation: pulse-dot 1.2s ease-in-out infinite; display: inline-block; flex-shrink: 0; }
-  .tb-ai { font-size: 9px; color: rgba(93,100,120,0.9); letter-spacing: 0.08em; }
+  .tb-update-block { display: flex; align-items: center; gap: 4px; }
+  .tb-update-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: rgba(93,100,120,0.7); }
+  .tb-update-age { font-size: 9px; color: rgba(209,212,220,0.55); letter-spacing: 0.04em; }
+  .tb-update-sep { font-size: 9px; color: rgba(93,100,120,0.4); }
+  .tb-update-next { font-size: 9px; color: var(--bull); opacity: 0.7; letter-spacing: 0.04em; }
   .tb-time { font-size: 11px; font-weight: 600; color: var(--fg); letter-spacing: 0.06em; }
   .tb-sep { width: 1px; height: 16px; background: var(--border); }
   .tb-user { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; border: 1px solid var(--border); padding: 4px 12px; color: rgba(93,100,120,0.7); cursor: pointer; background: none; font-family: var(--mono); }
@@ -386,15 +388,22 @@
         <span class="market-badge" id="badgeICE">ICE ●</span>
         <span class="market-badge" id="badgeLME">LME ●</span>
       </div>
-    </div>
-    <div class="tb-right">
-      <div class="tb-feed">
-        <span class="tb-status-dot"></span>
-        NEWS <span id="newsAge" style="color:var(--fg);opacity:0.6;margin:0 3px">—</span>
+      <div class="tb-sep"></div>
+      <div class="tb-update-block">
+        <span class="tb-update-lbl">NEWS</span>
+        <span id="newsAge" class="tb-update-age">—</span>
+        <span class="tb-update-sep">·</span>
+        <span id="newsNext" class="tb-update-next">—</span>
       </div>
       <div class="tb-sep"></div>
-      <div class="tb-ai">AI <span id="aiAge" style="color:var(--fg);opacity:0.6;margin-left:3px">—</span></div>
-      <div class="tb-sep"></div>
+      <div class="tb-update-block">
+        <span class="tb-update-lbl">AI</span>
+        <span id="aiAge" class="tb-update-age">—</span>
+        <span class="tb-update-sep">·</span>
+        <span id="aiNext" class="tb-update-next">—</span>
+      </div>
+    </div>
+    <div class="tb-right">
       <div class="tb-time" id="clock">00:00:00 UTC</div>
       <div class="tb-sep"></div>
       <button class="tb-user" id="userBtn" onclick="toggleProfile()">ACCOUNT</button>
@@ -605,6 +614,8 @@ let allArticles = {};
 let pricesData = {};
 let currentNewsFilter = 'All';
 let activeDetailName = null;
+let newsLastTs = null;   // Date of last news fetch
+let aiLastTs   = null;   // Date of last AI analysis
 
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -780,6 +791,24 @@ async function tryAutoLogin() {
 // ══════════════════════════════════════════════════════════════════════════════
 // CLOCK & MARKET BADGES
 // ══════════════════════════════════════════════════════════════════════════════
+// AI runs at these UTC hours
+const AI_SCHEDULE_UTC = [9, 15, 21, 23];
+function nextAiIn() {
+  const now = new Date();
+  const utcMins = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const scheduleMins = AI_SCHEDULE_UTC.map(h => h * 60);
+  let next = scheduleMins.find(m => m > utcMins);
+  if (next == null) next = scheduleMins[0] + 24 * 60; // wrap to tomorrow
+  const diff = next - utcMins;
+  if (diff >= 60) return `next ${Math.floor(diff/60)}h ${diff%60}m`;
+  return `next ${diff}m`;
+}
+function nextNewsIn() {
+  if (!newsLastTs) return '—';
+  const elapsed = Math.floor((Date.now() - newsLastTs) / 60000);
+  const remaining = 15 - (elapsed % 15);
+  return `next ${remaining}m`;
+}
 function startClock() {
   function tick() {
     const n = new Date();
@@ -787,6 +816,14 @@ function startClock() {
       String(n.getUTCHours()).padStart(2,'0') + ':' +
       String(n.getUTCMinutes()).padStart(2,'0') + ':' +
       String(n.getUTCSeconds()).padStart(2,'0') + ' UTC';
+    if (newsLastTs) {
+      document.getElementById('newsAge').textContent = timeAgo(newsLastTs.toISOString());
+      document.getElementById('newsNext').textContent = nextNewsIn();
+    }
+    if (aiLastTs) {
+      document.getElementById('aiAge').textContent = timeAgo(aiLastTs.toISOString());
+      document.getElementById('aiNext').textContent = nextAiIn();
+    }
   }
   tick(); setInterval(tick, 1000);
 }
@@ -822,6 +859,7 @@ async function loadData() {
     renderScanbar(); renderCards(); renderNews();
     const first = Object.values(allData)[0];
     if (first && first.timestamp) {
+      aiLastTs = new Date(first.timestamp);
       document.getElementById('aiAge').textContent = timeAgo(first.timestamp);
     }
   } catch (e) { console.error('loadData', e); }
@@ -833,6 +871,7 @@ async function loadPrices() {
     pricesData = await res.json();
     renderWatchbar();
     renderCards();
+    newsLastTs = new Date();
     document.getElementById('newsAge').textContent = timeAgo(new Date().toISOString());
   } catch {}
 }
