@@ -142,6 +142,9 @@ NEWS_SOURCES = [
     # ── Tier 8 — Official / policy feeds ─────────────────────────────────────
     "https://www.federalreserve.gov/feeds/press_all.xml",          # Federal Reserve press releases
     "https://www.opec.org/opec_web/en/press_room/rss.htm",         # OPEC official press releases
+    "https://www.saudiaramco.com/en/news-media/news/rss",          # Saudi Aramco official news
+    "https://oilprice.com/rss/category/crude-oil",                 # OilPrice crude-specific feed
+    "https://www.worldoil.com/rss/news",                           # World Oil (upstream E&P)
     # ── Tier 9 — Natural gas specialist ──────────────────────────────────────
     "https://lngprime.com/feed/",                                  # LNG Prime (tankers, terminals, prices)
     "https://www.icis.com/explore/resources/news/rss/?feed=gas",   # ICIS gas news
@@ -157,7 +160,7 @@ NEWS_SOURCES = [
 COMMODITIES = {
     "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "xauusd", "gold rises", "gold falls", "gold hits", "gold climbs", "gold", "gld etf", "gold etf", "gold miners", "gdx", "central bank gold", "gold reserves", "gold demand", "gold supply", "gold output", "comex gold", "gold lbma", "real rates gold", "tips yield gold", "gold rally", "gold record", "gold all-time high", "gold safe haven", "gold inflation", "gold dollar"],
     "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
-    "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil"],
+    "Crude Oil":   ["crude oil", "wti", "usoil", "us oil", "crudeoil", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil", "brent crude", "wti crude", "opec+", "opec production", "oil inventory", "oil supply", "oil demand", "oil rig", "rig count", "shale oil", "permian", "bakken", "saudi aramco", "aramco", "russia oil", "iran oil", "venezuela oil", "oil sanctions", "spr", "strategic petroleum reserve", "refinery", "crack spread", "gasoline demand", "distillate", "diesel", "jet fuel", "contango", "backwardation oil"],
     "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories", "china pmi", "manufacturing pmi", "china manufacturing", "freeport mcmoran", "bhp copper", "antofagasta", "codelco", "chile copper", "copper smelter", "copper concentrate", "copper scrap", "dr copper", "copper warehouse", "copper stocks lme", "comex copper stocks"],
     "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports", "lng tanker", "lng carrier", "lng terminal", "lng exports", "lng imports", "sabine pass", "freeport lng", "ttf price", "nbp gas", "european gas storage", "norway gas", "gazprom", "russia gas", "calcasieu pass", "corpus christi lng", "cove point lng", "heating degree days", "hdd", "gas feedgas", "lng utilization", "pipeline flow", "winter gas", "summer gas", "gas withdrawal", "gas injection"],
 }
@@ -732,7 +735,155 @@ def fetch_gold_etf_holdings():
     return result
 
 
-# ── 15. BLS — CPI and PPI (free public API, no key required) ───────────────────
+# ── 15. Brent crude + WTI futures curve — Stooq/Yahoo (free, no key) ────────
+def fetch_oil_prices():
+    """Fetch Brent price, WTI/Brent spread, and WTI futures curve for contango/backwardation."""
+    result = {}
+
+    # Brent crude — global benchmark
+    try:
+        url = "https://stooq.com/q/l/?s=bco.f&f=sd2t2ohlcv&h&e=csv"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            lines = r.read().decode().strip().split("\n")
+        if len(lines) >= 2:
+            row   = lines[-1].split(",")
+            close = float(row[6])
+            open_ = float(row[3])
+            result["brent"] = {"label": "Brent Crude (USD/bbl)", "price": close,
+                                "change": round(((close - open_) / open_) * 100, 2)}
+    except Exception as e:
+        log.debug("Brent fetch failed: %s", e)
+
+    # WTI futures curve: CL1/CL2/CL3 — contango = oversupply, backwardation = tight
+    wti_curve = {}
+    for month, sym in [("M1", "cl.f"), ("M2", "cl2.f"), ("M3", "cl3.f"), ("M6", "cl6.f")]:
+        try:
+            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                row = lines[-1].split(",")
+                wti_curve[month] = float(row[6])
+        except:
+            pass
+    if len(wti_curve) >= 2:
+        prices = list(wti_curve.values())
+        spread = round(prices[-1] - prices[0], 2)
+        structure = "CONTANGO (oversupply signal)" if spread > 0.5 else "BACKWARDATION (tight supply)" if spread < -0.5 else "FLAT"
+        result["wti_curve"] = {"prices": wti_curve, "m1_m6_spread": spread, "structure": structure}
+
+    # Brent/WTI spread
+    if "brent" in result and wti_curve.get("M1"):
+        spread = round(result["brent"]["price"] - wti_curve["M1"], 2)
+        result["brent_wti_spread"] = {"value": spread, "label": "Brent/WTI Spread (USD/bbl)"}
+
+    return result
+
+
+# ── 16. Baker Hughes rig count — scraped (free, no key) ───────────────────────
+def fetch_rig_count():
+    """Fetch Baker Hughes US oil & gas rig count — weekly production outlook signal."""
+    result = {}
+    try:
+        # Baker Hughes publishes rig count data on their website
+        req = urllib.request.Request(
+            "https://rigcount.bakerhughes.com/na-rig-count",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=12) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Extract US total rig count
+        for pattern in [
+            r'U\.S\.\s+Total[^0-9]*([\d,]+)',
+            r'Total\s+U\.S\.[^0-9]*([\d,]+)',
+            r'"total_us"\s*:\s*(\d+)',
+            r'US\s+Total[^0-9]*(\d{3,4})',
+        ]:
+            m = re.search(pattern, html, re.IGNORECASE)
+            if m:
+                val = int(m.group(1).replace(",", ""))
+                if 300 < val < 1500:  # sanity check
+                    result["us_total"] = {"label": "US Total Rig Count (Baker Hughes)", "value": val}
+                    break
+        # Oil rigs specifically
+        for pattern in [
+            r'Oil[^0-9]*([\d]+)\s*(?:Gas|Water|Misc)',
+            r'"oil_rigs"\s*:\s*(\d+)',
+        ]:
+            m = re.search(pattern, html, re.IGNORECASE)
+            if m:
+                val = int(m.group(1))
+                if 200 < val < 1200:
+                    result["oil_rigs"] = {"label": "US Oil Rigs (Baker Hughes)", "value": val}
+                    break
+    except Exception as e:
+        log.debug("Baker Hughes rig count fetch failed: %s", e)
+
+    # Fallback: try EIA rig count RSS
+    if not result:
+        try:
+            feed = feedparser.parse("https://www.eia.gov/rss/news.xml")
+            for entry in feed.entries[:20]:
+                if "rig count" in entry.get("title", "").lower():
+                    m = re.search(r'(\d{3,4})\s*rigs?', entry.get("summary", ""), re.IGNORECASE)
+                    if m:
+                        result["us_total"] = {"label": "US Rig Count (EIA news)", "value": int(m.group(1))}
+                        break
+        except:
+            pass
+    return result
+
+
+# ── 17. Baltic Dirty Tanker Index — Yahoo Finance (free, no key) ──────────────
+def fetch_tanker_rates():
+    """Fetch BDTI and BCTI tanker freight rates — oil trade flow cost signal."""
+    result = {}
+    for name, ticker, label in [
+        ("BDTI", "%5EBDTI", "Baltic Dirty Tanker Index"),
+        ("BCTI", "%5EBCTI", "Baltic Clean Tanker Index"),
+    ]:
+        try:
+            data = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                prev  = meta.get("previousClose", price)
+                chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+                result[name] = {"label": label, "value": price, "change": chg}
+        except Exception as e:
+            log.debug("Tanker rate fetch failed for %s: %s", name, e)
+    return result
+
+
+# ── 18. EIA SPR stocks — uses existing EIA key ────────────────────────────────
+def fetch_spr_data():
+    """Fetch US Strategic Petroleum Reserve stocks from EIA."""
+    if not EIA_API_KEY:
+        return None
+    url = "https://api.eia.gov/v2/seriesid/PET.WCSSTUS1.W?api_key={}&length=2".format(EIA_API_KEY)
+    # SPR series
+    url = f"https://api.eia.gov/v2/seriesid/PET.WCSSTUS1.W?api_key={EIA_API_KEY}&length=2"
+    # Actual SPR series ID
+    url = f"https://api.eia.gov/v2/seriesid/PET.WSTRSTUS1.W?api_key={EIA_API_KEY}&length=2"
+    data = fetch_json(url)
+    if data:
+        rows = data.get("response", {}).get("data", [])
+        if len(rows) >= 2:
+            latest   = float(rows[0].get("value", 0))
+            previous = float(rows[1].get("value", 0))
+            return {
+                "latest":   latest,
+                "previous": previous,
+                "change":   round(latest - previous, 0),
+                "unit":     rows[0].get("unit", "Mb"),
+                "period":   rows[0].get("period", ""),
+            }
+    return None
+
+
+# ── 19. BLS — CPI and PPI (free public API, no key required) ───────────────────
 def fetch_bls_data():
     """Fetch US CPI and PPI from BLS public API v1 (no API key needed)."""
     result = {}
@@ -853,7 +1004,8 @@ def fetch_treasury_yields():
 # ── Build macro context string for Claude ─────────────────────────────────────
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
                         bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
-                        ttf=None, entsog=None, lng_exports=None, gold_etf=None):
+                        ttf=None, entsog=None, lng_exports=None, gold_etf=None,
+                        oil_prices=None, rig_count=None, tanker_rates=None, spr=None):
     lines = []
 
     # FRED macro indicators — grouped by relevance
@@ -1066,6 +1218,41 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
         if "lng_exports_monthly" in lng_exports:
             d = lng_exports["lng_exports_monthly"]
             lines.append(f"  Monthly LNG Exports: {d['latest']} {d['unit']} ({d['period']})")
+
+    # Oil prices: Brent, WTI curve, spread — crude oil
+    if oil_prices and commodity_name == "Crude Oil":
+        if "brent" in oil_prices:
+            d = oil_prices["brent"]
+            chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+            lines.append(f"BRENT CRUDE: {d['price']} USD/bbl{chg}")
+        if "brent_wti_spread" in oil_prices:
+            d = oil_prices["brent_wti_spread"]
+            lines.append(f"BRENT/WTI SPREAD: {d['value']:+.2f} USD/bbl")
+        if "wti_curve" in oil_prices:
+            d = oil_prices["wti_curve"]
+            curve_str = " | ".join(f"{k}: {v}" for k, v in d["prices"].items())
+            lines.append(f"WTI FUTURES CURVE: {curve_str}")
+            lines.append(f"  Structure: {d['structure']} (M1-M6 spread: {d['m1_m6_spread']:+.2f})")
+
+    # Baker Hughes rig count — crude oil & natural gas
+    if rig_count and commodity_name in ("Crude Oil", "Natural Gas"):
+        lines.append("BAKER HUGHES RIG COUNT:")
+        for key in ("us_total", "oil_rigs"):
+            if key in rig_count:
+                d = rig_count[key]
+                lines.append(f"  {d['label']}: {d['value']}")
+
+    # Tanker rates — crude oil
+    if tanker_rates and commodity_name == "Crude Oil":
+        lines.append("TANKER FREIGHT RATES:")
+        for name, d in tanker_rates.items():
+            chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+            lines.append(f"  {d['label']}: {d['value']}{chg}")
+
+    # SPR — crude oil
+    if spr and commodity_name == "Crude Oil":
+        chg = f" (change: {spr['change']:+.0f})" if spr.get("change") is not None else ""
+        lines.append(f"US SPR STOCKS: {spr['latest']} {spr['unit']}{chg} ({spr['period']})")
 
     # Gold ETF holdings + miner stocks — gold & silver
     if gold_etf and commodity_name in ("Gold", "Silver"):
@@ -1452,6 +1639,10 @@ def run_analysis():
         entsog        = fetch_entsog_flows()
         lng_exports   = fetch_lng_export_data()
         gold_etf      = fetch_gold_etf_holdings()
+        oil_prices    = fetch_oil_prices()
+        rig_count     = fetch_rig_count()
+        tanker_rates  = fetch_tanker_rates()
+        spr           = fetch_spr_data()
         log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, GoldETF=%d, LME copper=%s, BDI=%s",
                  len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog), len(gold_etf),
                  lme_copper["value"] if lme_copper else "unavailable",
@@ -1473,7 +1664,9 @@ def run_analysis():
                                                 bls=bls, weather=weather, treasury=treasury,
                                                 comex_copper=comex_copper, pmi=pmi,
                                                 ttf=ttf, entsog=entsog, lng_exports=lng_exports,
-                                                gold_etf=gold_etf)
+                                                gold_etf=gold_etf, oil_prices=oil_prices,
+                                                rig_count=rig_count, tanker_rates=tanker_rates,
+                                                spr=spr)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
