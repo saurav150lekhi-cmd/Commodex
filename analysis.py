@@ -142,13 +142,18 @@ NEWS_SOURCES = [
     # ── Tier 8 — Official / policy feeds ─────────────────────────────────────
     "https://www.federalreserve.gov/feeds/press_all.xml",          # Federal Reserve press releases
     "https://www.opec.org/opec_web/en/press_room/rss.htm",         # OPEC official press releases
+    # ── Tier 9 — Copper specialist ────────────────────────────────────────────
+    "https://copperalliance.org/feed/",                            # Copper Alliance (demand, applications)
+    "https://www.mining.com/tag/copper/feed/",                     # Mining.com copper tag
+    "https://www.fastmarkets.com/commodities/base-metals/copper/feed/", # Fastmarkets copper
+    "https://www.cochilco.cl/blog/feed/",                          # Cochilco Chile copper stats
 ]
 
 COMMODITIES = {
     "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "gold rises", "gold falls", "gold hits", "gold climbs"],
     "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
     "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil"],
-    "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories"],
+    "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories", "china pmi", "manufacturing pmi", "china manufacturing", "freeport mcmoran", "bhp copper", "antofagasta", "codelco", "chile copper", "copper smelter", "copper concentrate", "copper scrap", "dr copper", "copper warehouse", "copper stocks lme", "comex copper stocks"],
     "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports", "lng tanker", "lng carrier", "lng terminal", "lng exports", "lng imports", "sabine pass", "freeport lng"],
 }
 
@@ -474,7 +479,99 @@ def fetch_bdi():
     return None
 
 
-# ── 9. BLS — CPI and PPI (free public API, no key required) ───────────────────
+# ── 9. COMEX copper warehouse stocks — scraped from CME/Barchart ──────────────
+def fetch_comex_copper_stocks():
+    """Scrape COMEX copper warehouse stocks (free, no key)."""
+    sources = [
+        # Barchart COMEX copper stocks page
+        ("https://www.barchart.com/futures/quotes/HG*0/historical-download",
+         r'(?:COMEX\s+)?[Cc]opper\s+[Ss]tocks?[^0-9]*([\d,]+)',),
+        # CME Group copper stocks
+        ("https://www.cmegroup.com/trading/metals/base/copper.html",
+         r'[Ww]arehouse\s+[Ss]tocks?[^0-9]*([\d,]+)',),
+    ]
+    for url, pattern in sources:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                html = r.read().decode("utf-8", errors="ignore")
+            m = re.search(pattern, html)
+            if m:
+                return {"value": int(m.group(1).replace(",", "")), "unit": "short tons", "source": "COMEX"}
+        except:
+            pass
+    # Fallback: try Stooq COMEX copper warrant data
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/HG%3DF?interval=1d&range=2d")
+        if data:
+            meta = data["chart"]["result"][0]["meta"]
+            return {
+                "price":  meta.get("regularMarketPrice"),
+                "prev":   meta.get("previousClose"),
+                "change": round(((meta["regularMarketPrice"] - meta["previousClose"]) / meta["previousClose"]) * 100, 2)
+                          if meta.get("previousClose") else None,
+                "unit":   "USD/lb",
+                "source": "COMEX futures",
+            }
+    except:
+        pass
+    return None
+
+
+# ── 10. China Manufacturing PMI — scraped from Trading Economics (no key) ──────
+def fetch_china_pmi():
+    """Fetch China NBS Manufacturing PMI — key copper demand indicator (no API key)."""
+    result = {}
+    try:
+        # Trading Economics provides free data tables
+        req = urllib.request.Request(
+            "https://tradingeconomics.com/china/manufacturing-pmi",
+            headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "text/html",
+            }
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Extract current PMI value
+        m = re.search(r'"price"\s*:\s*"?([\d.]+)"?.*?"previous"\s*:\s*"?([\d.]+)"?', html)
+        if not m:
+            m = re.search(r'<td[^>]*>\s*([\d.]+)\s*</td>', html)
+        if m:
+            val = float(m.group(1))
+            if 40 <= val <= 65:  # sanity check for PMI range
+                result["china_manufacturing_pmi"] = {
+                    "label": "China NBS Manufacturing PMI",
+                    "value": val,
+                    "signal": "EXPANSION" if val > 50 else "CONTRACTION",
+                }
+    except Exception as e:
+        log.debug("China PMI fetch failed: %s", e)
+
+    # Also try to get US ISM Manufacturing PMI from same source
+    try:
+        req = urllib.request.Request(
+            "https://tradingeconomics.com/united-states/manufacturing-pmi",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r'"price"\s*:\s*"?([\d.]+)"?', html)
+        if m:
+            val = float(m.group(1))
+            if 40 <= val <= 65:
+                result["us_manufacturing_pmi"] = {
+                    "label": "US ISM Manufacturing PMI",
+                    "value": val,
+                    "signal": "EXPANSION" if val > 50 else "CONTRACTION",
+                }
+    except Exception as e:
+        log.debug("US PMI fetch failed: %s", e)
+
+    return result
+
+
+# ── 11. BLS — CPI and PPI (free public API, no key required) ───────────────────
 def fetch_bls_data():
     """Fetch US CPI and PPI from BLS public API v1 (no API key needed)."""
     result = {}
@@ -594,7 +691,7 @@ def fetch_treasury_yields():
 
 # ── Build macro context string for Claude ─────────────────────────────────────
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
-                        bls=None, weather=None, treasury=None):
+                        bls=None, weather=None, treasury=None, comex_copper=None, pmi=None):
     lines = []
 
     # FRED macro indicators — grouped by relevance
@@ -764,6 +861,21 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
         lines.append("US WEATHER (7-DAY FORECAST):")
         for city, w in weather.items():
             lines.append(f"  {city}: avg {w['avg_temp_f']}°F | HDD: {w['hdd_7day']} | CDD: {w['cdd_7day']} → {w['demand_signal']}")
+
+    # PMI — copper & crude oil (manufacturing demand signal)
+    if pmi and commodity_name in ("Copper", "Crude Oil"):
+        lines.append("MANUFACTURING PMI (key demand indicator):")
+        for key, d in pmi.items():
+            signal = "▲ EXPANSION" if d["signal"] == "EXPANSION" else "▼ CONTRACTION"
+            lines.append(f"  {d['label']}: {d['value']} — {signal} (50 = neutral)")
+
+    # COMEX copper warehouse stocks
+    if comex_copper and commodity_name == "Copper":
+        if comex_copper.get("price"):
+            chg = f" ({comex_copper['change']:+.2f}%)" if comex_copper.get("change") else ""
+            lines.append(f"COMEX COPPER PRICE: {comex_copper['price']} {comex_copper['unit']}{chg}")
+        elif comex_copper.get("value"):
+            lines.append(f"COMEX COPPER WAREHOUSE STOCKS: {comex_copper['value']:,} {comex_copper['unit']}")
 
     return "\n".join(lines) if lines else "No external data available."
 
@@ -1115,11 +1227,13 @@ def run_analysis():
         fred       = fetch_fred_data()
         lme_copper = fetch_lme_copper_stocks()
         bdi        = fetch_bdi()
-        bls        = fetch_bls_data()
-        weather    = fetch_weather_data()
-        treasury   = fetch_treasury_yields()
-        log.info("External data fetched. FRED=%d, BLS=%d, Treasury yields=%d, Weather hubs=%d, LME copper=%s, BDI=%s",
-                 len(fred), len(bls), len(treasury), len(weather),
+        bls          = fetch_bls_data()
+        weather      = fetch_weather_data()
+        treasury     = fetch_treasury_yields()
+        comex_copper = fetch_comex_copper_stocks()
+        pmi          = fetch_china_pmi()
+        log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, LME copper=%s, BDI=%s",
+                 len(fred), len(bls), len(treasury), len(weather), len(pmi),
                  lme_copper["value"] if lme_copper else "unavailable",
                  bdi["value"] if bdi else "unavailable")
 
@@ -1136,7 +1250,8 @@ def run_analysis():
         for commodity, articles in news.items():
             log.info("Analysing %s (%d articles)...", commodity, len(articles))
             macro_context = build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity,
-                                                bls=bls, weather=weather, treasury=treasury)
+                                                bls=bls, weather=weather, treasury=treasury,
+                                                comex_copper=comex_copper, pmi=pmi)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
