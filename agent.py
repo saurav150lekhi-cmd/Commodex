@@ -28,17 +28,19 @@ If this IS a market-moving event, return ONLY this JSON (no markdown):
   "commodity": "{commodity}",
   "impact": "bullish or bearish or neutral",
   "reason": "1-2 sentences on why this moves {commodity} prices",
-  "confidence": 0-100
+  "confidence": 0-100,
+  "signal_strength": 1-10
 }}
 
 If this is NOT a market-moving event, return ONLY:
-{{"signal": false, "confidence": 0}}
+{{"signal": false, "confidence": 0, "signal_strength": 0}}
 
 Rules:
 - signal=true ONLY if this realistically moves {commodity} prices today or this week
 - Routine price updates, analyst opinions, minor data releases = signal=false
 - Central bank decisions, supply disruptions, geopolitical events, demand shocks = signal=true
-- confidence = certainty that this is genuinely market-moving (not article quality)
+- confidence = certainty that this is genuinely market-moving (0-100)
+- signal_strength = magnitude of potential price impact (1=minor mention, 5=notable event, 10=extreme market mover)
 """
 
 

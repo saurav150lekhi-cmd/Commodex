@@ -13,7 +13,8 @@ class MarketSignal(db.Model):
     reason             = db.Column(db.Text)
     confidence         = db.Column(db.Integer, default=0)
     source_title       = db.Column(db.Text)
-    triggered_analysis = db.Column(db.Boolean, default=False)
+    signal_strength     = db.Column(db.Integer, default=0)
+    triggered_analysis  = db.Column(db.Boolean, default=False)
     created_at         = db.Column(
         db.DateTime(timezone=True),
         nullable=False,

@@ -642,12 +642,13 @@ def _process_signals(new_by_commodity: dict):
         trigger_commodities: set[str] = set()
         for sig in signals:
             row = MarketSignal(
-                commodity    = sig.get("commodity", ""),
-                event        = sig.get("event", ""),
-                impact       = sig.get("impact", "neutral"),
-                reason       = sig.get("reason", ""),
-                confidence   = sig.get("confidence", 0),
-                source_title = sig.get("source_title", ""),
+                commodity       = sig.get("commodity", ""),
+                event           = sig.get("event", ""),
+                impact          = sig.get("impact", "neutral"),
+                reason          = sig.get("reason", ""),
+                confidence      = sig.get("confidence", 0),
+                signal_strength = sig.get("signal_strength", 0),
+                source_title    = sig.get("source_title", ""),
             )
             db.session.add(row)
             if sig.get("confidence", 0) > 80:
@@ -739,7 +740,7 @@ STEP 4 - DRIVER IDENTIFICATION: Identify 3-5 primary market drivers across these
 
 STEP 5 - PRICE ACTION CONTEXT: Determine if current price movement confirms, contradicts, or is unclear relative to the identified drivers. Never invent explanations if evidence is weak.
 
-STEP 6 - MARKET SUMMARY: Write a concise professional analyst narrative of what is currently happening in this market, covering the global market situation, macro drivers, supply/demand dynamics, and regional impact across US, Europe, and China.
+STEP 6 - MARKET SUMMARY: Write a 3-4 sentence institutional research commentary in the style of Goldman Sachs or JPMorgan. Lead with the single dominant price driver. Follow with supply/demand dynamics and current sentiment bias. Be precise and insight-driven — avoid generic statements. Sound authoritative, not descriptive.
 
 STEP 7 - TRADER TAKEAWAYS: Generate observational insights for three timeframes: Intraday, Next Few Days, Next Few Weeks. Never give buy/sell recommendations.
 
@@ -750,7 +751,7 @@ STEP 9 - MARKET NARRATIVE TRACKING: Identify the dominant narrative (e.g. inflat
 STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price levels in USD. No markdown, no explanation, no text before or after the JSON:
 
 {
-  "market_summary": "concise professional narrative covering global market situation, macro drivers, supply/demand, and regional impact across US, Europe, and China",
+  "market_summary": "3-4 sentence institutional research commentary. Lead with the dominant price driver. Cover supply/demand dynamics and current sentiment bias. Precise and insight-driven like Goldman Sachs research.",
   "sentiment": "STRONG_BULLISH or BULLISH or NEUTRAL or BEARISH or STRONG_BEARISH",
   "drivers": {
     "up": ["driver 1", "driver 2", "driver 3"],
@@ -993,6 +994,11 @@ def get_signals():
         .limit(10)
         .all()
     )
+    def _urgency(strength):
+        if strength >= 8: return "HIGH"
+        if strength >= 5: return "MEDIUM"
+        return "LOW"
+
     result = [
         {
             "id":                 r.id,
@@ -1001,6 +1007,8 @@ def get_signals():
             "impact":             r.impact,
             "reason":             r.reason,
             "confidence":         r.confidence,
+            "signal_strength":    r.signal_strength,
+            "urgency":            _urgency(r.signal_strength or 0),
             "triggered_analysis": r.triggered_analysis,
             "created_at":         r.created_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
