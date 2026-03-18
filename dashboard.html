@@ -129,7 +129,7 @@
     .ts-hidden { display: none; }
 
     .radar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
-    .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 6px 0; letter-spacing: 1px; text-align: center; }
+    .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 14px 0; letter-spacing: 1px; text-align: center; }
 
     /* Signal Cards */
     .signal-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; transition: border-color 0.2s; animation: fadeSlide 0.4s ease; cursor: default; }
@@ -351,7 +351,7 @@
 <!-- ── Live Status Bar ────────────────────────────────────────────────────────── -->
 <div class="status-bar">
   <div class="sb-live"><div class="sb-live-dot"></div>LIVE</div>
-  <span class="sb-info">News: every 15 min &nbsp;·&nbsp; AI Brief: Mon–Fri, 6am &amp; 12pm IST</span>
+  <span class="sb-info">News: every 15 min &nbsp;·&nbsp; AI Brief: every 6 hrs</span>
   <div class="sb-right">
     <span>Last Updated: <span id="sb-updated">—</span></span>
     <span>Next Brief: <span id="sb-next" class="sb-countdown">—</span></span>
@@ -542,20 +542,12 @@
   let newsFilter = null;
 
   // ── Commodity Card Grid ───────────────────────────────────────────────────────
-  const SENTIMENT_SORT = { "STRONG_BULLISH":0, "BULLISH":1, "STRONG_BEARISH":2, "BEARISH":3, "NEUTRAL":4 };
-
   function renderAllCommodities() {
     const grid = document.getElementById("card-grid");
     const commodities = Object.keys(COMM_COLORS);
     if (!commodities.some(c => appData[c])) return;
 
-    const sorted = [...commodities].sort((a, b) => {
-      const sa = SENTIMENT_SORT[appData[a]?.analysis?.sentiment] ?? 4;
-      const sb = SENTIMENT_SORT[appData[b]?.analysis?.sentiment] ?? 4;
-      return sa - sb;
-    });
-
-    grid.innerHTML = sorted.map(name => buildCard(name)).join("");
+    grid.innerHTML = commodities.map(name => buildCard(name)).join("");
 
     requestAnimationFrame(() => {
       commodities.forEach(name => {
@@ -803,31 +795,17 @@
   }
 
   // ── Live Status Bar ───────────────────────────────────────────────────────────
-  const BRIEF_TIMES_UTC = [[0, 30], [6, 30]];
+  const ANALYSIS_TIMES_UTC = [[1,30],[6,30],[11,30],[16,30]];
 
   function nextAnalysisTime() {
     const now = new Date();
-    for (let d = 0; d <= 7; d++) {
-      for (const [h, m] of BRIEF_TIMES_UTC) {
-        const t = new Date(now);
-        t.setUTCDate(t.getUTCDate() + d);
-        t.setUTCHours(h, m, 0, 0);
-        if (t.getTime() <= now.getTime()) continue;
-        const tIST    = new Date(t.getTime() + 5.5 * 3600000);
-        const weekday = tIST.getUTCDay();
-        const istHour = tIST.getUTCHours();
-        if (weekday === 0 || weekday === 6) continue;
-        if (weekday === 5 && istHour >= 13) continue;
-        return t;
-      }
-    }
-    const t = new Date(now);
-    while (true) {
-      t.setUTCDate(t.getUTCDate() + 1);
-      t.setUTCHours(0, 30, 0, 0);
-      const tIST = new Date(t.getTime() + 5.5 * 3600000);
-      if (tIST.getUTCDay() === 1) return t;
-    }
+    const candidates = ANALYSIS_TIMES_UTC.map(([h, m]) => {
+      const t = new Date(now);
+      t.setUTCHours(h, m, 0, 0);
+      if (t.getTime() <= now.getTime()) t.setUTCDate(t.getUTCDate() + 1);
+      return t;
+    });
+    return new Date(Math.min(...candidates.map(t => t.getTime())));
   }
 
   function formatCountdown(ms) {
