@@ -3,6 +3,29 @@ from datetime import datetime, timezone, timedelta
 from db import db
 
 
+class MarketSignal(db.Model):
+    __tablename__ = "market_signals"
+
+    id                 = db.Column(db.Integer, primary_key=True)
+    commodity          = db.Column(db.String(50), nullable=False, index=True)
+    event              = db.Column(db.Text, nullable=False)
+    impact             = db.Column(db.String(20), nullable=False, default="neutral")
+    reason             = db.Column(db.Text)
+    confidence         = db.Column(db.Integer, default=0)
+    source_title       = db.Column(db.Text)
+    triggered_analysis = db.Column(db.Boolean, default=False)
+    created_at         = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        index=True,
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+    __table_args__ = (
+        db.Index("ix_market_signals_created_at_desc", "created_at"),
+    )
+
+
 class User(db.Model):
     __tablename__ = "users"
 

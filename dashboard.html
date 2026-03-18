@@ -120,6 +120,44 @@
     ::-webkit-scrollbar-thumb { background: #3a3428; border-radius: 1px; }
     .loading { padding: 32px 20px; font-family: 'DM Mono', monospace; font-size: 10px; color: #6a5a40; letter-spacing: 1px; }
     .section-card { background: #0d0c0a; border: 1px solid #2a2820; border-radius: 4px; padding: 16px; }
+
+    /* ── Market Radar ───────────────────────────────────────────────────────── */
+    .radar-panel { background: #0c0b09; border-bottom: 1px solid #2a2820; padding: 10px 24px 12px; }
+    .radar-header { display: flex; align-items: center; gap: 10px; margin-bottom: 9px; }
+    .radar-title { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 3px; color: #8a7a60; }
+    .radar-badge { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 1.5px; padding: 2px 7px; border-radius: 2px; background: #c8a87015; color: #c8a870; border: 1px solid #c8a87030; }
+    .radar-ts { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: #4a3a28; }
+    .radar-signals { display: flex; gap: 9px; overflow-x: auto; padding-bottom: 2px; }
+    .radar-signals::-webkit-scrollbar { height: 2px; }
+    .radar-signals::-webkit-scrollbar-thumb { background: #3a3428; }
+    .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: #4a3a28; letter-spacing: 1px; padding: 4px 0; }
+    .signal-card {
+      flex-shrink: 0; border: 1px solid #2a2820; border-radius: 4px;
+      padding: 9px 13px; min-width: 210px; max-width: 260px;
+      background: #0d0c0a; transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .signal-card:hover { border-color: #4a3a28; }
+    .signal-card.signal-high {
+      border-color: var(--sig-glow);
+      box-shadow: 0 0 10px color-mix(in srgb, var(--sig-glow) 20%, transparent);
+    }
+    .signal-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+    .signal-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--comm-color, #c8a870); }
+    .signal-comm { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1.5px; color: var(--comm-color, #c8a870); }
+    .signal-impact { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 1px; padding: 2px 6px; border-radius: 2px; margin-left: 2px; }
+    .sig-bullish { background: #4ade8015; color: #4ade80; border: 1px solid #4ade8030; }
+    .sig-bearish { background: #f8717115; color: #f87171; border: 1px solid #f8717130; }
+    .sig-neutral  { background: #fbbf2415; color: #fbbf24; border: 1px solid #fbbf2430; }
+    .signal-time { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: #4a3a28; white-space: nowrap; }
+    .signal-event { font-size: 11px; color: #c4b490; line-height: 1.5; }
+    .signal-reason { font-size: 10px; color: #6a5a40; margin-top: 4px; line-height: 1.4; }
+    .signal-triggered { display: inline-flex; align-items: center; gap: 4px; font-family: 'DM Mono', monospace; font-size: 7px; color: #c8a870; letter-spacing: 1px; margin-top: 5px; }
+
+    /* ── New Developments ───────────────────────────────────────────────────── */
+    .devs-card { background: #0d0c0a; border: 1px solid #2a2820; border-left: 3px solid #c8a87040; border-radius: 4px; padding: 14px 16px; }
+    .devs-item { font-size: 11px; color: #c4b490; padding: 3px 0; border-bottom: 1px solid #161412; line-height: 1.5; display: flex; gap: 6px; }
+    .devs-item:last-child { border-bottom: none; }
+    .devs-none { font-family: 'DM Mono', monospace; font-size: 9px; color: #4a3a28; letter-spacing: 1px; }
   </style>
 </head>
 <body>
@@ -177,6 +215,18 @@
       <button class="login-btn" id="reset-btn" onclick="submitReset()">SET NEW PASSWORD</button>
       <div class="login-error" id="reset-msg" style="min-height:16px;text-align:center;font-family:'DM Mono',monospace;font-size:10px;margin-top:12px"></div>
     </div>
+  </div>
+</div>
+
+<!-- Market Radar -->
+<div class="radar-panel" id="radar-panel">
+  <div class="radar-header">
+    <span class="radar-title">MARKET RADAR</span>
+    <span class="radar-badge">AI SIGNAL DETECTION</span>
+    <span class="radar-ts" id="radar-ts"></span>
+  </div>
+  <div class="radar-signals" id="radar-signals">
+    <span class="radar-empty">Scanning for signals...</span>
   </div>
 </div>
 
@@ -450,6 +500,11 @@
         </div>
       </div>
 
+
+      <div>
+        <div class="section-label">NEW DEVELOPMENTS</div>
+        ${renderNewDevelopments(d.new_developments)}
+      </div>
 
       <div>
         <div class="section-label">EMAIL ALERTS</div>
@@ -744,6 +799,101 @@
   };
 
   if (getAccess()) loadNotify();
+
+  // ── Market Radar ─────────────────────────────────────────────────────────────
+  const COMM_COLORS = {
+    "Gold": "#c9a84c", "Crude Oil": "#b85c38",
+    "Silver": "#8faabf", "Copper": "#b87040", "Natural Gas": "#5a9e8f",
+  };
+  const SIG_GLOW = { bullish: "#4ade80", bearish: "#f87171", neutral: "#fbbf24" };
+
+  function timeAgo(isoStr) {
+    const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
+    if (diff < 60)  return diff + "s ago";
+    if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+    if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
+    return Math.floor(diff / 86400) + "d ago";
+  }
+
+  function renderRadar(signals) {
+    const container = document.getElementById("radar-signals");
+    const ts        = document.getElementById("radar-ts");
+    if (ts) ts.textContent = "Updated " + new Date().toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+
+    if (!signals || signals.length === 0) {
+      container.innerHTML = '<span class="radar-empty">No signals detected this cycle — monitoring markets</span>';
+      return;
+    }
+
+    container.innerHTML = signals.map(s => {
+      const commColor  = COMM_COLORS[s.commodity] || "#c8a870";
+      const impactCls  = s.impact === "bullish" ? "sig-bullish" : s.impact === "bearish" ? "sig-bearish" : "sig-neutral";
+      const impactLbl  = s.impact.toUpperCase();
+      const isHigh     = s.confidence >= 80;
+      const glowColor  = SIG_GLOW[s.impact] || "#c8a870";
+      const commKey    = s.commodity.replace(/ /g, "_");
+
+      return `
+        <div class="signal-card${isHigh ? " signal-high" : ""}"
+             style="--comm-color:${commColor};--sig-glow:${glowColor}">
+          <div class="signal-top">
+            <div class="signal-dot"></div>
+            <span class="signal-comm">${s.commodity.toUpperCase()}</span>
+            <span class="signal-impact ${impactCls}">${impactLbl}</span>
+            <span class="signal-time">${timeAgo(s.created_at)}</span>
+          </div>
+          <div class="signal-event">${s.event}</div>
+          ${s.reason ? `<div class="signal-reason">${s.reason}</div>` : ""}
+          ${s.triggered_analysis ? `<div class="signal-triggered">⚡ Triggered immediate analysis</div>` : ""}
+        </div>`;
+    }).join("");
+  }
+
+  async function loadSignals() {
+    try {
+      const res = await apiFetch("/signals");
+      if (!res || !res.ok) return;
+      const signals = await res.json();
+      renderRadar(signals);
+    } catch (e) {}
+  }
+
+  // ── New Developments renderer ──────────────────────────────────────────────
+  function renderNewDevelopments(devs) {
+    if (!devs || devs.status === "none") {
+      return `<div class="devs-card"><span class="devs-none">No significant new developments since last analysis</span></div>`;
+    }
+    if (devs.status !== "new") {
+      return `<div class="devs-card"><span class="devs-none">First analysis run — no comparison available</span></div>`;
+    }
+
+    const since = devs.since ? new Date(devs.since).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+    let rows = "";
+    (devs.added_bullish || []).forEach(d => {
+      rows += `<div class="devs-item"><span class="driver-dot-up">▲</span>${d}</div>`;
+    });
+    (devs.added_bearish || []).forEach(d => {
+      rows += `<div class="devs-item"><span class="driver-dot-down">▼</span>${d}</div>`;
+    });
+
+    return `<div class="devs-card">
+      ${since ? `<div style="font-family:'DM Mono',monospace;font-size:8px;color:#6a5a40;margin-bottom:10px;letter-spacing:1px">SINCE ${since}</div>` : ""}
+      ${rows || '<span class="devs-none">No new drivers identified</span>'}
+    </div>`;
+  }
+
+  // Boot signals
+  if (getAccess()) loadSignals();
+
+  // Wire into hideLoginOverlay so signals load after login too
+  const _origHideLogin3 = hideLoginOverlay;
+  hideLoginOverlay = function() {
+    _origHideLogin3();
+    loadSignals();
+  };
+
+  // Refresh signals every 15 minutes (aligned with news poller)
+  setInterval(loadSignals, 15 * 60 * 1000);
 </script>
 </body>
 </html>

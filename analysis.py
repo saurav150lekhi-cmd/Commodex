@@ -12,11 +12,13 @@ import hashlib
 import urllib.request
 import urllib.parse
 from datetime import datetime, timezone, timedelta
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, send_from_directory, request
 from flask_jwt_extended import JWTManager, jwt_required
 from dotenv import load_dotenv
 from db import db
-from models import User, AnalysisRun, UserAlert, NewsArticle
+from models import User, AnalysisRun, UserAlert, NewsArticle, MarketSignal
+from signal_engine import get_signal_candidates
+from agent import run_agent
 from auth import auth_bp
 from admin import admin_bp
 from email_utils import send_alert_email, send_analysis_notification_email
@@ -589,6 +591,7 @@ def fetch_and_store_news():
         NewsArticle.query.filter(NewsArticle.fetched_at < cutoff).delete()
         db.session.commit()
         saved = 0
+        new_by_commodity = {c: [] for c in COMMODITIES}
         for commodity, articles in by_commodity.items():
             for a in articles:
                 key = (a.get("url") or a["title"]) + "|" + commodity
@@ -608,11 +611,73 @@ def fetch_and_store_news():
                         fetched_at = now,
                         url_hash   = url_hash,
                     ))
+                    new_by_commodity[commodity].append(a)
                     saved += 1
         db.session.commit()
         log.info("News fetch complete: %d new articles saved.", saved)
+        # Run AI agent on newly saved articles (signal detection)
+        if saved > 0 and ANTHROPIC_API_KEY:
+            _process_signals(new_by_commodity)
     except Exception as e:
         log.error("News fetch failed: %s", e)
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def _process_signals(new_by_commodity: dict):
+    """Run signal_engine + AI agent on newly fetched articles."""
+    try:
+        candidates = get_signal_candidates(new_by_commodity)
+        if not candidates:
+            return
+        log.info("Agent: evaluating %d signal candidates...", len(candidates))
+        client  = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+        signals = run_agent(client, candidates)
+        if not signals:
+            log.info("Agent: no confirmed signals this cycle.")
+            return
+
+        trigger_commodities: set[str] = set()
+        for sig in signals:
+            row = MarketSignal(
+                commodity    = sig.get("commodity", ""),
+                event        = sig.get("event", ""),
+                impact       = sig.get("impact", "neutral"),
+                reason       = sig.get("reason", ""),
+                confidence   = sig.get("confidence", 0),
+                source_title = sig.get("source_title", ""),
+            )
+            db.session.add(row)
+            if sig.get("confidence", 0) > 80:
+                trigger_commodities.add(sig.get("commodity", ""))
+
+        db.session.commit()
+        log.info("Agent: %d signal(s) stored.", len(signals))
+
+        # Prune signals older than 48 hours
+        old_cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+        MarketSignal.query.filter(MarketSignal.created_at < old_cutoff).delete()
+        db.session.commit()
+
+        # Trigger immediate analysis for high-confidence signals
+        if trigger_commodities and not analysis_status["running"]:
+            log.info(
+                "High-confidence signal(s) for %s — triggering immediate analysis.",
+                trigger_commodities,
+            )
+            # Mark the stored signals as having triggered an analysis
+            MarketSignal.query.filter(
+                MarketSignal.commodity.in_(list(trigger_commodities)),
+                MarketSignal.triggered_analysis == False,
+            ).update({"triggered_analysis": True}, synchronize_session=False)
+            db.session.commit()
+            thread = threading.Thread(target=_run_in_context, daemon=True)
+            thread.start()
+
+    except Exception as e:
+        log.error("Signal processing failed: %s", e)
         try:
             db.session.rollback()
         except Exception:
@@ -891,6 +956,59 @@ def scheduler_loop():
 
 _last_db_reload = 0
 
+def _get_new_developments(commodity: str) -> dict | None:
+    """Compare the two most recent analysis runs for a commodity.
+    Returns new drivers that appeared in the latest run vs the previous one."""
+    rows = (
+        AnalysisRun.query
+        .filter_by(commodity=commodity)
+        .order_by(AnalysisRun.run_at.desc())
+        .limit(2)
+        .all()
+    )
+    if len(rows) < 2:
+        return None
+    latest_a = (rows[0].data or {}).get("analysis", {})
+    prev_a   = (rows[1].data or {}).get("analysis", {})
+    new_up   = list(
+        set(latest_a.get("drivers", {}).get("up",   []))
+        - set(prev_a.get("drivers",   {}).get("up",   []))
+    )
+    new_down = list(
+        set(latest_a.get("drivers", {}).get("down", []))
+        - set(prev_a.get("drivers",   {}).get("down", []))
+    )
+    prev_ts = rows[1].run_at.strftime("%Y-%m-%dT%H:%M:%SZ")
+    if not new_up and not new_down:
+        return {"status": "none", "since": prev_ts}
+    return {"status": "new", "added_bullish": new_up, "added_bearish": new_down, "since": prev_ts}
+
+
+@app.route("/signals")
+@jwt_required()
+def get_signals():
+    rows = (
+        MarketSignal.query
+        .order_by(MarketSignal.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    result = [
+        {
+            "id":                 r.id,
+            "commodity":          r.commodity,
+            "event":              r.event,
+            "impact":             r.impact,
+            "reason":             r.reason,
+            "confidence":         r.confidence,
+            "triggered_analysis": r.triggered_analysis,
+            "created_at":         r.created_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        }
+        for r in rows
+    ]
+    return jsonify(result)
+
+
 @app.route("/data")
 @jwt_required()
 def get_data():
@@ -904,10 +1022,12 @@ def get_data():
     result = {}
     for commodity, payload in latest_results.items():
         fresh = _get_fresh_articles(commodity, hours=24)
+        devs  = _get_new_developments(commodity)
+        base  = {**payload, "new_developments": devs}
         if fresh:
-            result[commodity] = {**payload, "articles": fresh[:25], "count": len(fresh)}
+            result[commodity] = {**base, "articles": fresh[:25], "count": len(fresh)}
         else:
-            result[commodity] = payload
+            result[commodity] = base
 
     response = jsonify(result)
     response.headers.add("Access-Control-Allow-Origin", "*")
