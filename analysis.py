@@ -155,7 +155,7 @@ NEWS_SOURCES = [
 ]
 
 COMMODITIES = {
-    "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "gold rises", "gold falls", "gold hits", "gold climbs"],
+    "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "xauusd", "gold rises", "gold falls", "gold hits", "gold climbs", "gold", "gld etf", "gold etf", "gold miners", "gdx", "central bank gold", "gold reserves", "gold demand", "gold supply", "gold output", "comex gold", "gold lbma", "real rates gold", "tips yield gold", "gold rally", "gold record", "gold all-time high", "gold safe haven", "gold inflation", "gold dollar"],
     "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
     "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil"],
     "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories", "china pmi", "manufacturing pmi", "china manufacturing", "freeport mcmoran", "bhp copper", "antofagasta", "codelco", "chile copper", "copper smelter", "copper concentrate", "copper scrap", "dr copper", "copper warehouse", "copper stocks lme", "comex copper stocks"],
@@ -404,9 +404,14 @@ def fetch_fred_data():
         "vix":        ("VIXCLS",           "VIX Volatility Index"),
         "eurusd":     ("DEXUSEU",          "EUR/USD Exchange Rate"),
         "cnyusd":     ("DEXCHUS",          "CNY/USD Exchange Rate"),
-        "gold_lbma":  ("GOLDAMGBD228NLBM", "Gold LBMA Price (USD/troy oz)"),
-        "wti_spot":   ("DCOILWTICO",       "WTI Crude Oil Spot (USD/bbl)"),
-        "natgas_spot":("DHHNGSP",          "Henry Hub Nat Gas Spot (USD/mmBtu)"),
+        "gold_lbma":      ("GOLDAMGBD228NLBM", "Gold LBMA Price (USD/troy oz)"),
+        "wti_spot":       ("DCOILWTICO",       "WTI Crude Oil Spot (USD/bbl)"),
+        "natgas_spot":    ("DHHNGSP",          "Henry Hub Nat Gas Spot (USD/mmBtu)"),
+        # Gold-critical: real rates are the #1 driver
+        "tips_10y":       ("DFII10",           "10Y TIPS Real Yield (%) — inverse gold driver"),
+        "breakeven_10y":  ("T10YIE",           "10Y Breakeven Inflation Rate (%) — gold demand driver"),
+        # Silver-specific
+        "silver_lbma":    ("SLVPRUSD",         "Silver LBMA Price (USD/troy oz)"),
     }
     result = {}
     for key, (series_id, label) in series.items():
@@ -673,7 +678,61 @@ def fetch_lng_export_data():
     return result
 
 
-# ── 14. BLS — CPI and PPI (free public API, no key required) ───────────────────
+# ── 14. Gold ETF holdings — GLD/IAU scrape (free, no key) ────────────────────
+def fetch_gold_etf_holdings():
+    """Fetch SPDR GLD and iShares IAU ETF gold holdings (tonnes) — institutional demand signal."""
+    result = {}
+    # GLD — world's largest gold ETF, published daily by SPDR
+    try:
+        req = urllib.request.Request(
+            "https://www.spdrgoldshares.com/usa/GLD/",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Look for tonnes held
+        for pattern in [
+            r'(\d[\d,]+\.?\d*)\s*(?:Tonnes|tonnes)',
+            r'Total\s+Gold[^0-9]*([\d,]+\.?\d*)',
+            r'"holdings"\s*:\s*"?([\d,]+\.?\d*)"?',
+        ]:
+            m = re.search(pattern, html)
+            if m:
+                val = float(m.group(1).replace(",", ""))
+                if 500 < val < 2000:  # sanity check: GLD holds ~800-1200 tonnes
+                    result["GLD"] = {"label": "SPDR GLD Holdings (tonnes)", "value": val}
+                    break
+    except Exception as e:
+        log.debug("GLD holdings fetch failed: %s", e)
+
+    # GDX — VanEck Gold Miners ETF price (miner stocks lead gold price)
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/GDX?interval=1d&range=5d")
+        if data:
+            meta = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+            result["GDX"] = {"label": "VanEck Gold Miners ETF (GDX)", "price": price, "change": chg}
+    except Exception as e:
+        log.debug("GDX fetch failed: %s", e)
+
+    # GDXJ — Junior gold miners (higher beta, early signal)
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/GDXJ?interval=1d&range=5d")
+        if data:
+            meta = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+            result["GDXJ"] = {"label": "Junior Gold Miners ETF (GDXJ)", "price": price, "change": chg}
+    except Exception as e:
+        log.debug("GDXJ fetch failed: %s", e)
+
+    return result
+
+
+# ── 15. BLS — CPI and PPI (free public API, no key required) ───────────────────
 def fetch_bls_data():
     """Fetch US CPI and PPI from BLS public API v1 (no API key needed)."""
     result = {}
@@ -794,7 +853,7 @@ def fetch_treasury_yields():
 # ── Build macro context string for Claude ─────────────────────────────────────
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
                         bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
-                        ttf=None, entsog=None, lng_exports=None):
+                        ttf=None, entsog=None, lng_exports=None, gold_etf=None):
     lines = []
 
     # FRED macro indicators — grouped by relevance
@@ -840,6 +899,21 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
             d = fred["gold_lbma"]
             chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
             lines.append(f"GOLD LBMA FIX: {d['label']}: {d['value']}{chg_str} ({d['date']})")
+        # Real rates — THE primary gold driver (inverse relationship)
+        if commodity_name in ("Gold", "Silver"):
+            if "tips_10y" in fred:
+                d = fred["tips_10y"]
+                chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+                regime = "GOLD SUPPORTIVE (negative real rates)" if d["value"] < 0 else "GOLD HEADWIND (positive real rates)"
+                lines.append(f"10Y REAL YIELD (TIPS): {d['value']}%{chg_str} — {regime} ({d['date']})")
+            if "breakeven_10y" in fred:
+                d = fred["breakeven_10y"]
+                chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+                lines.append(f"10Y BREAKEVEN INFLATION: {d['value']}%{chg_str} — inflation expectations ({d['date']})")
+        if commodity_name == "Silver" and "silver_lbma" in fred:
+            d = fred["silver_lbma"]
+            chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+            lines.append(f"SILVER LBMA FIX: {d['value']}{chg_str} ({d['date']})")
         if commodity_name == "Crude Oil" and "wti_spot" in fred:
             d = fred["wti_spot"]
             chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
@@ -992,6 +1066,17 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
         if "lng_exports_monthly" in lng_exports:
             d = lng_exports["lng_exports_monthly"]
             lines.append(f"  Monthly LNG Exports: {d['latest']} {d['unit']} ({d['period']})")
+
+    # Gold ETF holdings + miner stocks — gold & silver
+    if gold_etf and commodity_name in ("Gold", "Silver"):
+        lines.append("GOLD ETF & MINERS:")
+        if "GLD" in gold_etf:
+            lines.append(f"  {gold_etf['GLD']['label']}: {gold_etf['GLD']['value']} tonnes")
+        for ticker in ("GDX", "GDXJ"):
+            if ticker in gold_etf:
+                d = gold_etf[ticker]
+                chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+                lines.append(f"  {d['label']}: ${d['price']}{chg} — miners lead gold by 1-2 sessions")
 
     # PMI — copper & crude oil (manufacturing demand signal)
     if pmi and commodity_name in ("Copper", "Crude Oil"):
@@ -1366,8 +1451,9 @@ def run_analysis():
         ttf           = fetch_ttf_price()
         entsog        = fetch_entsog_flows()
         lng_exports   = fetch_lng_export_data()
-        log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, LME copper=%s, BDI=%s",
-                 len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog),
+        gold_etf      = fetch_gold_etf_holdings()
+        log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, GoldETF=%d, LME copper=%s, BDI=%s",
+                 len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog), len(gold_etf),
                  lme_copper["value"] if lme_copper else "unavailable",
                  bdi["value"] if bdi else "unavailable")
 
@@ -1386,7 +1472,8 @@ def run_analysis():
             macro_context = build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity,
                                                 bls=bls, weather=weather, treasury=treasury,
                                                 comex_copper=comex_copper, pmi=pmi,
-                                                ttf=ttf, entsog=entsog, lng_exports=lng_exports)
+                                                ttf=ttf, entsog=entsog, lng_exports=lng_exports,
+                                                gold_etf=gold_etf)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
