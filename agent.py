@@ -29,11 +29,12 @@ If this IS a market-moving event, return ONLY this JSON (no markdown):
   "impact": "bullish or bearish or neutral",
   "reason": "1-2 sentences on why this moves {commodity} prices",
   "confidence": 0-100,
-  "signal_strength": 1-10
+  "signal_strength": 1-10,
+  "so_what": "one powerful line: SO WHAT does this mean for prices? e.g. Supply tightening → upward pressure on oil"
 }}
 
 If this is NOT a market-moving event, return ONLY:
-{{"signal": false, "confidence": 0, "signal_strength": 0}}
+{{"signal": false, "confidence": 0, "signal_strength": 0, "so_what": ""}}
 
 Rules:
 - signal=true ONLY if this realistically moves {commodity} prices today or this week

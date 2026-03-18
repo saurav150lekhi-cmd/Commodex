@@ -23,10 +23,11 @@
       --high-imp: #f97316;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; min-height: 100vh; overflow-x: hidden; }
+    html, body { height: 100%; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden; }
 
     /* ── Header ─────────────────────────────────────────────────────────────── */
-    .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 100; }
+    .header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; height: 48px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; z-index: 100; }
     .logo { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: var(--text); letter-spacing: 0.5px; }
     .logo-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--accent); letter-spacing: 3px; opacity: 0.8; }
     .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
@@ -38,9 +39,8 @@
     .signout-btn:hover { color: var(--muted); }
 
     /* ── Verify banner ───────────────────────────────────────────────────────── */
-    .verify-banner { background: #1a1200; border-bottom: 1px solid #f5c54240; padding: 8px 24px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--neut); display: flex; align-items: center; gap: 12px; }
+    .verify-banner { background: #1a1200; border-bottom: 1px solid #f5c54240; padding: 8px 24px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--neut); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .verify-banner button { background: none; border: 1px solid #f5c54260; color: var(--neut); padding: 3px 10px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; }
-    .verify-banner button:hover { background: #f5c54215; }
     .verify-banner.hidden { display: none; }
 
     /* ── Login overlay ───────────────────────────────────────────────────────── */
@@ -58,13 +58,13 @@
     .login-error { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--bear); margin-top: 12px; min-height: 16px; text-align: center; }
     .login-toggle { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); text-align: center; margin-top: 20px; cursor: pointer; }
     .login-toggle span { color: var(--accent); cursor: pointer; }
-    .login-toggle span:hover { opacity: 0.8; }
 
     /* ── Market Radar Hero ───────────────────────────────────────────────────── */
     .radar-hero {
       background: linear-gradient(180deg, #0e1628 0%, var(--bg) 100%);
       border-bottom: 1px solid var(--border);
-      padding: 20px 24px 18px;
+      padding: 16px 24px 14px;
+      flex-shrink: 0;
       position: relative;
       overflow: hidden;
     }
@@ -77,39 +77,23 @@
       animation: scanline 4s ease-in-out infinite;
     }
     @keyframes scanline { 0%,100%{opacity:0.3} 50%{opacity:1} }
-    .radar-title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .radar-title-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
     .radar-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 4px; color: var(--accent); }
     .radar-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--muted); letter-spacing: 2px; }
     .radar-live { display: flex; align-items: center; gap: 5px; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--bull); letter-spacing: 1px; }
     .radar-live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--bull); animation: pulse 2s infinite; }
     .radar-ts { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); }
-    .radar-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 10px;
-    }
-    .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 20px 0; letter-spacing: 1px; text-align: center; }
+    .radar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+    .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 14px 0; letter-spacing: 1px; text-align: center; }
 
     /* Signal Cards */
-    .signal-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 14px 16px;
-      transition: transform 0.2s, border-color 0.2s, box-shadow 0.2s;
-      animation: fadeSlide 0.4s ease;
-      cursor: default;
-    }
+    .signal-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; transition: border-color 0.2s; animation: fadeSlide 0.4s ease; cursor: default; }
     @keyframes fadeSlide { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
-    .signal-card:hover { transform: translateY(-2px); border-color: var(--border2); }
-    .signal-card.sig-high-urgency {
-      border-color: #f9731640;
-      box-shadow: 0 0 16px #f9731618, inset 0 0 40px #f9731605;
-      animation: fadeSlide 0.4s ease, highPulse 3s ease-in-out infinite;
-    }
+    .signal-card:hover { border-color: var(--border2); }
+    .signal-card.sig-high-urgency { border-color: #f9731640; box-shadow: 0 0 16px #f9731618, inset 0 0 40px #f9731605; animation: fadeSlide 0.4s ease, highPulse 3s ease-in-out infinite; }
     @keyframes highPulse { 0%,100%{box-shadow:0 0 16px #f9731618} 50%{box-shadow:0 0 24px #f9731630} }
     .signal-card.sig-bullish-high { border-color: #16c78430; box-shadow: 0 0 12px #16c78415; }
-    .signal-top { display: flex; align-items: center; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+    .signal-top { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; flex-wrap: wrap; }
     .signal-urgency { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1.5px; padding: 2px 7px; border-radius: 3px; font-weight: 500; }
     .urg-HIGH { background: #f9731618; color: var(--high-imp); border: 1px solid #f9731635; }
     .urg-MEDIUM { background: #f5c54218; color: var(--neut); border: 1px solid #f5c54235; }
@@ -120,28 +104,18 @@
     .imp-neutral  { background: #f5c54218; color: var(--neut); border: 1px solid #f5c54235; }
     .signal-comm { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--muted); letter-spacing: 1px; }
     .signal-time { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); white-space: nowrap; }
-    .signal-event { font-size: 12px; color: var(--text); line-height: 1.55; font-weight: 400; margin-bottom: 8px; }
-    .signal-reason { font-size: 11px; color: var(--text2); line-height: 1.5; margin-bottom: 10px; }
+    .signal-event { font-size: 12px; color: var(--text); line-height: 1.55; font-weight: 400; margin-bottom: 6px; }
+    .signal-reason { font-size: 11px; color: var(--text2); line-height: 1.5; margin-bottom: 8px; }
+    .signal-so-what { font-size: 11px; color: var(--accent); line-height: 1.5; margin-bottom: 8px; font-style: italic; padding: 6px 10px; background: var(--accent)0c; border-left: 2px solid var(--accent)50; border-radius: 0 4px 4px 0; }
     .signal-meters { display: flex; gap: 14px; align-items: center; }
     .signal-meter-wrap { flex: 1; }
     .signal-meter-label { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--faint); letter-spacing: 1.5px; margin-bottom: 4px; display: flex; justify-content: space-between; }
     .signal-bar-track { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
     .signal-bar-fill { height: 100%; border-radius: 2px; transition: width 0.6s ease; }
-    .signal-conf-badge { font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; white-space: nowrap; flex-shrink: 0; }
-    .signal-triggered { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--accent); letter-spacing: 1px; margin-top: 8px; display: flex; align-items: center; gap: 4px; }
+    .signal-triggered { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--accent); letter-spacing: 1px; margin-top: 7px; display: flex; align-items: center; gap: 4px; }
 
     /* ── Live Status Bar ─────────────────────────────────────────────────────── */
-    .status-bar {
-      background: var(--surface);
-      border-bottom: 1px solid var(--border);
-      padding: 7px 24px;
-      display: flex;
-      align-items: center;
-      gap: 20px;
-      font-family: 'DM Mono', monospace;
-      font-size: 9px;
-      flex-wrap: wrap;
-    }
+    .status-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 6px 24px; display: flex; align-items: center; gap: 20px; font-family: 'DM Mono', monospace; font-size: 9px; flex-shrink: 0; }
     .sb-live { display: flex; align-items: center; gap: 6px; color: var(--bull); font-weight: 500; letter-spacing: 2px; }
     .sb-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bull); animation: pulse 2s infinite; flex-shrink: 0; }
     .sb-info { color: var(--muted); letter-spacing: 0.5px; }
@@ -149,113 +123,104 @@
     .sb-right span { color: var(--text2); }
     .sb-countdown { color: var(--accent); font-weight: 500; }
 
-    /* ── Tabs ────────────────────────────────────────────────────────────────── */
-    .tabs { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 24px; display: flex; overflow-x: auto; }
-    .tab { padding: 10px 18px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--muted); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
-    .tab.active { color: var(--tab-color); border-bottom-color: var(--tab-color); }
-    .tab:hover { color: var(--text2); }
+    /* ── Terminal Body ────────────────────────────────────────────────────────── */
+    .terminal-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
 
-    /* ── Commodity Header ────────────────────────────────────────────────────── */
-    .commodity-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
-    .comm-name { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; }
-    .comm-price-block { display: flex; flex-direction: column; gap: 2px; }
-    .comm-price { font-family: 'DM Mono', monospace; font-size: 20px; color: var(--text); }
-    .comm-change { font-family: 'DM Mono', monospace; font-size: 11px; }
-    .comm-change.up { color: var(--bull); }
-    .comm-change.down { color: var(--bear); }
-    .comm-change.flat { color: var(--neut); }
-    .divider { width: 1px; height: 32px; background: var(--border); }
-    .sentiment-block { display: flex; flex-direction: column; gap: 5px; }
-    .sentiment-label { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 3px; }
-    .sentiment-text { font-family: 'Fraunces', serif; font-size: 26px; font-weight: 300; letter-spacing: 1px; }
-    .bias-badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; padding: 4px 12px; border-radius: 4px; font-weight: 500; }
+    /* ── Intel Grid ──────────────────────────────────────────────────────────── */
+    .intel-grid { flex: 1; min-width: 0; overflow-y: auto; padding: 18px 20px; background: var(--bg); }
+    .card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* Commodity Cards */
+    .comm-card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; transition: border-color 0.2s; animation: fadeSlide 0.35s ease; }
+    .comm-card:hover { border-color: var(--border2); }
+    .comm-card.breaking-card { border-color: #f9731650; animation: fadeSlide 0.35s ease, breakingPulse 3s ease-in-out infinite; }
+    @keyframes breakingPulse { 0%,100%{border-color:#f9731650;box-shadow:0 0 0 0 #f9731610} 50%{border-color:#f97316a0;box-shadow:0 0 20px #f9731625} }
+
+    .breaking-banner { background: linear-gradient(90deg, #f9731620, #f9731610); border-bottom: 1px solid #f9731635; padding: 5px 14px; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--high-imp); letter-spacing: 2px; display: flex; align-items: center; gap: 7px; }
+    .breaking-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--high-imp); animation: pulse 1.5s infinite; flex-shrink: 0; }
+
+    .cc-header { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); }
+    .cc-title-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+    .cc-name { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 300; line-height: 1; }
+    .cc-price { font-family: 'DM Mono', monospace; font-size: 16px; color: var(--text); }
+    .cc-change { font-family: 'DM Mono', monospace; font-size: 10px; }
+    .cc-change.up { color: var(--bull); }
+    .cc-change.down { color: var(--bear); }
+    .cc-change.flat { color: var(--neut); }
+    .cc-bias-row { display: flex; align-items: center; gap: 8px; }
+    .bias-badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; padding: 3px 10px; border-radius: 4px; font-weight: 500; }
     .bias-BULLISH, .bias-STRONG_BULLISH { background: #16c78420; color: var(--bull); border: 1px solid #16c78440; }
     .bias-BEARISH, .bias-STRONG_BEARISH { background: #ea394320; color: var(--bear); border: 1px solid #ea394340; }
     .bias-NEUTRAL { background: #f5c54220; color: var(--neut); border: 1px solid #f5c54240; }
-    .analysis-ts { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); margin-left: auto; text-align: right; line-height: 1.7; }
+    .cc-conf-badge { font-family: 'DM Mono', monospace; font-size: 8px; padding: 2px 7px; border-radius: 3px; }
+    .conf-HIGH { background: #16c78415; color: var(--bull); border: 1px solid #16c78430; }
+    .conf-MEDIUM { background: #f5c54215; color: var(--neut); border: 1px solid #f5c54230; }
+    .conf-LOW { background: #ea394315; color: var(--bear); border: 1px solid #ea394330; }
+    .cc-ts { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); margin-left: auto; text-align: right; line-height: 1.7; white-space: nowrap; }
 
-    /* ── Main Layout ─────────────────────────────────────────────────────────── */
-    .main { display: flex; height: calc(100vh - 160px); min-height: 500px; }
+    /* Sparkline within card */
+    .cc-spark { padding: 8px 14px; border-bottom: 1px solid var(--border); }
+    .cc-spark-inner { height: 48px; position: relative; }
 
-    /* News column */
-    .news-col { width: 20%; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
-    .col-header { padding: 10px 16px; border-bottom: 1px solid var(--border); font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2.5px; color: var(--muted); display: flex; align-items: center; }
-    .col-count { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); }
-    .news-list { flex: 1; overflow-y: auto; }
-    .news-item { padding: 11px 16px; border-bottom: 1px solid #0f1525; cursor: pointer; transition: background 0.1s; text-decoration: none; display: block; }
+    /* Card sections */
+    .cc-body { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
+    .cc-section-label { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 2.5px; color: var(--muted); margin-bottom: 7px; }
+    .cc-insight { font-size: 11.5px; color: var(--text2); line-height: 1.75; font-weight: 300; }
+
+    /* Compact drivers */
+    .cc-drivers { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .cc-driver-col { display: flex; flex-direction: column; gap: 3px; }
+    .cc-driver-item { font-size: 10.5px; color: var(--text2); line-height: 1.45; display: flex; gap: 5px; align-items: flex-start; }
+    .driver-up { color: var(--bull); flex-shrink: 0; font-size: 9px; margin-top: 2px; }
+    .driver-dn { color: var(--bear); flex-shrink: 0; font-size: 9px; margin-top: 2px; }
+
+    /* New developments within card */
+    .cc-devs { background: var(--bg); border: 1px solid var(--border); border-left: 2px solid var(--accent)50; border-radius: 6px; padding: 9px 11px; display: flex; flex-direction: column; gap: 4px; }
+    .cc-devs-since { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--faint); letter-spacing: 1px; margin-bottom: 4px; }
+    .cc-devs-item { font-size: 10.5px; color: var(--text2); line-height: 1.4; display: flex; gap: 5px; align-items: flex-start; }
+    .cc-devs-none { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); letter-spacing: 1px; }
+
+    /* Card footer */
+    .cc-footer { padding: 8px 14px; border-top: 1px solid var(--border); display: flex; align-items: center; gap: 8px; background: #0d1120; }
+    .cc-footer-label { font-size: 10px; color: var(--muted); font-weight: 300; }
+    .toggle-wrap { width: 32px; height: 16px; border-radius: 8px; background: var(--border); position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+    .toggle-knob { width: 12px; height: 12px; border-radius: 6px; background: var(--muted); position: absolute; top: 2px; left: 2px; transition: all 0.2s; }
+    .toggle-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1px; }
+
+    /* ── News Panel ──────────────────────────────────────────────────────────── */
+    .news-panel { width: 35%; min-width: 240px; border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+    .np-header { border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .np-title-row { padding: 9px 14px 0; display: flex; align-items: center; gap: 8px; }
+    .np-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2.5px; color: var(--muted); }
+    .np-count { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); margin-left: auto; }
+    .np-tabs { display: flex; overflow-x: auto; padding: 0 8px; gap: 0; }
+    .np-tab { padding: 7px 10px; font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 1.5px; color: var(--muted); border: none; background: none; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.15s; }
+    .np-tab.active { color: var(--tab-color, var(--accent)); border-bottom-color: var(--tab-color, var(--accent)); }
+    .np-tab:hover:not(.active) { color: var(--text2); }
+    .np-list { flex: 1; overflow-y: auto; }
+    .news-item { padding: 10px 14px; border-bottom: 1px solid #0f1525; cursor: pointer; transition: background 0.1s; text-decoration: none; display: block; }
     .news-item:hover { background: #141a2e; }
-    .news-meta { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
+    .news-meta { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; flex-wrap: wrap; }
+    .news-comm-tag { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 1px; opacity: 0.9; }
     .news-source { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--accent); opacity: 0.8; }
-    .news-time { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); margin-left: auto; }
+    .news-time { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--faint); margin-left: auto; white-space: nowrap; }
     .news-title { font-size: 11px; color: var(--text2); line-height: 1.5; }
     .impact-tag { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 1px; padding: 1px 5px; border-radius: 2px; flex-shrink: 0; }
     .impact-HIGH { background: #f9731618; color: var(--high-imp); border: 1px solid #f9731630; }
     .impact-MEDIUM { background: #4cc9f018; color: var(--accent); border: 1px solid #4cc9f030; }
     .impact-LOW { background: #1e254018; color: var(--faint); border: 1px solid #1e254030; }
+    .np-footer { border-top: 1px solid var(--border); padding: 8px 14px; display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-    /* Analysis column */
-    .analysis-col { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .analysis-body { flex: 1; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 18px; }
-
-    /* Analysis sections */
-    .section-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2.5px; color: var(--muted); margin-bottom: 10px; }
-    .section-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 16px; transition: border-color 0.2s; }
-    .section-card:hover { border-color: var(--border2); }
-    .briefing-text { font-size: 13px; line-height: 1.9; color: var(--text2); font-weight: 300; }
-    .briefing-text p { margin-bottom: 12px; }
-    .briefing-text p:last-child { margin-bottom: 0; }
-
-    .meta-row { display: flex; gap: 10px; flex-wrap: wrap; }
-    .badge { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; padding: 4px 10px; border-radius: 4px; display: inline-flex; align-items: center; gap: 6px; }
-
-    .price-context-box { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent)50; border-radius: 8px; padding: 12px 16px; font-size: 12px; color: var(--text2); line-height: 1.7; }
-
-    .timeframe-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-    .timeframe-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; transition: border-color 0.2s; }
-    .timeframe-card:hover { border-color: var(--border2); }
-    .timeframe-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
-    .timeframe-value { font-size: 11px; color: var(--text2); line-height: 1.7; }
-
-    .drivers-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .driver-col { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px; }
-    .driver-col-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 2px; margin-bottom: 10px; }
-    .driver-col-up .driver-col-label { color: var(--bull); }
-    .driver-col-down .driver-col-label { color: var(--bear); }
-    .driver-item { font-size: 11px; color: var(--text2); padding: 5px 0; border-bottom: 1px solid #0f1525; line-height: 1.5; display: flex; gap: 6px; }
-    .driver-item:last-child { border-bottom: none; }
-    .driver-dot-up { color: var(--bull); flex-shrink: 0; font-size: 10px; }
-    .driver-dot-down { color: var(--bear); flex-shrink: 0; font-size: 10px; }
-
-    /* New Developments */
-    .devs-card { background: var(--card); border: 1px solid var(--border); border-left: 3px solid var(--accent)40; border-radius: 8px; padding: 14px 16px; }
-    .devs-item { font-size: 11px; color: var(--text2); padding: 5px 0; border-bottom: 1px solid #0f1525; line-height: 1.5; display: flex; gap: 6px; }
-    .devs-item:last-child { border-bottom: none; }
-    .devs-none { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); letter-spacing: 1px; }
-
-    /* Sparkline */
-    .chart-wrap { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
-    .chart-inner { height: 70px; position: relative; }
-
-    /* Confidence color helper */
-    .conf-HIGH { color: var(--bull); }
-    .conf-MEDIUM { color: var(--neut); }
-    .conf-LOW { color: var(--bear); }
-
-    /* Scrollbar */
+    /* ── Shared ───────────────────────────────────────────────────────────────── */
+    .loading { padding: 28px 16px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--faint); letter-spacing: 1px; }
     ::-webkit-scrollbar { width: 2px; height: 2px; }
     ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 1px; }
-
-    .loading { padding: 32px 20px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--faint); letter-spacing: 1px; }
-
-    /* Narrative badge */
-    .nar-Strengthening { color: var(--bull); }
-    .nar-Weakening     { color: var(--bear); }
-    .nar-Shifting      { color: #818cf8; }
-    .nar-Stable        { color: var(--neut); }
+    .np-tabs::-webkit-scrollbar { height: 0; }
   </style>
 </head>
 <body>
 
+<!-- ── Header ──────────────────────────────────────────────────────────────── -->
 <div class="header">
   <span class="logo">Commodex</span>
   <span class="logo-sub">INTELLIGENCE TERMINAL</span>
@@ -266,13 +231,14 @@
   </div>
 </div>
 
+<!-- ── Verify Banner ────────────────────────────────────────────────────────── -->
 <div class="verify-banner hidden" id="verify-banner">
   ⚠ Your email is not verified.
   <button onclick="resendVerification()">Verify Email</button>
   <span id="verify-msg" style="color:var(--bull);font-size:9px"></span>
 </div>
 
-<!-- Login overlay -->
+<!-- ── Login Overlay ─────────────────────────────────────────────────────────── -->
 <div class="login-overlay" id="login-overlay">
   <div class="login-box">
     <div class="login-logo">Commodex</div>
@@ -312,7 +278,7 @@
   </div>
 </div>
 
-<!-- ── Market Radar Hero ──────────────────────────────────────────────────── -->
+<!-- ── Market Radar Hero ──────────────────────────────────────────────────────── -->
 <div class="radar-hero">
   <div class="radar-title-row">
     <span class="radar-title">MARKET RADAR</span>
@@ -325,7 +291,7 @@
   </div>
 </div>
 
-<!-- ── Live Status Bar ───────────────────────────────────────────────────── -->
+<!-- ── Live Status Bar ────────────────────────────────────────────────────────── -->
 <div class="status-bar">
   <div class="sb-live"><div class="sb-live-dot"></div>LIVE</div>
   <span class="sb-info">News: every 15 min &nbsp;·&nbsp; AI Brief: every 6 hrs</span>
@@ -336,22 +302,35 @@
   </div>
 </div>
 
-<div class="tabs" id="tabs"></div>
+<!-- ── Terminal Body ──────────────────────────────────────────────────────────── -->
+<div class="terminal-body">
 
-<div class="commodity-header" id="commodity-header">
-  <div class="loading">Loading...</div>
-</div>
-
-<div class="main">
-  <div class="news-col">
-    <div class="col-header">NEWS FEED <span class="col-count" id="news-count"></span></div>
-    <div class="news-list" id="news-list"><div class="loading">Loading...</div></div>
-  </div>
-  <div class="analysis-col">
-    <div class="analysis-body" id="analysis-body">
-      <div class="loading">Fetching analysis...</div>
+  <!-- Intel Grid: all 5 commodities -->
+  <div class="intel-grid">
+    <div class="card-grid" id="card-grid">
+      <div class="loading">Fetching intelligence briefings...</div>
     </div>
   </div>
+
+  <!-- News Panel -->
+  <div class="news-panel">
+    <div class="np-header">
+      <div class="np-title-row">
+        <span class="np-title">INTELLIGENCE FEED</span>
+        <span class="np-count" id="np-count"></span>
+      </div>
+      <div class="np-tabs" id="np-tabs"></div>
+    </div>
+    <div class="np-list" id="np-list"><div class="loading">Loading articles...</div></div>
+    <div class="np-footer">
+      <span style="font-size:10px;color:var(--muted);font-weight:300">Notify on new analysis</span>
+      <div class="toggle-wrap" onclick="toggleNotify()" id="notify-toggle" style="margin-left:auto">
+        <div class="toggle-knob"></div>
+      </div>
+      <span id="notify-label" class="toggle-label" style="color:var(--faint)">OFF</span>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -491,185 +470,151 @@
     emailVerified === false ? banner.classList.remove("hidden") : banner.classList.add("hidden");
   }
 
-  // ── App ───────────────────────────────────────────────────────────────────────
+  // ── Constants ─────────────────────────────────────────────────────────────────
   const COMM_COLORS = {
     "Gold": "#c9a84c", "Crude Oil": "#e07040",
     "Silver": "#8faabf", "Copper": "#c87840", "Natural Gas": "#4db89a"
   };
   const DECIMALS = { "Gold": 1, "Crude Oil": 2, "Silver": 3, "Copper": 4, "Natural Gas": 3 };
-  const SENTIMENTS = ["STRONG_BEARISH","BEARISH","NEUTRAL","BULLISH","STRONG_BULLISH"];
   const SENTIMENT_LABELS = { "STRONG_BEARISH":"STRONG BEARISH","BEARISH":"BEARISH","NEUTRAL":"NEUTRAL","BULLISH":"BULLISH","STRONG_BULLISH":"STRONG BULLISH" };
   const SENTIMENT_COLORS = { "STRONG_BEARISH":"var(--bear)","BEARISH":"var(--bear)","NEUTRAL":"var(--neut)","BULLISH":"var(--bull)","STRONG_BULLISH":"var(--bull)" };
-  const CONFIDENCE_COLORS = { "HIGH": "var(--bull)", "MEDIUM": "var(--neut)", "LOW": "var(--bear)" };
-  const NARRATIVE_COLORS  = { "Strengthening":"var(--bull)","Stable":"var(--neut)","Weakening":"var(--bear)","Shifting":"#818cf8" };
+  const SENT_SCORE = { "STRONG_BULLISH":2,"BULLISH":1,"NEUTRAL":0,"BEARISH":-1,"STRONG_BEARISH":-2 };
 
-  let data = {}, activeTab = "Gold", priceCache = {};
+  let appData = {}, priceCache = {};
   let chartInstances = {};
+  let newsFilter = null;
 
-  async function loadPrices() {
-    try {
-      const res = await apiFetch("/prices");
-      if (!res) return;
-      priceCache = await res.json();
-      renderCommodityHeader(activeTab);
-    } catch(e) {}
+  // ── Commodity Card Grid ───────────────────────────────────────────────────────
+  function renderAllCommodities() {
+    const grid = document.getElementById("card-grid");
+    const commodities = Object.keys(COMM_COLORS);
+    if (!commodities.some(c => appData[c])) return;
+
+    grid.innerHTML = commodities.map(name => buildCard(name)).join("");
+
+    requestAnimationFrame(() => {
+      commodities.forEach(name => {
+        loadChart(name);
+        updateAlertToggle(name);
+      });
+      updateNotifyToggle();
+    });
   }
 
-  function renderCommodityHeader(name) {
-    const color = COMM_COLORS[name];
-    const d = data[name];
-    const sentiment = d?.analysis?.sentiment || "NEUTRAL";
+  function buildCard(name) {
+    const d  = appData[name];
     const pd = priceCache[name];
-    const decimals = DECIMALS[name];
+    const color = COMM_COLORS[name];
+    const decimals = DECIMALS[name] || 2;
+
+    // Price block
     const price = pd?.price ? "$" + pd.price.toFixed(decimals) : "—";
-    const chg = pd?.change;
+    const chg   = pd?.change;
     const chgClass = chg > 0 ? "up" : chg < 0 ? "down" : "flat";
-    const chgStr  = chg != null ? (chg >= 0 ? "▲ " : "▼ ") + Math.abs(chg).toFixed(2) + "%" : "";
+    const chgStr   = chg != null ? (chg >= 0 ? "▲ " : "▼ ") + Math.abs(chg).toFixed(2) + "%" : "";
+
+    // Analysis data
+    const a         = d?.analysis || {};
+    const sentiment = a.sentiment || "NEUTRAL";
+    const confLevel = a.confidence || "LOW";
     const sentColor = SENTIMENT_COLORS[sentiment] || "var(--neut)";
+    const isBreaking = d?.breaking || false;
 
-    document.getElementById("commodity-header").innerHTML = `
-      <div class="comm-name" style="color:${color}">${name}</div>
-      <div class="comm-price-block">
-        <div class="comm-price">${price}</div>
-        <div class="comm-change ${chgClass}">${chgStr}</div>
-      </div>
-      <div class="divider"></div>
-      <div class="sentiment-block">
-        <div class="sentiment-label">SENTIMENT</div>
-        <div class="sentiment-text" style="color:${sentColor}">${SENTIMENT_LABELS[sentiment] || "NEUTRAL"}</div>
-      </div>
-      <div class="divider"></div>
-      <div style="display:flex;flex-direction:column;gap:5px">
-        <div class="sentiment-label">MARKET BIAS</div>
-        <span class="bias-badge bias-${sentiment}">${SENTIMENT_LABELS[sentiment] || "NEUTRAL"}</span>
-      </div>
-      <div class="analysis-ts">${d && d.timestamp ? "Updated " + new Date(d.timestamp).toLocaleString(undefined,{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"}) + "<br>" + d.count + " articles analysed" : ""}</div>
-    `;
-  }
+    // Updated timestamp
+    const tsStr = d?.timestamp
+      ? new Date(d.timestamp).toLocaleString(undefined, { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }) + " · " + (d.count || 0) + " articles"
+      : "";
 
-  function renderAnalysisBody(name) {
-    const d = data[name];
-    if (!d) return;
-    const a = d.analysis;
+    // Insight (first 2-3 sentences)
+    const fullSummary = a.market_summary || a.briefing || "";
+    const sentences = fullSummary.match(/[^.!?]+[.!?]+/g) || [];
+    const insight = sentences.slice(0, 3).join(" ").trim() || fullSummary.slice(0, 280) || "Analysis pending.";
 
-    const summaryHtml = (a.market_summary || a.briefing || "")
-      .split(/\n{2,}/).map(p => p.replace(/\n/g," ").trim()).filter(p => p.length > 10)
-      .map(p => `<p>${p}</p>`).join("") || "<p>No summary available.</p>";
+    // Drivers
+    const bullDrivers = (a.drivers?.up   || []).slice(0, 3);
+    const bearDrivers = (a.drivers?.down || []).slice(0, 3);
 
-    const conf = a.confidence || "LOW";
-    const confColor = CONFIDENCE_COLORS[conf] || "var(--neut)";
-    const dn = a.dominant_narrative || {};
-    const narStatus = dn.status || "";
-    const narColor  = NARRATIVE_COLORS[narStatus] || "var(--muted)";
-    const pac = a.price_action_context || "—";
-    const tt  = a.trader_takeaways || {};
+    const driverRows = (items, cls) => items.length
+      ? items.map(d => `<div class="cc-driver-item"><span class="${cls}">${cls==='driver-up'?'▲':'▼'}</span><span>${d}</span></div>`).join("")
+      : `<div class="cc-driver-item" style="color:var(--faint);font-size:10px">None identified</div>`;
 
-    const driversUp   = (a.drivers?.up   || []).map(d => `<div class="driver-item"><span class="driver-dot-up">▲</span>${d}</div>`).join("") || "<div class='driver-item' style='color:var(--faint)'>None identified</div>";
-    const driversDown = (a.drivers?.down || []).map(d => `<div class="driver-item"><span class="driver-dot-down">▼</span>${d}</div>`).join("") || "<div class='driver-item' style='color:var(--faint)'>None identified</div>";
-
-    document.getElementById("analysis-body").innerHTML = `
-      <div class="section-card">
-        <div class="section-label">AI INSIGHT</div>
-        <div class="briefing-text">${summaryHtml}</div>
-      </div>
-
-      <div class="meta-row">
-        <div class="badge" style="background:${confColor}18;color:${confColor};border:1px solid ${confColor}35">
-          <span style="font-size:7px">CONFIDENCE</span> ${conf}
-        </div>
-        ${dn.theme && dn.theme !== "—" ? `
-        <div class="badge" style="background:${narColor}18;color:${narColor};border:1px solid ${narColor}35">
-          <span style="font-size:7px">NARRATIVE</span> ${dn.theme} &nbsp;·&nbsp; ${narStatus}
-        </div>` : ""}
-      </div>
-
-      <div>
-        <div class="section-label">KEY DRIVERS</div>
-        <div class="drivers-grid">
-          <div class="driver-col driver-col-up"><div class="driver-col-label">BULLISH FACTORS</div>${driversUp}</div>
-          <div class="driver-col driver-col-down"><div class="driver-col-label">BEARISH FACTORS</div>${driversDown}</div>
-        </div>
-      </div>
-
-      <div>
-        <div class="section-label">PRICE ACTION CONTEXT</div>
-        <div class="price-context-box">${pac}</div>
-      </div>
-
-      <div>
-        <div class="section-label">SENTIMENT TREND</div>
-        <div class="chart-wrap">
-          <div class="chart-inner"><canvas id="chart-${name.replace(/ /g,'_')}"></canvas></div>
-        </div>
-      </div>
-
-      <div>
-        <div class="section-label">NEW DEVELOPMENTS</div>
-        ${renderNewDevelopments(d.new_developments)}
-      </div>
-
-      <div>
-        <div class="section-label">TRADER TAKEAWAYS</div>
-        <div class="timeframe-grid">
-          <div class="timeframe-card"><div class="timeframe-label">INTRADAY</div><div class="timeframe-value">${tt.intraday || "—"}</div></div>
-          <div class="timeframe-card"><div class="timeframe-label">NEXT FEW DAYS</div><div class="timeframe-value">${tt.next_few_days || "—"}</div></div>
-          <div class="timeframe-card"><div class="timeframe-label">NEXT FEW WEEKS</div><div class="timeframe-value">${tt.next_few_weeks || "—"}</div></div>
-        </div>
-      </div>
-
-      <div>
-        <div class="section-label">EMAIL ALERTS</div>
-        <div class="section-card" id="alerts-card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px">
-          <span style="font-size:12px;color:var(--muted);font-weight:300">Notify me when <strong style="color:var(--text2)">${name}</strong> sentiment changes</span>
-          <label style="margin-left:auto;display:flex;align-items:center;gap:8px;cursor:pointer">
-            <div class="toggle-wrap" onclick="toggleAlert('${name}')" id="alert-toggle-${name.replace(/ /g,'-')}" style="width:36px;height:18px;border-radius:9px;background:var(--border);position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0">
-              <div class="toggle-knob" style="width:14px;height:14px;border-radius:7px;background:var(--muted);position:absolute;top:2px;left:2px;transition:all 0.2s"></div>
+    // New developments
+    const devs = d?.new_developments;
+    let devsHtml = "";
+    if (devs && devs.status === "new") {
+      const since = devs.since ? new Date(devs.since).toLocaleString(undefined, { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }) : "";
+      const addedBull = (devs.added_bullish || []).map(x => `<div class="cc-devs-item"><span class="driver-up">▲</span><span>${x}</span></div>`).join("");
+      const addedBear = (devs.added_bearish || []).map(x => `<div class="cc-devs-item"><span class="driver-dn">▼</span><span>${x}</span></div>`).join("");
+      if (addedBull || addedBear) {
+        devsHtml = `
+          <div>
+            <div class="cc-section-label">NEW DEVELOPMENTS</div>
+            <div class="cc-devs">
+              ${since ? `<div class="cc-devs-since">SINCE ${since}</div>` : ""}
+              ${addedBull}${addedBear}
             </div>
-            <span id="alert-label-${name.replace(/ /g,'-')}" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--faint);letter-spacing:1px">OFF</span>
-          </label>
-        </div>
-        <div class="section-card" style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;margin-top:8px">
-          <span style="font-size:12px;color:var(--muted);font-weight:300">Email me when a <strong style="color:var(--text2)">new analysis</strong> is ready</span>
-          <label style="margin-left:auto;display:flex;align-items:center;gap:8px;cursor:pointer">
-            <div class="toggle-wrap" onclick="toggleNotify()" id="notify-toggle" style="width:36px;height:18px;border-radius:9px;background:var(--border);position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0">
-              <div class="toggle-knob" style="width:14px;height:14px;border-radius:7px;background:var(--muted);position:absolute;top:2px;left:2px;transition:all 0.2s"></div>
+          </div>`;
+      }
+    }
+
+    // Alert toggle key
+    const alertKey = name.replace(/ /g, '-');
+
+    return `
+      <div class="comm-card${isBreaking ? " breaking-card" : ""}">
+        ${isBreaking ? `<div class="breaking-banner"><div class="breaking-dot"></div>BREAKING UPDATE — EVENT-TRIGGERED ANALYSIS</div>` : ""}
+
+        <div class="cc-header">
+          <div class="cc-title-row">
+            <div class="cc-name" style="color:${color}">${name}</div>
+            <div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;margin-left:auto">
+              <div class="cc-price">${price}</div>
+              <div class="cc-change ${chgClass}">${chgStr}</div>
             </div>
-            <span id="notify-label" style="font-family:'DM Mono',monospace;font-size:9px;color:var(--faint);letter-spacing:1px">OFF</span>
-          </label>
+          </div>
+          <div class="cc-bias-row">
+            <span class="bias-badge bias-${sentiment}">${SENTIMENT_LABELS[sentiment] || "NEUTRAL"}</span>
+            <span class="cc-conf-badge conf-${confLevel}">${confLevel} CONF</span>
+            <span class="cc-ts">${tsStr}</span>
+          </div>
         </div>
-      </div>
-    `;
 
-    // Load sparkline after DOM is ready
-    requestAnimationFrame(() => loadChart(name));
-  }
+        <div class="cc-spark">
+          <div class="cc-spark-inner"><canvas id="chart-${name.replace(/ /g,'_')}"></canvas></div>
+        </div>
 
-  function renderNewDevelopments(devs) {
-    if (!devs || devs.status === "none") {
-      return `<div class="devs-card"><span class="devs-none">No significant new developments since last briefing</span></div>`;
-    }
-    if (devs.status !== "new") {
-      return `<div class="devs-card"><span class="devs-none">First analysis run — no prior comparison available</span></div>`;
-    }
-    const since = devs.since ? new Date(devs.since).toLocaleString(undefined, { day:"numeric", month:"short", hour:"2-digit", minute:"2-digit" }) : "";
-    let rows = "";
-    (devs.added_bullish || []).forEach(d => { rows += `<div class="devs-item"><span class="driver-dot-up">▲</span>${d}</div>`; });
-    (devs.added_bearish || []).forEach(d => { rows += `<div class="devs-item"><span class="driver-dot-down">▼</span>${d}</div>`; });
-    return `<div class="devs-card">
-      ${since ? `<div style="font-family:'DM Mono',monospace;font-size:8px;color:var(--faint);margin-bottom:10px;letter-spacing:1px">SINCE ${since}</div>` : ""}
-      ${rows || '<span class="devs-none">No new drivers since last briefing</span>'}
-    </div>`;
+        <div class="cc-body">
+          <div>
+            <div class="cc-section-label">AI INSIGHT</div>
+            <div class="cc-insight">${insight}</div>
+          </div>
+
+          <div>
+            <div class="cc-section-label">KEY DRIVERS</div>
+            <div class="cc-drivers">
+              <div class="cc-driver-col">${driverRows(bullDrivers, 'driver-up')}</div>
+              <div class="cc-driver-col">${driverRows(bearDrivers, 'driver-dn')}</div>
+            </div>
+          </div>
+
+          ${devsHtml}
+        </div>
+
+        <div class="cc-footer">
+          <span class="cc-footer-label">Alerts for <strong style="color:var(--text2)">${name}</strong></span>
+          <div class="toggle-wrap" onclick="toggleAlert('${name}')" id="alert-toggle-${alertKey}" style="margin-left:auto">
+            <div class="toggle-knob"></div>
+          </div>
+          <span id="alert-label-${alertKey}" class="toggle-label" style="color:var(--faint)">OFF</span>
+        </div>
+      </div>`;
   }
 
   // ── Chart.js Sparkline ────────────────────────────────────────────────────────
-  const SENT_SCORE = { "STRONG_BULLISH":2,"BULLISH":1,"NEUTRAL":0,"BEARISH":-1,"STRONG_BEARISH":-2 };
-
   async function loadChart(name) {
     const canvasId = "chart-" + name.replace(/ /g,"_");
     const canvas   = document.getElementById(canvasId);
     if (!canvas) return;
-
-    // Destroy existing instance
     if (chartInstances[name]) { chartInstances[name].destroy(); delete chartInstances[name]; }
 
     try {
@@ -678,11 +623,12 @@
       const history = await res.json();
       if (!history.length) return;
 
-      const labels = history.slice(-15).map(r => {
+      const pts    = history.slice(-15);
+      const labels = pts.map(r => {
         const d = new Date(r.run_at);
         return d.toLocaleDateString(undefined, { month:"short", day:"numeric" }) + " " + d.toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit" });
       });
-      const scores = history.slice(-15).map(r => SENT_SCORE[r.sentiment] ?? 0);
+      const scores = pts.map(r => SENT_SCORE[r.sentiment] ?? 0);
       const color  = COMM_COLORS[name] || "#4cc9f0";
 
       chartInstances[name] = new Chart(canvas, {
@@ -705,34 +651,44 @@
           maintainAspectRatio: false,
           animation: { duration: 600 },
           plugins: { legend: { display: false }, tooltip: {
-            callbacks: {
-              label: ctx => {
-                const s = Object.keys(SENT_SCORE).find(k => SENT_SCORE[k] === ctx.raw) || "NEUTRAL";
-                return " " + s;
-              }
-            },
-            backgroundColor: "#141a2e",
-            borderColor: "#1e2540",
-            borderWidth: 1,
-            titleColor: "#6b7a99",
-            bodyColor: "#e6e8ef",
+            callbacks: { label: ctx => " " + (Object.keys(SENT_SCORE).find(k => SENT_SCORE[k] === ctx.raw) || "NEUTRAL") },
+            backgroundColor: "#141a2e", borderColor: "#1e2540", borderWidth: 1,
+            titleColor: "#6b7a99", bodyColor: "#e6e8ef",
             titleFont: { family: "'DM Mono', monospace", size: 9 },
             bodyFont:  { family: "'DM Mono', monospace", size: 10 },
           }},
           scales: {
             x: { display: false },
-            y: {
-              min: -2.2, max: 2.2,
-              display: false,
-              grid: { display: false },
-            }
+            y: { min: -2.2, max: 2.2, display: false, grid: { display: false } }
           }
         }
       });
     } catch(e) {}
   }
 
-  // ── News renderer ─────────────────────────────────────────────────────────────
+  // ── News Panel ────────────────────────────────────────────────────────────────
+  function renderNewsPanel() {
+    renderNewsTabs();
+    renderNewsItems();
+  }
+
+  function renderNewsTabs() {
+    const tabs = document.getElementById("np-tabs");
+    const all  = ["ALL", ...Object.keys(COMM_COLORS)];
+    tabs.innerHTML = all.map(c => {
+      const isActive = (c === "ALL" && newsFilter === null) || newsFilter === c;
+      const color    = c === "ALL" ? "var(--accent)" : (COMM_COLORS[c] || "var(--accent)");
+      const label    = c === "ALL" ? "ALL" : c.split(" ")[0].toUpperCase();
+      const onclick  = c === "ALL" ? "setNewsFilter(null)" : `setNewsFilter('${c}')`;
+      return `<button class="np-tab${isActive ? " active" : ""}" style="--tab-color:${color}" onclick="${onclick}">${label}</button>`;
+    }).join("");
+  }
+
+  function setNewsFilter(filter) {
+    newsFilter = filter;
+    renderNewsPanel();
+  }
+
   function formatTime(published) {
     if (!published) return "";
     try {
@@ -742,70 +698,54 @@
     } catch(e) { return ""; }
   }
 
-  function renderNews(name) {
-    const d = data[name];
-    const articles = d?.articles || [];
-    document.getElementById("news-count").textContent = articles.length + " ARTICLES";
-    if (!articles.length) { document.getElementById("news-list").innerHTML = '<div class="loading">No articles found.</div>'; return; }
-    document.getElementById("news-list").innerHTML = articles.map(a =>
-      `<a class="news-item" href="${a.url}" target="_blank" rel="noopener">
+  function renderNewsItems() {
+    const list = document.getElementById("np-list");
+    let articles = [];
+
+    const sources = newsFilter ? { [newsFilter]: appData[newsFilter] } : appData;
+    Object.entries(sources).forEach(([name, d]) => {
+      (d?.articles || []).forEach(a => articles.push({ ...a, _commodity: name }));
+    });
+
+    // Sort by published date descending
+    articles.sort((a, b) => {
+      const da = a.published ? new Date(a.published).getTime() : 0;
+      const db = b.published ? new Date(b.published).getTime() : 0;
+      return db - da;
+    });
+
+    const countEl = document.getElementById("np-count");
+    if (countEl) countEl.textContent = articles.length + " ARTICLES";
+
+    if (!articles.length) {
+      list.innerHTML = '<div class="loading">No articles found.</div>';
+      return;
+    }
+
+    list.innerHTML = articles.slice(0, 60).map(a => {
+      const commColor = COMM_COLORS[a._commodity] || "var(--accent)";
+      const commLabel = (a._commodity || "").split(" ")[0].toUpperCase();
+      return `<a class="news-item" href="${a.url || '#'}" target="_blank" rel="noopener">
         <div class="news-meta">
           <span class="impact-tag impact-${a.impact || 'LOW'}">${a.impact || 'LOW'}</span>
-          <span class="news-source">${a.source}</span>
+          ${newsFilter === null ? `<span class="news-comm-tag" style="color:${commColor}bb">${commLabel}</span>` : ""}
+          <span class="news-source">${a.source || ''}</span>
           <span class="news-time">${formatTime(a.published)}</span>
         </div>
         <div class="news-title">${a.title}</div>
-      </a>`
-    ).join('');
-  }
-
-  // ── Tabs ──────────────────────────────────────────────────────────────────────
-  function renderTabs() {
-    const container = document.getElementById("tabs");
-    container.innerHTML = "";
-    Object.keys(COMM_COLORS).forEach(name => {
-      const btn = document.createElement("button");
-      btn.className = "tab" + (name === activeTab ? " active" : "");
-      btn.style.setProperty("--tab-color", COMM_COLORS[name]);
-      btn.textContent = name.toUpperCase();
-      btn.onclick = () => switchTab(name);
-      container.appendChild(btn);
-    });
-  }
-
-  function switchTab(name) {
-    activeTab = name;
-    renderTabs();
-    renderCommodityHeader(name);
-    renderAnalysisBody(name);
-    renderNews(name);
-    setTimeout(() => updateAlertToggle(name), 50);
-  }
-
-  async function loadData() {
-    try {
-      const res = await apiFetch("/data");
-      if (!res) return;
-      data = await res.json();
-      renderTabs();
-      renderCommodityHeader(activeTab);
-      renderAnalysisBody(activeTab);
-      renderNews(activeTab);
-      updateStatusBar();
-    } catch(e) {}
+      </a>`;
+    }).join("");
   }
 
   // ── Live Status Bar ───────────────────────────────────────────────────────────
-  // Scheduled analysis times in UTC: 01:30, 06:30, 11:30, 16:30
   const ANALYSIS_TIMES_UTC = [[1,30],[6,30],[11,30],[16,30]];
 
   function nextAnalysisTime() {
     const now = new Date();
-    const nowUTC = now.getTime();
     const candidates = ANALYSIS_TIMES_UTC.map(([h, m]) => {
       const t = new Date(now);
       t.setUTCHours(h, m, 0, 0);
-      if (t.getTime() <= nowUTC) t.setUTCDate(t.getUTCDate() + 1);
+      if (t.getTime() <= now.getTime()) t.setUTCDate(t.getUTCDate() + 1);
       return t;
     });
     return new Date(Math.min(...candidates.map(t => t.getTime())));
@@ -823,38 +763,31 @@
   }
 
   function updateStatusBar() {
-    const updatedEl   = document.getElementById("sb-updated");
-    const nextEl      = document.getElementById("sb-next");
-    const countdownEl = document.getElementById("sb-countdown");
-    const wrapEl      = document.getElementById("sb-countdown-wrap");
-
-    // Last updated from data
-    const firstCommodity = Object.values(data)[0];
+    const firstCommodity = Object.values(appData)[0];
     if (firstCommodity?.timestamp) {
-      const d = new Date(firstCommodity.timestamp);
+      const d   = new Date(firstCommodity.timestamp);
       const ist = new Date(d.getTime() + 5.5 * 3600000);
-      if (updatedEl) updatedEl.textContent = ist.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" }) + " IST";
+      const el  = document.getElementById("sb-updated");
+      if (el) el.textContent = ist.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" }) + " IST";
     }
-
-    // Next analysis time
-    const next = nextAnalysisTime();
+    const next    = nextAnalysisTime();
     const nextIST = new Date(next.getTime() + 5.5 * 3600000);
-    if (nextEl) nextEl.textContent = nextIST.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" }) + " IST";
-    if (wrapEl) wrapEl.style.display = "";
+    const nextEl  = document.getElementById("sb-next");
+    const wrapEl  = document.getElementById("sb-countdown-wrap");
+    if (nextEl)  nextEl.textContent = nextIST.toLocaleTimeString("en-IN", { hour:"2-digit", minute:"2-digit" }) + " IST";
+    if (wrapEl)  wrapEl.style.display = "";
   }
 
   function tickCountdown() {
-    const countdownEl = document.getElementById("sb-countdown");
-    if (!countdownEl) return;
-    const next = nextAnalysisTime();
-    countdownEl.textContent = formatCountdown(next.getTime() - Date.now());
+    const el = document.getElementById("sb-countdown");
+    if (el) el.textContent = formatCountdown(nextAnalysisTime().getTime() - Date.now());
   }
 
   // ── Market Radar ──────────────────────────────────────────────────────────────
   function timeAgo(isoStr) {
     const diff = Math.floor((Date.now() - new Date(isoStr).getTime()) / 1000);
-    if (diff < 60)   return diff + "s ago";
-    if (diff < 3600) return Math.floor(diff / 60) + "m ago";
+    if (diff < 60)    return diff + "s ago";
+    if (diff < 3600)  return Math.floor(diff / 60) + "m ago";
     if (diff < 86400) return Math.floor(diff / 3600) + "h ago";
     return Math.floor(diff / 86400) + "d ago";
   }
@@ -877,10 +810,8 @@
       const conf      = s.confidence || 0;
       const isHigh    = urgency === "HIGH";
       const isBullHigh = urgency !== "LOW" && s.impact === "bullish";
-
-      const barColor = s.impact === "bullish" ? "#16c784" : s.impact === "bearish" ? "#ea3943" : "#f5c542";
+      const barColor  = s.impact === "bullish" ? "#16c784" : s.impact === "bearish" ? "#ea3943" : "#f5c542";
       const confColor = conf >= 75 ? "#16c784" : conf >= 50 ? "#f5c542" : "#ea3943";
-
       let cardClass = "signal-card";
       if (isHigh) cardClass += " sig-high-urgency";
       else if (isBullHigh) cardClass += " sig-bullish-high";
@@ -895,22 +826,15 @@
           </div>
           <div class="signal-event">${s.event}</div>
           ${s.reason ? `<div class="signal-reason">${s.reason}</div>` : ""}
+          ${s.so_what ? `<div class="signal-so-what">→ ${s.so_what}</div>` : ""}
           <div class="signal-meters">
             <div class="signal-meter-wrap">
-              <div class="signal-meter-label">
-                <span>SIGNAL STRENGTH</span><span style="color:${barColor}">${strength}/10</span>
-              </div>
-              <div class="signal-bar-track">
-                <div class="signal-bar-fill" style="width:${strength*10}%;background:${barColor}"></div>
-              </div>
+              <div class="signal-meter-label"><span>SIGNAL STRENGTH</span><span style="color:${barColor}">${strength}/10</span></div>
+              <div class="signal-bar-track"><div class="signal-bar-fill" style="width:${strength*10}%;background:${barColor}"></div></div>
             </div>
             <div class="signal-meter-wrap">
-              <div class="signal-meter-label">
-                <span>CONFIDENCE</span><span style="color:${confColor}">${conf}%</span>
-              </div>
-              <div class="signal-bar-track">
-                <div class="signal-bar-fill" style="width:${conf}%;background:${confColor}"></div>
-              </div>
+              <div class="signal-meter-label"><span>CONFIDENCE</span><span style="color:${confColor}">${conf}%</span></div>
+              <div class="signal-bar-track"><div class="signal-bar-fill" style="width:${conf}%;background:${confColor}"></div></div>
             </div>
           </div>
           ${s.triggered_analysis ? `<div class="signal-triggered">⚡ Triggered immediate AI analysis</div>` : ""}
@@ -926,6 +850,27 @@
     } catch(e) {}
   }
 
+  // ── Data Loader ───────────────────────────────────────────────────────────────
+  async function loadData() {
+    try {
+      const res = await apiFetch("/data");
+      if (!res) return;
+      appData = await res.json();
+      renderAllCommodities();
+      renderNewsPanel();
+      updateStatusBar();
+    } catch(e) {}
+  }
+
+  async function loadPrices() {
+    try {
+      const res = await apiFetch("/prices");
+      if (!res) return;
+      priceCache = await res.json();
+      renderAllCommodities();
+    } catch(e) {}
+  }
+
   // ── Email Alerts ──────────────────────────────────────────────────────────────
   let alertCache = {};
 
@@ -936,7 +881,7 @@
       const list = await res.json();
       alertCache = {};
       list.forEach(a => { alertCache[a.commodity] = a.enabled; });
-      updateAlertToggle(activeTab);
+      Object.keys(COMM_COLORS).forEach(name => updateAlertToggle(name));
     } catch {}
   }
 
@@ -948,9 +893,9 @@
     const on = alertCache[name] === true;
     wrap.style.background = on ? "var(--accent)" : "var(--border)";
     wrap.querySelector(".toggle-knob").style.background = on ? "var(--bg)" : "var(--muted)";
-    wrap.querySelector(".toggle-knob").style.left       = on ? "20px" : "2px";
-    label.textContent  = on ? "ON" : "OFF";
-    label.style.color  = on ? "var(--accent)" : "var(--faint)";
+    wrap.querySelector(".toggle-knob").style.left       = on ? "18px" : "2px";
+    label.textContent = on ? "ON" : "OFF";
+    label.style.color = on ? "var(--accent)" : "var(--faint)";
   }
 
   async function toggleAlert(name) {
@@ -978,9 +923,9 @@
     if (!wrap || !label) return;
     wrap.style.background = notifyEnabled ? "var(--accent)" : "var(--border)";
     wrap.querySelector(".toggle-knob").style.background = notifyEnabled ? "var(--bg)" : "var(--muted)";
-    wrap.querySelector(".toggle-knob").style.left       = notifyEnabled ? "20px" : "2px";
-    label.textContent  = notifyEnabled ? "ON" : "OFF";
-    label.style.color  = notifyEnabled ? "var(--accent)" : "var(--faint)";
+    wrap.querySelector(".toggle-knob").style.left       = notifyEnabled ? "18px" : "2px";
+    label.textContent = notifyEnabled ? "ON" : "OFF";
+    label.style.color = notifyEnabled ? "var(--accent)" : "var(--faint)";
   }
 
   async function toggleNotify() {
@@ -990,7 +935,6 @@
   }
 
   // ── Boot ──────────────────────────────────────────────────────────────────────
-  // Handle reset password link
   if (window.location.hash.startsWith("#reset?token=")) {
     ["login-form","register-form","forgot-form"].forEach(id => document.getElementById(id).style.display = "none");
     document.getElementById("reset-form").style.display = "";
@@ -1009,7 +953,6 @@
     apiFetch("/auth/me").then(r => r && r.json()).then(d => d && checkVerificationBanner(d.email_verified)).catch(()=>{});
   }
 
-  // Override hideLoginOverlay to boot everything on login
   const _origHide = hideLoginOverlay;
   hideLoginOverlay = function() { _origHide(); loadData(); loadPrices(); loadSignals(); loadAlerts(); loadNotify(); };
 
@@ -1019,7 +962,6 @@
     _bootLoggedIn();
   }
 
-  // Polling intervals
   setInterval(loadData,    5 * 60 * 1000);
   setInterval(loadPrices,  2 * 60 * 1000);
   setInterval(loadSignals, 15 * 60 * 1000);

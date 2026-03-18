@@ -59,8 +59,9 @@ JWTManager(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
 
-latest_results  = {}
-analysis_status = {"running": False, "last_run": None, "last_error": None}
+latest_results       = {}
+analysis_status      = {"running": False, "last_run": None, "last_error": None}
+_breaking_commodities: set = set()   # commodities whose signals triggered an immediate run
 
 # Runs whether started via gunicorn or python directly
 with app.app_context():
@@ -69,6 +70,21 @@ with app.app_context():
         log.info("Database tables ready.")
     except Exception as e:
         log.error("Database init failed: %s", e)
+
+# Safe migrations for columns added after initial deploy
+from sqlalchemy import text as _sa_text
+with app.app_context():
+    _migrations = [
+        "ALTER TABLE market_signals ADD COLUMN signal_strength INTEGER DEFAULT 0",
+        "ALTER TABLE market_signals ADD COLUMN so_what TEXT",
+        "ALTER TABLE market_signals ADD COLUMN triggered_analysis BOOLEAN DEFAULT 0",
+    ]
+    for _sql in _migrations:
+        try:
+            db.session.execute(_sa_text(_sql))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 NEWS_SOURCES = [
     # ── Tier 1 — Confirmed working feeds ───────────────────────────────────────
@@ -646,6 +662,7 @@ def _process_signals(new_by_commodity: dict):
                 event           = sig.get("event", ""),
                 impact          = sig.get("impact", "neutral"),
                 reason          = sig.get("reason", ""),
+                so_what         = sig.get("so_what", ""),
                 confidence      = sig.get("confidence", 0),
                 signal_strength = sig.get("signal_strength", 0),
                 source_title    = sig.get("source_title", ""),
@@ -674,6 +691,7 @@ def _process_signals(new_by_commodity: dict):
                 MarketSignal.triggered_analysis == False,
             ).update({"triggered_analysis": True}, synchronize_session=False)
             db.session.commit()
+            _breaking_commodities.update(trigger_commodities)
             thread = threading.Thread(target=_run_in_context, daemon=True)
             thread.start()
 
@@ -811,8 +829,10 @@ STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price lev
 # ══════════════════════════════════════════════════════════════════════════════
 
 def run_analysis():
-    global latest_results, analysis_status
+    global latest_results, analysis_status, _breaking_commodities
     analysis_status["running"] = True
+    breaking_this_run = set(_breaking_commodities)
+    _breaking_commodities.clear()
     analysis_status["last_error"] = None
     log.info("Analysis cycle started.")
 
@@ -877,6 +897,7 @@ def run_analysis():
                 "articles":  sorted_articles[:25],
                 "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 "count":     len(articles),
+                "breaking":  commodity in breaking_this_run,
             }
         latest_results = results
         # Write to DB
@@ -1009,6 +1030,7 @@ def get_signals():
             "confidence":         r.confidence,
             "signal_strength":    r.signal_strength,
             "urgency":            _urgency(r.signal_strength or 0),
+            "so_what":            r.so_what or "",
             "triggered_analysis": r.triggered_analysis,
             "created_at":         r.created_at.strftime("%Y-%m-%dT%H:%M:%SZ"),
         }
