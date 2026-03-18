@@ -438,7 +438,7 @@
 <!-- ── Live Status Bar ────────────────────────────────────────────────────────── -->
 <div class="status-bar">
   <div class="sb-live"><div class="sb-live-dot"></div>LIVE</div>
-  <span class="sb-info">News: every 15 min &nbsp;·&nbsp; AI Brief: every 6 hrs</span>
+  <span class="sb-info">News: every 15 min &nbsp;·&nbsp; AI Brief: Mon–Fri, 6am &amp; 12pm IST</span>
   <div class="sb-right">
     <span>Last Updated: <span id="sb-updated">—</span></span>
     <span>Next Brief: <span id="sb-next" class="sb-countdown">—</span></span>
@@ -926,17 +926,37 @@
   }
 
   // ── Live Status Bar ───────────────────────────────────────────────────────────
-  const ANALYSIS_TIMES_UTC = [[1,30],[6,30],[11,30],[16,30]];
+  // Briefings Mon–Fri at 00:30 UTC (06:00 IST) and 06:30 UTC (12:00 IST)
+  const BRIEF_TIMES_UTC = [[0, 30], [6, 30]];
 
   function nextAnalysisTime() {
     const now = new Date();
-    const candidates = ANALYSIS_TIMES_UTC.map(([h, m]) => {
-      const t = new Date(now);
-      t.setUTCHours(h, m, 0, 0);
-      if (t.getTime() <= now.getTime()) t.setUTCDate(t.getUTCDate() + 1);
-      return t;
-    });
-    return new Date(Math.min(...candidates.map(t => t.getTime())));
+    // Try each briefing slot today and the next 7 days
+    for (let d = 0; d <= 7; d++) {
+      for (const [h, m] of BRIEF_TIMES_UTC) {
+        const t = new Date(now);
+        t.setUTCDate(t.getUTCDate() + d);
+        t.setUTCHours(h, m, 0, 0);
+        if (t.getTime() <= now.getTime()) continue;
+
+        // Convert to IST to check Mon 06:00 – Fri 12:00 window
+        const tIST    = new Date(t.getTime() + 5.5 * 3600000);
+        const weekday = tIST.getUTCDay();           // 0=Sun,1=Mon…5=Fri,6=Sat
+        const istHour = tIST.getUTCHours();
+
+        if (weekday === 0 || weekday === 6) continue;           // skip weekends
+        if (weekday === 5 && istHour >= 13) continue;           // skip Fri after 12:00 IST
+        return t;
+      }
+    }
+    // Fallback: next Monday 06:00 IST
+    const t = new Date(now);
+    while (true) {
+      t.setUTCDate(t.getUTCDate() + 1);
+      t.setUTCHours(0, 30, 0, 0);
+      const tIST = new Date(t.getTime() + 5.5 * 3600000);
+      if (tIST.getUTCDay() === 1) return t;
+    }
   }
 
   function formatCountdown(ms) {
