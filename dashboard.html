@@ -235,65 +235,68 @@
   .dcard-delta { font-size: 8px; color: rgba(93,100,120,0.45); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
   .dcard-expand { font-size: 8px; color: rgba(93,100,120,0.35); }
 
-  /* ── DETAIL PANEL ── */
+  /* ── DETAIL PANEL (full-screen replace) ── */
   #detail-panel {
-    width: 0; flex-shrink: 0; overflow: hidden;
-    border-left: 1px solid transparent;
-    background: #0d0f1a;
-    display: flex; flex-direction: column;
-    transition: width 0.26s cubic-bezier(0.4,0,0.2,1), border-color 0.26s;
+    display: none;
+    flex-direction: column;
+    background: var(--bg);
   }
-  #detail-panel.open { width: 380px; border-left-color: var(--border); overflow-y: auto; }
+  #main.detail-mode #grid-header { display: none; }
+  #main.detail-mode #cards-area { display: none; }
+  #main.detail-mode #detail-panel { display: flex; flex: 1; overflow: hidden; }
   #detail-panel::-webkit-scrollbar { width: 2px; }
   #detail-panel::-webkit-scrollbar-thumb { background: var(--border); }
-  #dp-inner { min-width: 380px; opacity: 0; transition: opacity 0.18s 0.1s; }
-  #detail-panel.open #dp-inner { opacity: 1; }
+  #dp-inner { display: flex; flex-direction: column; flex: 1; overflow: hidden; }
   .dp-topbar {
     display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px; border-bottom: 1px solid var(--border);
-    background: #080a10; position: sticky; top: 0; z-index: 2;
+    padding: 10px 20px; border-bottom: 1px solid var(--border);
+    background: #080a10; flex-shrink: 0;
   }
-  .dp-close {
-    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
-    cursor: pointer; font-size: 14px; color: rgba(93,100,120,0.7); border: 1px solid var(--border);
-    flex-shrink: 0; background: none; font-family: var(--mono);
+  .dp-back {
+    font-family: var(--mono); font-size: 9px; font-weight: 800; letter-spacing: 0.14em;
+    color: rgba(93,100,120,0.7); background: none; border: 1px solid var(--border);
+    padding: 5px 12px; cursor: pointer; margin-right: 16px; transition: color 0.15s, border-color 0.15s;
   }
-  .dp-close:hover { color: var(--fg); border-color: rgba(209,212,220,0.3); }
+  .dp-back:hover { color: var(--fg); border-color: rgba(209,212,220,0.3); }
   .dp-label { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); }
-  .dp-name { font-size: 17px; font-weight: 800; color: var(--fg); letter-spacing: -0.01em; }
-  .dp-hero { padding: 14px 16px; border-bottom: 1px solid var(--border); }
-  .dp-bias-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-  .dp-bias-val { font-weight: 900; font-size: 22px; letter-spacing: 0.06em; }
+  .dp-name { font-size: 20px; font-weight: 800; color: var(--fg); letter-spacing: -0.01em; }
+  .dp-bias-val { font-weight: 900; font-size: 26px; letter-spacing: 0.06em; }
   .dp-price-block { text-align: right; }
   .dp-price { font-size: 22px; font-weight: 800; color: var(--fg); line-height: 1; }
   .dp-chg { font-size: 13px; font-weight: 700; margin-top: 2px; }
-  .dp-conf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-  .dp-conf-lbl { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.7); width: 80px; flex-shrink: 0; }
-  .dp-conf-bg { flex: 1; height: 6px; background: rgba(0,0,0,0.5); overflow: hidden; }
+  #dp-body { display: grid; grid-template-columns: 1fr 1fr; flex: 1; overflow: hidden; }
+  .dp-col { overflow-y: auto; padding: 24px 28px; }
+  .dp-col::-webkit-scrollbar { width: 2px; }
+  .dp-col::-webkit-scrollbar-thumb { background: var(--border); }
+  .dp-col-left { border-right: 1px solid var(--border); }
+  .dp-conf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .dp-conf-lbl { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.7); width: 90px; flex-shrink: 0; }
+  .dp-conf-bg { flex: 1; height: 7px; background: rgba(0,0,0,0.5); overflow: hidden; }
   .dp-conf-fill { height: 100%; transition: width 0.5s; }
-  .dp-conf-pct { font-size: 13px; font-weight: 800; width: 40px; text-align: right; flex-shrink: 0; }
-  .dp-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
-  .dp-meta-cell { background: rgba(8,10,16,0.6); border: 1px solid var(--border); padding: 7px 10px; }
-  .dp-meta-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.65); margin-bottom: 3px; }
-  .dp-meta-val { font-size: 14px; font-weight: 800; }
-  .dp-sparkline { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .dp-conf-pct { font-size: 15px; font-weight: 800; width: 46px; text-align: right; flex-shrink: 0; }
+  .dp-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .dp-meta-cell { background: rgba(8,10,16,0.6); border: 1px solid var(--border); padding: 10px 14px; }
+  .dp-meta-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.65); margin-bottom: 4px; }
+  .dp-meta-val { font-size: 16px; font-weight: 800; }
+  .dp-sparkline { margin-bottom: 20px; }
   .dp-sparkline svg { display: block; width: 100%; }
-  .dp-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 9px; }
-  .dp-why-item { display: flex; align-items: flex-start; gap: 7px; margin-bottom: 8px; }
-  .dp-why-bul { font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
-  .dp-why-txt { font-size: 12px; color: rgba(209,212,220,0.9); line-height: 1.5; font-family: var(--sans); }
-  .dp-sig-item { display: flex; align-items: flex-start; gap: 7px; margin-bottom: 6px; }
-  .dp-sig-arrow { font-size: 12px; font-weight: 700; flex-shrink: 0; }
-  .dp-sig-txt { font-size: 12px; font-weight: 600; color: rgba(209,212,220,0.93); line-height: 1.45; font-family: var(--sans); }
-  .dp-drivers { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  .dp-driver-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(30,35,54,0.5); }
+  .dp-section { margin-bottom: 20px; }
+  .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 12px; }
+  .dp-why-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
+  .dp-why-bul { font-size: 14px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .dp-why-txt { font-size: 13px; color: rgba(209,212,220,0.9); line-height: 1.6; font-family: var(--sans); }
+  .dp-sig-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
+  .dp-sig-arrow { font-size: 13px; font-weight: 700; flex-shrink: 0; }
+  .dp-sig-txt { font-size: 12px; font-weight: 600; color: rgba(209,212,220,0.93); line-height: 1.55; font-family: var(--sans); }
+  .dp-sig-section { border: 1px solid var(--border); padding: 14px 16px; margin-bottom: 20px; }
+  .dp-drivers { margin-bottom: 20px; }
+  .dp-driver-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid rgba(30,35,54,0.5); }
   .dp-driver-row:last-child { border-bottom: none; }
-  .dp-driver-name { font-size: 10px; color: rgba(209,212,220,0.7); flex: 1; }
-  .dp-driver-bar-wrap { flex: 1; margin: 0 10px; height: 3px; background: rgba(0,0,0,0.4); }
+  .dp-driver-name { font-size: 12px; color: rgba(209,212,220,0.8); flex: 1; font-family: var(--sans); }
+  .dp-driver-bar-wrap { flex: 1; margin: 0 14px; height: 4px; background: rgba(0,0,0,0.4); }
   .dp-driver-bar { height: 100%; transition: width 0.5s; }
-  .dp-driver-val { font-size: 10px; font-weight: 700; width: 34px; text-align: right; }
-  .dp-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: rgba(8,10,16,0.7); }
+  .dp-driver-val { font-size: 11px; font-weight: 700; width: 36px; text-align: right; }
+  .dp-footer { padding: 10px 24px; border-top: 1px solid var(--border); background: rgba(8,10,16,0.7); flex-shrink: 0; }
   .dp-disclaimer { font-size: 8px; color: rgba(93,100,120,0.4); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.5; }
 
   /* ── PROFILE PANEL ── */
@@ -492,51 +495,59 @@
           </div>
         </div>
 
-        <!-- DETAIL PANEL -->
+        <!-- DETAIL VIEW (full-screen) -->
         <div id="detail-panel">
           <div id="dp-inner">
             <div class="dp-topbar">
-              <div>
-                <div class="dp-label">INSTRUMENT DETAIL</div>
-                <div class="dp-name" id="dp-name">—</div>
+              <div style="display:flex;align-items:center">
+                <button class="dp-back" onclick="closeDetail()">← BACK</button>
+                <div>
+                  <div class="dp-label">INSTRUMENT DETAIL</div>
+                  <div class="dp-name" id="dp-name">—</div>
+                </div>
               </div>
-              <button class="dp-close" onclick="closeDetail()">✕</button>
-            </div>
-            <div class="dp-hero">
-              <div class="dp-bias-row">
+              <div style="display:flex;align-items:center;gap:20px">
                 <div id="dp-bias" class="dp-bias-val">—</div>
                 <div class="dp-price-block">
                   <div id="dp-price" class="dp-price">—</div>
                   <div id="dp-chg" class="dp-chg">—</div>
                 </div>
               </div>
-              <div class="dp-conf-row">
-                <span class="dp-conf-lbl">CONFIDENCE</span>
-                <div class="dp-conf-bg"><div id="dp-conf-fill" class="dp-conf-fill"></div></div>
-                <span id="dp-conf-pct" class="dp-conf-pct">—</span>
+            </div>
+            <div id="dp-body">
+              <!-- LEFT COLUMN -->
+              <div class="dp-col dp-col-left">
+                <div class="dp-conf-row">
+                  <span class="dp-conf-lbl">CONFIDENCE</span>
+                  <div class="dp-conf-bg"><div id="dp-conf-fill" class="dp-conf-fill"></div></div>
+                  <span id="dp-conf-pct" class="dp-conf-pct">—</span>
+                </div>
+                <div class="dp-meta-grid">
+                  <div class="dp-meta-cell"><div class="dp-meta-lbl">RISK LEVEL</div><div id="dp-risk" class="dp-meta-val">—</div></div>
+                  <div class="dp-meta-cell"><div class="dp-meta-lbl">SIGNAL</div><div id="dp-signal" class="dp-meta-val">—</div></div>
+                  <div class="dp-meta-cell"><div class="dp-meta-lbl">TICKER</div><div id="dp-ticker" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:13px">—</div></div>
+                  <div class="dp-meta-cell"><div class="dp-meta-lbl">EXCHANGE</div><div id="dp-exch" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:13px">—</div></div>
+                </div>
+                <div class="dp-sparkline">
+                  <div class="dp-section-lbl" style="margin-bottom:8px">SENTIMENT HISTORY</div>
+                  <svg id="dp-spark" height="80" viewBox="0 0 500 80" preserveAspectRatio="none"></svg>
+                </div>
+                <div class="dp-section" id="dp-signal-section">
+                  <div class="dp-section-lbl">SIGNAL DETAIL</div>
+                  <div id="dp-signal-items"></div>
+                </div>
               </div>
-              <div class="dp-meta-grid">
-                <div class="dp-meta-cell"><div class="dp-meta-lbl">RISK LEVEL</div><div id="dp-risk" class="dp-meta-val">—</div></div>
-                <div class="dp-meta-cell"><div class="dp-meta-lbl">SIGNAL</div><div id="dp-signal" class="dp-meta-val">—</div></div>
-                <div class="dp-meta-cell"><div class="dp-meta-lbl">TICKER</div><div id="dp-ticker" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:12px">—</div></div>
-                <div class="dp-meta-cell"><div class="dp-meta-lbl">EXCHANGE</div><div id="dp-exch" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:12px">—</div></div>
+              <!-- RIGHT COLUMN -->
+              <div class="dp-col">
+                <div class="dp-section">
+                  <div class="dp-section-lbl">WHY THIS BIAS</div>
+                  <div id="dp-why"></div>
+                </div>
+                <div class="dp-drivers">
+                  <div class="dp-section-lbl" style="margin-bottom:12px">SIGNAL DRIVERS</div>
+                  <div id="dp-drivers-list"></div>
+                </div>
               </div>
-            </div>
-            <div class="dp-sparkline">
-              <div class="dp-section-lbl" style="margin-bottom:6px">SENTIMENT HISTORY</div>
-              <svg id="dp-spark" height="60" viewBox="0 0 348 60" preserveAspectRatio="none"></svg>
-            </div>
-            <div class="dp-section">
-              <div class="dp-section-lbl">WHY THIS BIAS</div>
-              <div id="dp-why"></div>
-            </div>
-            <div class="dp-section" id="dp-signal-section">
-              <div class="dp-section-lbl">SIGNAL DETAIL</div>
-              <div id="dp-signal-items"></div>
-            </div>
-            <div class="dp-drivers">
-              <div class="dp-section-lbl" style="margin-bottom:8px">SIGNAL DRIVERS</div>
-              <div id="dp-drivers-list"></div>
             </div>
             <div class="dp-footer">
               <div class="dp-disclaimer">For informational purposes only · Not financial advice · Updated automatically</div>
@@ -1020,7 +1031,7 @@ function renderNews() {
 // SPARKLINE
 // ══════════════════════════════════════════════════════════════════════════════
 function makeSpark(scores, color) {
-  const w = 348, h = 60, pad = 4;
+  const w = 500, h = 80, pad = 6;
   if (!scores.length) return '';
   const min = Math.min(...scores), max = Math.max(...scores);
   const range = (max - min) || 1;
@@ -1128,15 +1139,9 @@ async function openDetail(name) {
     }
   } catch {}
 
-  // Open panel + highlight card
-  document.getElementById('detail-panel').classList.add('open');
-  document.querySelectorAll('.dcard').forEach(c => c.classList.remove('selected', 'selected-bear'));
+  // Switch to full-screen detail view
+  document.getElementById('main').classList.add('detail-mode');
   document.querySelectorAll('.scan-cell').forEach(c => c.classList.remove('active-scan'));
-  const card = document.querySelector(`.dcard[data-name="${name}"]`);
-  if (card) {
-    card.classList.add(cls === 'bear' ? 'selected-bear' : 'selected');
-    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }
   const sc = document.querySelector(`.scan-cell[data-name="${name}"]`);
   if (sc) sc.classList.add('active-scan');
 
@@ -1147,11 +1152,9 @@ async function openDetail(name) {
 }
 
 function closeDetail() {
-  document.getElementById('detail-panel').classList.remove('open');
-  document.querySelectorAll('.dcard').forEach(c => c.classList.remove('selected', 'selected-bear'));
+  document.getElementById('main').classList.remove('detail-mode');
   document.querySelectorAll('.scan-cell').forEach(c => c.classList.remove('active-scan'));
   activeDetailName = null;
-  // Reset news filter
   setNewsFilter('All', document.querySelector('.news-filter'));
 }
 
