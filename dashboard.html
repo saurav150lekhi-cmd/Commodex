@@ -88,6 +88,46 @@
     .radar-search::placeholder { color: var(--faint); letter-spacing: 1px; }
     .radar-search:focus { border-color: var(--accent); width: 220px; }
     .radar-search-icon { position: absolute; pointer-events: none; font-size: 11px; color: var(--muted); margin-left: 10px; }
+    /* ── Top Signal Banner ──────────────────────────────────────────────────── */
+    .top-signal {
+      border-radius: 10px;
+      padding: 16px 20px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      flex-wrap: wrap;
+      position: relative;
+      overflow: hidden;
+      animation: fadeSlide 0.5s ease;
+    }
+    .top-signal::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 10px;
+      background: inherit;
+      z-index: 0;
+    }
+    .top-signal > * { position: relative; z-index: 1; }
+    .top-signal.ts-bull { background: linear-gradient(135deg, #16c78412 0%, #16c78406 60%, transparent 100%); border: 1px solid #16c78440; box-shadow: 0 0 30px #16c78415, inset 0 0 60px #16c78408; }
+    .top-signal.ts-bear { background: linear-gradient(135deg, #ea394312 0%, #ea394306 60%, transparent 100%); border: 1px solid #ea394340; box-shadow: 0 0 30px #ea394315, inset 0 0 60px #ea394308; }
+    .top-signal.ts-neut { background: linear-gradient(135deg, #f5c54212 0%, #f5c54206 60%, transparent 100%); border: 1px solid #f5c54240; box-shadow: 0 0 20px #f5c54212; }
+    .ts-fire { font-size: 20px; flex-shrink: 0; animation: firePulse 2s ease-in-out infinite; }
+    @keyframes firePulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.15)} }
+    .ts-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 3px; color: var(--muted); margin-bottom: 4px; }
+    .ts-headline { font-size: 18px; font-weight: 500; color: var(--text); line-height: 1.3; margin-bottom: 4px; letter-spacing: -0.2px; }
+    .ts-commodity { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; margin-bottom: 3px; }
+    .ts-sowhat { font-size: 12px; color: var(--text2); font-style: italic; line-height: 1.5; }
+    .ts-metrics { display: flex; flex-direction: column; gap: 8px; margin-left: auto; align-items: flex-end; flex-shrink: 0; }
+    .ts-conf { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; line-height: 1; }
+    .ts-conf-label { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 2px; color: var(--muted); }
+    .ts-strength-row { display: flex; gap: 3px; align-items: center; }
+    .ts-strength-pip { width: 14px; height: 5px; border-radius: 2px; transition: background 0.3s; }
+    .ts-pip-fill { background: currentColor; }
+    .ts-pip-empty { background: var(--border); }
+    .ts-hidden { display: none; }
+
     .radar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
     .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 14px 0; letter-spacing: 1px; text-align: center; }
 
@@ -299,6 +339,10 @@
       </datalist>
     </div>
   </div>
+  <!-- Top Market Signal -->
+  <div id="top-signal" class="ts-hidden"></div>
+
+  <!-- Radar grid -->
   <div class="radar-grid" id="radar-signals">
     <div class="radar-empty">Scanning markets for signals...</div>
   </div>
@@ -805,10 +849,60 @@
     return Math.floor(diff / 86400) + "d ago";
   }
 
+  function renderTopSignal(signals) {
+    const el = document.getElementById("top-signal");
+    if (!el) return;
+    if (!signals || !signals.length) { el.className = "ts-hidden"; return; }
+
+    // Pick highest composite score: conf*0.6 + strength*4
+    const top = signals.reduce((best, s) => {
+      const score = (s.confidence || 0) * 0.6 + (s.signal_strength || 0) * 4;
+      const bScore = (best.confidence || 0) * 0.6 + (best.signal_strength || 0) * 4;
+      return score > bScore ? s : best;
+    }, signals[0]);
+
+    const impact   = top.impact || "neutral";
+    const tsClass  = impact === "bullish" ? "ts-bull" : impact === "bearish" ? "ts-bear" : "ts-neut";
+    const color    = impact === "bullish" ? "var(--bull)" : impact === "bearish" ? "var(--bear)" : "var(--neut)";
+    const commColor = COMM_COLORS[top.commodity] || "var(--accent)";
+    const conf     = top.confidence || 0;
+    const strength = top.signal_strength || 0;
+
+    const pips = Array.from({length: 10}, (_, i) =>
+      `<div class="ts-strength-pip ${i < strength ? 'ts-pip-fill' : 'ts-pip-empty'}" style="color:${color}"></div>`
+    ).join("");
+
+    el.className = `top-signal ${tsClass}`;
+    el.innerHTML = `
+      <div class="ts-fire">🔥</div>
+      <div style="flex:1;min-width:0">
+        <div class="ts-label">TOP MARKET SIGNAL</div>
+        <div class="ts-headline">${top.event || top.source_title || "Signal detected"}</div>
+        <div class="ts-commodity">
+          <span style="color:${commColor};font-weight:500">${top.commodity.toUpperCase()}</span>
+          &nbsp;→&nbsp;
+          <span style="color:${color}">${impact.toUpperCase()}</span>
+        </div>
+        ${top.so_what ? `<div class="ts-sowhat">→ ${top.so_what}</div>` : ""}
+      </div>
+      <div class="ts-metrics">
+        <div>
+          <div class="ts-conf" style="color:${color}">${conf}%</div>
+          <div class="ts-conf-label">CONFIDENCE</div>
+        </div>
+        <div>
+          <div class="ts-strength-row" style="color:${color}">${pips}</div>
+          <div class="ts-conf-label" style="text-align:right">${strength}/10 STRENGTH</div>
+        </div>
+      </div>`;
+  }
+
   function renderRadar(signals) {
     const container = document.getElementById("radar-signals");
     const tsEl      = document.getElementById("radar-ts");
     if (tsEl) tsEl.textContent = "Refreshed " + new Date().toLocaleTimeString(undefined, { hour:"2-digit", minute:"2-digit" });
+
+    renderTopSignal(signals);
 
     if (!signals || !signals.length) {
       container.innerHTML = '<div class="radar-empty">No market-moving signals detected this cycle — monitoring markets</div>';
