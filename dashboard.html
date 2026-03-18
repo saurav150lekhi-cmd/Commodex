@@ -415,7 +415,7 @@
 
   <!-- WATCHLIST BAR -->
   <div id="watchlist">
-    <span class="wl-label">◎ NEUTRALLIST</span>
+    <span class="wl-label">◎ WATCHLIST</span>
     <div class="wl-item" onclick="openDetail('Gold')">
       <span class="wl-name">GOLD</span>
       <span class="wl-price" id="wp-Gold">—</span>
@@ -532,17 +532,6 @@
             <div id="dp-body">
               <!-- LEFT COLUMN -->
               <div class="dp-col dp-col-left">
-                <div class="dp-conf-row">
-                  <span class="dp-conf-lbl">CONFIDENCE</span>
-                  <div class="dp-conf-bg"><div id="dp-conf-fill" class="dp-conf-fill"></div></div>
-                  <span id="dp-conf-pct" class="dp-conf-pct">—</span>
-                </div>
-                <div class="dp-meta-grid">
-                  <div class="dp-meta-cell"><div class="dp-meta-lbl">RISK LEVEL</div><div id="dp-risk" class="dp-meta-val">—</div></div>
-                  <div class="dp-meta-cell"><div class="dp-meta-lbl">SIGNAL</div><div id="dp-signal" class="dp-meta-val">—</div></div>
-                  <div class="dp-meta-cell"><div class="dp-meta-lbl">TICKER</div><div id="dp-ticker" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:13px">—</div></div>
-                  <div class="dp-meta-cell"><div class="dp-meta-lbl">EXCHANGE</div><div id="dp-exch" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:13px">—</div></div>
-                </div>
                 <div class="dp-section" id="dp-summary-section">
                   <div class="dp-section-lbl">AI ANALYSIS</div>
                   <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.7;font-family:var(--sans)">—</div>
@@ -562,9 +551,9 @@
                   <div class="dp-section-lbl">WHY THIS BIAS</div>
                   <div id="dp-why"></div>
                 </div>
-                <div class="dp-drivers">
-                  <div class="dp-section-lbl" style="margin-bottom:12px">SIGNAL DRIVERS</div>
-                  <div id="dp-drivers-list"></div>
+                <div class="dp-section" id="dp-signal-section-right">
+                  <div class="dp-section-lbl">SIGNAL DETAIL</div>
+                  <div id="dp-signal-items-right"></div>
                 </div>
               </div>
             </div>
@@ -1157,33 +1146,23 @@ async function openDetail(name) {
   }
   document.getElementById('dp-why').innerHTML = whyHtml || '<div style="font-size:11px;color:var(--muted)">No drivers identified</div>';
 
-  // SIGNALS
+  // SIGNALS — render in both columns
   const sigSec = document.getElementById('dp-signal-section');
   sigSec.style.background = `${color}08`;
+  document.getElementById('dp-signal-section-right').style.background = `${color}08`;
   const sigs = [
     { lbl: 'INTRADAY',       txt: takeaways.intraday       || '—' },
     { lbl: 'NEXT FEW DAYS',  txt: takeaways.next_few_days  || '—' },
     { lbl: 'NEXT FEW WEEKS', txt: takeaways.next_few_weeks || '—' },
   ];
-  document.getElementById('dp-signal-items').innerHTML = sigs.map(s =>
+  const sigHtml = sigs.map(s =>
     `<div class="dp-sig-item">
       <span class="dp-sig-arrow" style="color:${color}">→</span>
       <span class="dp-sig-txt"><span style="font-size:8px;font-weight:800;letter-spacing:0.1em;color:${color};opacity:.7;margin-right:4px">${s.lbl}</span>${s.txt}</span>
     </div>`
   ).join('');
-
-  // DRIVERS with bars
-  const driverItems = [
-    ...(drivers.up   || []).map((d, i) => ({ name: d, val: Math.max(30, confPct - i * 8), color: BULL_C })),
-    ...(drivers.down || []).map((d, i) => ({ name: d, val: Math.max(25, confPct - 10 - i * 8), color: BEAR_C })),
-  ].slice(0, 6);
-  document.getElementById('dp-drivers-list').innerHTML = driverItems.length ?
-    driverItems.map(d =>
-      `<div class="dp-driver-row">
-        <span class="dp-driver-name">${d.name}</span>
-        <div class="dp-driver-bar-wrap"><div class="dp-driver-bar" style="width:${d.val}%;background:${d.color}"></div></div>
-      </div>`
-    ).join('') : '<div style="font-size:10px;color:var(--muted)">No driver data</div>';
+  document.getElementById('dp-signal-items').innerHTML = sigHtml;
+  document.getElementById('dp-signal-items-right').innerHTML = sigHtml;
 
   // AI Summary
   document.getElementById('dp-summary').textContent = analysis.market_summary || '—';
