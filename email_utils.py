@@ -1,34 +1,38 @@
-import smtplib
 import os
 import logging
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
+import urllib.request
+import urllib.error
+import json
 
 log = logging.getLogger(__name__)
 
-SMTP_HOST  = os.environ.get("SMTP_HOST", "")
-SMTP_PORT  = int(os.environ.get("SMTP_PORT", "587"))
-SMTP_USER  = os.environ.get("SMTP_USER", "")
-SMTP_PASS  = os.environ.get("SMTP_PASS", "")
-FROM_EMAIL = os.environ.get("FROM_EMAIL", "") or SMTP_USER
-APP_URL    = os.environ.get("APP_URL", "http://localhost:5000")
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
+FROM_EMAIL     = os.environ.get("FROM_EMAIL", "onboarding@resend.dev")
+APP_URL        = os.environ.get("APP_URL", "https://commodex.io")
 
 
 def send_email(to, subject, html_body):
-    if not SMTP_HOST or not SMTP_USER:
-        log.warning("SMTP not configured — skipping email to %s", to)
+    if not RESEND_API_KEY:
+        log.warning("RESEND_API_KEY not set — skipping email to %s", to)
         return False
     try:
-        msg = MIMEMultipart("alternative")
-        msg["Subject"] = subject
-        msg["From"]    = f"Commodex <{FROM_EMAIL}>"
-        msg["To"]      = to
-        msg.attach(MIMEText(html_body, "html"))
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT) as server:
-            server.ehlo()
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.sendmail(FROM_EMAIL, to, msg.as_string())
+        payload = json.dumps({
+            "from":    f"Commodex <{FROM_EMAIL}>",
+            "to":      [to],
+            "subject": subject,
+            "html":    html_body,
+        }).encode()
+        req = urllib.request.Request(
+            "https://api.resend.com/emails",
+            data=payload,
+            headers={
+                "Authorization": f"Bearer {RESEND_API_KEY}",
+                "Content-Type":  "application/json",
+            },
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            r.read()
         log.info("Email sent to %s: %s", to, subject)
         return True
     except Exception as e:
@@ -88,10 +92,9 @@ _COMMODITY_COLORS = {
 
 
 def send_analysis_notification_email(to, summaries):
-    """Send a digest email when a new analysis cycle completes."""
     rows = ""
     for commodity, sentiment in summaries.items():
-        color = _COMMODITY_COLORS.get(commodity, "#c8a870")
+        color      = _COMMODITY_COLORS.get(commodity, "#c8a870")
         sent_label = _SENTIMENT_LABELS.get(sentiment, sentiment)
         sent_color = _SENTIMENT_COLORS.get(sentiment, "#fbbf24")
         rows += f"""
@@ -105,7 +108,7 @@ def send_analysis_notification_email(to, summaries):
       <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
       <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
       <div style="font-size:11px;letter-spacing:2px;color:#c8a870;margin-bottom:16px">NEW ANALYSIS READY</div>
-      <table style="width:100%;border-collapse:collapse;border:1px solid #1e1c18;border-radius:4px;margin-bottom:24px">
+      <table style="width:100%;border-collapse:collapse;border:1px solid #1e1c18;margin-bottom:24px">
         <thead>
           <tr style="background:#0d0c0a">
             <th style="padding:8px 16px;text-align:left;font-size:9px;letter-spacing:2px;color:#6a5a40;font-weight:normal">COMMODITY</th>
@@ -114,7 +117,7 @@ def send_analysis_notification_email(to, summaries):
         </thead>
         <tbody>{rows}</tbody>
       </table>
-      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px;border-radius:3px">OPEN TERMINAL</a>
+      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px">OPEN TERMINAL</a>
       <p style="margin-top:28px;color:#6a5a40;font-size:10px;line-height:1.6">
         You're receiving this because you enabled analysis notifications.<br>
         To unsubscribe, open the Commodex terminal and toggle off notifications.
@@ -125,19 +128,19 @@ def send_analysis_notification_email(to, summaries):
 
 
 def send_alert_email(to, commodity, new_sentiment, old_sentiment, summary=""):
-    comm_color = _COMMODITY_COLORS.get(commodity, "#c8a870")
-    new_label  = _SENTIMENT_LABELS.get(new_sentiment, new_sentiment)
-    old_label  = _SENTIMENT_LABELS.get(old_sentiment, old_sentiment)
-    new_color  = _SENTIMENT_COLORS.get(new_sentiment, "#fbbf24")
-    old_color  = _SENTIMENT_COLORS.get(old_sentiment, "#fbbf24")
-    link       = f"{APP_URL}/app"
+    comm_color    = _COMMODITY_COLORS.get(commodity, "#c8a870")
+    new_label     = _SENTIMENT_LABELS.get(new_sentiment, new_sentiment)
+    old_label     = _SENTIMENT_LABELS.get(old_sentiment, old_sentiment)
+    new_color     = _SENTIMENT_COLORS.get(new_sentiment, "#fbbf24")
+    old_color     = _SENTIMENT_COLORS.get(old_sentiment, "#fbbf24")
+    link          = f"{APP_URL}/app"
     summary_block = f'<p style="margin:16px 0 0;line-height:1.7;color:#c4b490;font-size:12px">{summary}</p>' if summary else ""
     html = f"""
     <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:560px;margin:0 auto">
       <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
       <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
       <div style="font-size:11px;letter-spacing:2px;color:{comm_color};margin-bottom:12px">{commodity.upper()} · SENTIMENT ALERT</div>
-      <div style="background:#0d0c0a;border:1px solid #2a2820;border-left:3px solid {comm_color};border-radius:4px;padding:16px 20px;margin-bottom:20px">
+      <div style="background:#0d0c0a;border:1px solid #2a2820;border-left:3px solid {comm_color};padding:16px 20px;margin-bottom:20px">
         <div style="display:flex;align-items:center;gap:16px">
           <div style="text-align:center">
             <div style="font-size:9px;color:#6a5a40;letter-spacing:1px;margin-bottom:4px">PREVIOUS</div>
@@ -151,7 +154,7 @@ def send_alert_email(to, commodity, new_sentiment, old_sentiment, summary=""):
         </div>
         {summary_block}
       </div>
-      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px;border-radius:3px">OPEN TERMINAL</a>
+      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px">OPEN TERMINAL</a>
       <p style="margin-top:28px;color:#6a5a40;font-size:10px;line-height:1.6">
         You're receiving this because you subscribed to {commodity} alerts.<br>
         To manage alerts, open the Commodex terminal and go to Settings.
