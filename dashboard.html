@@ -282,7 +282,7 @@
   .dp-meta-val { font-size: 16px; font-weight: 800; }
   .dp-section { margin-bottom: 20px; }
   .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 12px; }
-  .dp-why-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
+  .dp-why-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 16px; }
   .dp-why-bul { font-size: 14px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
   .dp-why-txt { font-size: 13px; color: rgba(209,212,220,0.9); line-height: 1.6; font-family: var(--sans); }
   .dp-sig-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
@@ -539,12 +539,7 @@
               <!-- RIGHT COLUMN -->
               <div class="dp-col">
                 <div class="dp-section">
-                  <div class="dp-section-lbl">WHY THIS BIAS</div>
                   <div id="dp-why"></div>
-                </div>
-                <div class="dp-section" id="dp-signal-section-right">
-                  <div class="dp-section-lbl">SIGNAL DETAIL</div>
-                  <div id="dp-signal-items-right"></div>
                 </div>
               </div>
             </div>
@@ -1130,7 +1125,6 @@ async function openDetail(name) {
   // SIGNALS — render in both columns
   const sigSec = document.getElementById('dp-signal-section');
   sigSec.style.background = `${color}08`;
-  document.getElementById('dp-signal-section-right').style.background = `${color}08`;
   const sigs = [
     { lbl: 'INTRADAY',       txt: takeaways.intraday       || '—' },
     { lbl: 'NEXT FEW DAYS',  txt: takeaways.next_few_days  || '—' },
@@ -1143,7 +1137,6 @@ async function openDetail(name) {
     </div>`
   ).join('');
   document.getElementById('dp-signal-items').innerHTML = sigHtml;
-  document.getElementById('dp-signal-items-right').innerHTML = sigHtml;
 
   // AI Summary
   document.getElementById('dp-summary').textContent = analysis.market_summary || '—';

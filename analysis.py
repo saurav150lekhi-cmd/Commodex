@@ -866,7 +866,7 @@ STEP 2 - EVENT EXTRACTION: Group relevant articles into 3-5 distinct market even
 
 STEP 3 - RELEVANCE FILTERING: Score each event for relevance to """ + commodity_name + """ price action. Discard low relevance events.
 
-STEP 4 - DRIVER IDENTIFICATION: Identify 3-5 primary market drivers across these categories: Macroeconomic, Supply, Demand, Geopolitical, Financial Positioning, Currency.
+STEP 4 - DRIVER IDENTIFICATION: Identify exactly 5 bullish drivers (up) and 5 risk factors (down) across these categories: Macroeconomic, Supply, Demand, Geopolitical, Financial Positioning, Currency. Each point should be a distinct, specific insight — not generic filler.
 
 STEP 5 - PRICE ACTION CONTEXT: Determine if current price movement confirms, contradicts, or is unclear relative to the identified drivers. Never invent explanations if evidence is weak.
 
@@ -884,8 +884,8 @@ STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price lev
   "market_summary": "3-4 sentence institutional research commentary. Lead with the dominant price driver. Cover supply/demand dynamics and current sentiment bias. Precise and insight-driven like Goldman Sachs research.",
   "sentiment": "STRONG_BULLISH or BULLISH or NEUTRAL or BEARISH or STRONG_BEARISH",
   "drivers": {
-    "up": ["driver 1", "driver 2", "driver 3"],
-    "down": ["driver 1", "driver 2", "driver 3"]
+    "up": ["driver 1", "driver 2", "driver 3", "driver 4", "driver 5"],
+    "down": ["risk 1", "risk 2", "risk 3", "risk 4", "risk 5"]
   },
   "price_action_context": "confirms or contradicts or unclear - one sentence explanation",
   "trader_takeaways": {
