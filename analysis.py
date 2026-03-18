@@ -127,6 +127,21 @@ NEWS_SOURCES = [
     "https://www.offshore-technology.com/feed/",                   # Offshore oil & gas operations
     "https://www.lngworldnews.com/feed/",                          # LNG shipping & trade
     "https://www.hellenicshippingnews.com/feed/",                  # already have but keep (energy focus)
+    # ── Tier 5 — Precious metals specialist ───────────────────────────────────
+    "https://www.gold.org/goldhub/research/feed",                  # World Gold Council research
+    "https://agmetalminer.com/feed/",                              # MetalMiner (base & precious metals)
+    "https://www.bullionvault.com/gold-news/rss.do",               # BullionVault gold/silver
+    # ── Tier 6 — Energy specialist ────────────────────────────────────────────
+    "https://www.hartenergy.com/rss",                              # Hart Energy (oil & gas)
+    "https://www.energyvoice.com/feed/",                           # Energy Voice (N. Sea, LNG, OPEC)
+    "https://www.naturalgasworld.com/feed",                        # Natural Gas World
+    "https://www.downstreamtoday.com/rss/news.aspx",               # Downstream Today (refining/products)
+    # ── Tier 7 — Mining & base metals ─────────────────────────────────────────
+    "https://www.mining-technology.com/feed/",                     # Mining Technology (copper, gold mines)
+    "https://www.nsenergybusiness.com/feed/",                      # NS Energy (energy projects, mining)
+    # ── Tier 8 — Official / policy feeds ─────────────────────────────────────
+    "https://www.federalreserve.gov/feeds/press_all.xml",          # Federal Reserve press releases
+    "https://www.opec.org/opec_web/en/press_room/rss.htm",         # OPEC official press releases
 ]
 
 COMMODITIES = {
@@ -459,8 +474,127 @@ def fetch_bdi():
     return None
 
 
+# ── 9. BLS — CPI and PPI (free public API, no key required) ───────────────────
+def fetch_bls_data():
+    """Fetch US CPI and PPI from BLS public API v1 (no API key needed)."""
+    result = {}
+    series_map = {
+        "CUUR0000SA0":  "US CPI All Items",
+        "CUUR0000SA0L1E": "US Core CPI (ex food & energy)",
+        "WPU10":        "US PPI Mining",
+        "PCU212221212221": "US PPI Gold & Silver Ores",
+    }
+    try:
+        payload = json.dumps({"seriesid": list(series_map.keys()), "startyear": "2024", "endyear": "2026"}).encode()
+        req = urllib.request.Request(
+            "https://api.bls.gov/publicAPI/v1/timeseries/data/",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+        for series in data.get("Results", {}).get("series", []):
+            sid = series["seriesID"]
+            label = series_map.get(sid, sid)
+            rows = series.get("data", [])
+            if len(rows) >= 2:
+                latest   = float(rows[0]["value"])
+                previous = float(rows[1]["value"])
+                result[sid] = {
+                    "label":    label,
+                    "value":    latest,
+                    "change":   round(latest - previous, 3),
+                    "period":   f"{rows[0]['periodName']} {rows[0]['year']}",
+                }
+    except Exception as e:
+        log.debug("BLS fetch failed: %s", e)
+    return result
+
+
+# ── 10. Open-Meteo — Weather / Heating Degree Days for Natural Gas ─────────────
+def fetch_weather_data():
+    """Fetch 7-day temperature forecast for key US hubs (free, no API key)."""
+    hubs = {
+        "New York":  (40.71, -74.01),   # NE heating demand
+        "Chicago":   (41.85, -87.65),   # Midwest demand
+        "Houston":   (29.76, -95.37),   # Gulf Coast LNG exports
+    }
+    result = {}
+    for city, (lat, lon) in hubs.items():
+        try:
+            url = (f"https://api.open-meteo.com/v1/forecast"
+                   f"?latitude={lat}&longitude={lon}"
+                   f"&daily=temperature_2m_max,temperature_2m_min"
+                   f"&temperature_unit=fahrenheit&forecast_days=7&timezone=America%2FNew_York")
+            data = fetch_json(url)
+            if data and "daily" in data:
+                highs = data["daily"].get("temperature_2m_max", [])
+                lows  = data["daily"].get("temperature_2m_min", [])
+                if highs and lows:
+                    avg_temp = round(sum((h + l) / 2 for h, l in zip(highs, lows)) / len(highs), 1)
+                    # Heating degree days: base 65°F
+                    hdd = round(sum(max(0, 65 - (h + l) / 2) for h, l in zip(highs, lows)), 1)
+                    # Cooling degree days: base 65°F
+                    cdd = round(sum(max(0, (h + l) / 2 - 65) for h, l in zip(highs, lows)), 1)
+                    result[city] = {
+                        "avg_temp_f": avg_temp,
+                        "hdd_7day":   hdd,
+                        "cdd_7day":   cdd,
+                        "demand_signal": "HIGH HEATING" if hdd > 70 else "HIGH COOLING" if cdd > 70 else "MODERATE",
+                    }
+        except Exception as e:
+            log.debug("Weather fetch failed for %s: %s", city, e)
+    return result
+
+
+# ── 11. US Treasury — Yield curve direct from Treasury.gov (no API key) ────────
+def fetch_treasury_yields():
+    """Fetch latest US Treasury yield curve from Treasury.gov XML feed."""
+    result = {}
+    try:
+        from datetime import date
+        today = date.today()
+        # Try current month, fallback to previous
+        for delta in [0, -1]:
+            month = today.month + delta
+            year  = today.year
+            if month <= 0:
+                month += 12
+                year  -= 1
+            url = (f"https://home.treasury.gov/resource-center/data-chart-center"
+                   f"/interest-rates/pages/xml?data=daily_treasury_yield_curve"
+                   f"&field_tdate_year={year}&field_tdate_month={month:02d}")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                xml = r.read().decode("utf-8", errors="ignore")
+            entries = re.findall(r'<entry>(.*?)</entry>', xml, re.DOTALL)
+            if entries:
+                last = entries[-1]
+                def _t(tag):
+                    m = re.search(rf'<d:{tag}[^>]*>([\d.]+)</d:{tag}>', last)
+                    return float(m.group(1)) if m else None
+                result = {
+                    "1M":  _t("BC_1MONTH"),
+                    "3M":  _t("BC_3MONTH"),
+                    "6M":  _t("BC_6MONTH"),
+                    "1Y":  _t("BC_1YEAR"),
+                    "2Y":  _t("BC_2YEAR"),
+                    "5Y":  _t("BC_5YEAR"),
+                    "10Y": _t("BC_10YEAR"),
+                    "30Y": _t("BC_30YEAR"),
+                }
+                result = {k: v for k, v in result.items() if v is not None}
+                if result:
+                    break
+    except Exception as e:
+        log.debug("Treasury yield fetch failed: %s", e)
+    return result
+
+
 # ── Build macro context string for Claude ─────────────────────────────────────
-def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name):
+def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
+                        bls=None, weather=None, treasury=None):
     lines = []
 
     # FRED macro indicators — grouped by relevance
@@ -606,6 +740,30 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
         d = cftc[commodity_name]
         lines.append("CFTC POSITIONING (Non-Commercial):")
         lines.append(f"  Long: {d['noncommercial_long']:,} | Short: {d['noncommercial_short']:,} | Net: {d['net_position']:+,} ({d['positioning']}) as of {d['report_date']}")
+
+    # BLS CPI/PPI — gold, silver, crude oil
+    if bls and commodity_name in ("Gold", "Silver", "Crude Oil"):
+        lines.append("BLS INFLATION DATA:")
+        for sid, d in bls.items():
+            chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+            lines.append(f"  {d['label']}: {d['value']}{chg_str} ({d['period']})")
+
+    # US Treasury yield curve — gold, silver (rate-sensitive)
+    if treasury and commodity_name in ("Gold", "Silver", "Crude Oil"):
+        parts = [f"{k}: {v}%" for k, v in sorted(treasury.items(), key=lambda x: ["1M","3M","6M","1Y","2Y","5Y","10Y","30Y"].index(x[0]) if x[0] in ["1M","3M","6M","1Y","2Y","5Y","10Y","30Y"] else 99)]
+        if parts:
+            lines.append(f"US TREASURY YIELD CURVE: {' | '.join(parts)}")
+            # Inversion signal
+            if treasury.get("2Y") and treasury.get("10Y"):
+                spread = round(treasury["10Y"] - treasury["2Y"], 2)
+                inv = "INVERTED (recession signal)" if spread < 0 else "normal"
+                lines.append(f"  10Y-2Y Spread: {spread:+.2f}% — {inv}")
+
+    # Weather / Heating Degree Days — natural gas
+    if weather and commodity_name == "Natural Gas":
+        lines.append("US WEATHER (7-DAY FORECAST):")
+        for city, w in weather.items():
+            lines.append(f"  {city}: avg {w['avg_temp_f']}°F | HDD: {w['hdd_7day']} | CDD: {w['cdd_7day']} → {w['demand_signal']}")
 
     return "\n".join(lines) if lines else "No external data available."
 
@@ -957,8 +1115,11 @@ def run_analysis():
         fred       = fetch_fred_data()
         lme_copper = fetch_lme_copper_stocks()
         bdi        = fetch_bdi()
-        log.info("External data fetched. FRED=%d indicators, LME copper=%s, BDI=%s",
-                 len(fred),
+        bls        = fetch_bls_data()
+        weather    = fetch_weather_data()
+        treasury   = fetch_treasury_yields()
+        log.info("External data fetched. FRED=%d, BLS=%d, Treasury yields=%d, Weather hubs=%d, LME copper=%s, BDI=%s",
+                 len(fred), len(bls), len(treasury), len(weather),
                  lme_copper["value"] if lme_copper else "unavailable",
                  bdi["value"] if bdi else "unavailable")
 
@@ -974,7 +1135,8 @@ def run_analysis():
         results = {}
         for commodity, articles in news.items():
             log.info("Analysing %s (%d articles)...", commodity, len(articles))
-            macro_context = build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity)
+            macro_context = build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity,
+                                                bls=bls, weather=weather, treasury=treasury)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
