@@ -980,10 +980,13 @@ def run_analysis():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def scheduler_loop():
-    schedule.every().day.at("09:00").do(run_analysis)
-    schedule.every().day.at("15:00").do(run_analysis)
-    schedule.every().day.at("21:00").do(run_analysis)
-    schedule.every().day.at("23:00").do(run_analysis)
+    # 6am / 12pm / 6pm / 12am IST daily (no weekend restriction)
+    # IST = UTC+5:30, so: 06:00 IST = 00:30 UTC, 12:00 IST = 06:30 UTC,
+    #                     18:00 IST = 12:30 UTC, 00:00 IST = 18:30 UTC
+    schedule.every().day.at("00:30").do(run_analysis)
+    schedule.every().day.at("06:30").do(run_analysis)
+    schedule.every().day.at("12:30").do(run_analysis)
+    schedule.every().day.at("18:30").do(run_analysis)
     while True:
         schedule.run_pending()
         time.sleep(30)

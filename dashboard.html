@@ -792,13 +792,13 @@ async function tryAutoLogin() {
 // CLOCK & MARKET BADGES
 // ══════════════════════════════════════════════════════════════════════════════
 // AI runs at these UTC hours
-const AI_SCHEDULE_UTC = [9, 15, 21, 23];
+// AI runs at 00:30, 06:30, 12:30, 18:30 UTC (6am/12pm/6pm/12am IST)
+const AI_SCHEDULE_UTC_MINS = [30, 390, 750, 1110]; // minutes since midnight UTC
 function nextAiIn() {
   const now = new Date();
   const utcMins = now.getUTCHours() * 60 + now.getUTCMinutes();
-  const scheduleMins = AI_SCHEDULE_UTC.map(h => h * 60);
-  let next = scheduleMins.find(m => m > utcMins);
-  if (next == null) next = scheduleMins[0] + 24 * 60; // wrap to tomorrow
+  let next = AI_SCHEDULE_UTC_MINS.find(m => m > utcMins);
+  if (next == null) next = AI_SCHEDULE_UTC_MINS[0] + 24 * 60;
   const diff = next - utcMins;
   if (diff >= 60) return `next ${Math.floor(diff/60)}h ${diff%60}m`;
   return `next ${diff}m`;
