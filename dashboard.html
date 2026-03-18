@@ -413,7 +413,7 @@
 
   <!-- WATCHLIST BAR -->
   <div id="watchlist">
-    <span class="wl-label">◎ WATCHLIST</span>
+    <span class="wl-label">◎ NEUTRALLIST</span>
     <div class="wl-item" onclick="openDetail('Gold')">
       <span class="wl-name">GOLD</span>
       <span class="wl-price" id="wp-Gold">—</span>
@@ -636,23 +636,23 @@ function sentColor(s) {
   return c === 'bull' ? BULL_C : c === 'bear' ? BEAR_C : WATCH_C;
 }
 function sentLabel(s) {
-  if (!s) return '◎ WATCH';
+  if (!s) return '◎ NEUTRAL';
   switch (s.toUpperCase()) {
     case 'STRONG_BULLISH': return '▲ STRONG BULL';
     case 'BULLISH':        return '▲ BULLISH';
     case 'STRONG_BEARISH': return '▼ STRONG BEAR';
     case 'BEARISH':        return '▼ BEARISH';
-    default:               return '◎ WATCH';
+    default:               return '◎ NEUTRAL';
   }
 }
 function scanBadge(s) {
-  if (!s) return { text: '◎ WATCH', color: WATCH_C };
+  if (!s) return { text: '◎ NEUTRAL', color: WATCH_C };
   switch (s.toUpperCase()) {
     case 'STRONG_BULLISH':
     case 'BULLISH':        return { text: '→ BULLISH',  color: BULL_C };
     case 'STRONG_BEARISH':
     case 'BEARISH':        return { text: '✕ BEARISH',  color: BEAR_C };
-    default:               return { text: '◎ WATCH',    color: WATCH_C };
+    default:               return { text: '◎ NEUTRAL',    color: WATCH_C };
   }
 }
 function riskFromConf(conf) {
