@@ -878,7 +878,9 @@ STEP 8 - DRIVER CONFIDENCE: Assign HIGH, MEDIUM or LOW confidence based on numbe
 
 STEP 9 - MARKET NARRATIVE TRACKING: Identify the dominant narrative (e.g. inflation hedge, supply disruption) and whether it is Strengthening, Stable, Weakening or Shifting.
 
-STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price levels in USD. No markdown, no explanation, no text before or after the JSON:
+STEP 10 - KEY TECHNICAL LEVELS: Using current price, macro data, inventory levels, and any price references in the news, identify 2-3 key support levels and 2-3 key resistance levels in USD. Label each with a brief reason (e.g. "psychological level", "CFTC net long buildup zone", "prior EIA inventory reaction level", "OPEC+ defense floor"). Base levels on data provided — do not invent levels without evidence.
+
+STEP 11 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price levels in USD. No markdown, no explanation, no text before or after the JSON:
 
 {
   "market_summary": "3-4 sentence institutional research commentary. Lead with the dominant price driver. Cover supply/demand dynamics and current sentiment bias. Precise and insight-driven like Goldman Sachs research.",
@@ -897,6 +899,18 @@ STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price lev
   "dominant_narrative": {
     "theme": "name of the dominant narrative e.g. inflation hedge",
     "status": "Strengthening or Stable or Weakening or Shifting"
+  },
+  "key_levels": {
+    "support": [
+      {"price": 0.00, "label": "reason for this level e.g. OPEC+ defense floor"},
+      {"price": 0.00, "label": "reason"},
+      {"price": 0.00, "label": "reason"}
+    ],
+    "resistance": [
+      {"price": 0.00, "label": "reason for this level e.g. psychological resistance"},
+      {"price": 0.00, "label": "reason"},
+      {"price": 0.00, "label": "reason"}
+    ]
   },
   "takeaway": {
     "bias": "Bullish or Bearish or Neutral",
@@ -987,6 +1001,7 @@ def run_analysis():
                         "trader_takeaways": {"intraday": "—", "next_few_days": "—", "next_few_weeks": "—"},
                         "confidence": "LOW",
                         "dominant_narrative": {"theme": "—", "status": "—"},
+                        "key_levels": {"support": [], "resistance": []},
                         "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
                     }
             except Exception as e:
@@ -1000,6 +1015,7 @@ def run_analysis():
                     "trader_takeaways": {"intraday": "—", "next_few_days": "—", "next_few_weeks": "—"},
                     "confidence": "LOW",
                     "dominant_narrative": {"theme": "—", "status": "—"},
+                    "key_levels": {"support": [], "resistance": []},
                     "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
                 }
             results[commodity] = {
