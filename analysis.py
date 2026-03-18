@@ -1216,6 +1216,25 @@ def landing():
     return send_from_directory(".", "landing.html")
 
 
+@app.route("/request-access", methods=["POST"])
+def request_access():
+    data = request.get_json(silent=True) or {}
+    name  = (data.get("name")  or "").strip()
+    email = (data.get("email") or "").strip()
+    rtype = (data.get("type")  or "").strip()
+    org   = (data.get("org")   or "").strip()
+    if not name or not email:
+        return jsonify({"error": "Name and email are required."}), 400
+    log.info("ACCESS REQUEST: name=%s email=%s type=%s org=%s", name, email, rtype, org)
+    # Persist to a simple log file so no DB schema change needed
+    try:
+        with open("access_requests.log", "a", encoding="utf-8") as f:
+            f.write(f"{datetime.now(timezone.utc).isoformat()} | {name} | {email} | {rtype} | {org}\n")
+    except Exception as ex:
+        log.warning("Could not write access request: %s", ex)
+    return jsonify({"ok": True}), 200
+
+
 @app.route("/app")
 def index():
     return send_from_directory(".", "dashboard.html")

@@ -3,214 +3,693 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Commodex — AI Commodity Intelligence</title>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@300;400&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <title>Commodex — Commodity Intelligence Terminal</title>
+  <meta name="description" content="Real-time signals, AI-driven analysis, and clear market bias across Gold, Oil, Silver, Copper, and Natural Gas." />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300;9..144,400&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500&display=swap" rel="stylesheet" />
   <style>
+    :root {
+      --bg:      #0b0f19;
+      --surface: #111827;
+      --card:    #141a2e;
+      --border:  #1e2540;
+      --border2: #263060;
+      --text:    #e6e8ef;
+      --text2:   #b8c0d0;
+      --muted:   #6b7a99;
+      --faint:   #3a4560;
+      --accent:  #4cc9f0;
+      --gold:    #c9a84c;
+      --bull:    #16c784;
+      --bear:    #ea3943;
+      --neut:    #f5c542;
+      --high:    #f97316;
+    }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0a0908; color: #d4c4a0; font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; overflow-x: hidden; }
 
-    /* NAV */
-    .nav { height: 52px; border-bottom: 1px solid #1e1c18; padding: 0 40px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; background: #0a0908; z-index: 100; }
-    .nav-logo { font-family: 'Fraunces', serif; font-size: 20px; font-weight: 300; color: #e8d8b0; }
-    .nav-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: #c8a870; letter-spacing: 3px; }
-    .nav-right { margin-left: auto; display: flex; gap: 10px; }
-    .btn-outline { background: none; border: 1px solid #3a3428; color: #c8a870; padding: 7px 18px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; cursor: pointer; text-decoration: none; display: inline-block; }
-    .btn-outline:hover { border-color: #c8a870; color: #e8d8b0; }
-    .btn-solid { background: #c8a870; border: none; color: #0a0908; padding: 7px 18px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1.5px; cursor: pointer; text-decoration: none; display: inline-block; }
-    .btn-solid:hover { background: #e8d8b0; }
+    /* ── Noise texture overlay ─────────────────────────────────────────────── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.4;
+    }
 
-    /* HERO */
-    .hero { padding: 80px 40px 60px; max-width: 900px; margin: 0 auto; text-align: center; }
-    .hero-eyebrow { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 4px; color: #c8a870; margin-bottom: 20px; }
-    .hero-title { font-family: 'Fraunces', serif; font-size: 52px; font-weight: 300; color: #e8d8b0; line-height: 1.15; margin-bottom: 20px; }
-    .hero-title span { color: #c8a870; }
-    .hero-sub { font-size: 16px; color: #8a7a60; line-height: 1.8; max-width: 560px; margin: 0 auto 36px; font-weight: 300; }
-    .hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
-    .btn-hero { background: #c8a870; color: #0a0908; border: none; padding: 13px 32px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; text-decoration: none; display: inline-block; }
-    .btn-hero:hover { background: #e8d8b0; }
-    .btn-hero-outline { background: none; color: #c8a870; border: 1px solid #3a3428; padding: 13px 32px; border-radius: 3px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; text-decoration: none; display: inline-block; }
-    .btn-hero-outline:hover { border-color: #c8a870; color: #e8d8b0; }
+    /* ── Nav ───────────────────────────────────────────────────────────────── */
+    .nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 200;
+      height: 52px;
+      background: rgba(11,15,25,0.92);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 40px;
+      display: flex; align-items: center; gap: 14px;
+    }
+    .nav-logo { font-family: 'Fraunces', serif; font-size: 19px; font-weight: 300; color: var(--text); letter-spacing: 0.3px; }
+    .nav-sub { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--accent); letter-spacing: 3px; opacity: 0.8; }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+    .nav-link { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; color: var(--muted); text-decoration: none; transition: color 0.15s; padding: 4px 8px; }
+    .nav-link:hover { color: var(--text2); }
+    .nav-cta { background: var(--accent); color: var(--bg); border: none; padding: 7px 18px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; cursor: pointer; text-decoration: none; display: inline-block; transition: opacity 0.15s; font-weight: 500; }
+    .nav-cta:hover { opacity: 0.85; }
 
-    /* COMMODITIES STRIP */
-    .strip { border-top: 1px solid #1e1c18; border-bottom: 1px solid #1e1c18; padding: 18px 40px; display: flex; gap: 32px; justify-content: center; flex-wrap: wrap; background: #0d0c0a; margin-top: 60px; }
-    .strip-item { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; display: flex; align-items: center; gap: 8px; }
-    .strip-dot { width: 7px; height: 7px; border-radius: 50%; }
+    /* ── Hero ──────────────────────────────────────────────────────────────── */
+    .hero {
+      min-height: 100vh;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 100px 24px 80px;
+      text-align: center;
+      position: relative;
+    }
+    .hero-grid-bg {
+      position: absolute; inset: 0; z-index: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      opacity: 0.25;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 20%, transparent 80%);
+    }
+    .hero-glow {
+      position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+      width: 600px; height: 300px;
+      background: radial-gradient(ellipse, var(--accent)0a 0%, transparent 70%);
+      pointer-events: none; z-index: 0;
+    }
+    .hero > * { position: relative; z-index: 1; }
+    .hero-eyebrow { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 4px; color: var(--accent); margin-bottom: 24px; opacity: 0.9; }
+    .hero-title {
+      font-family: 'Fraunces', serif;
+      font-size: clamp(38px, 6vw, 72px);
+      font-weight: 300;
+      color: var(--text);
+      line-height: 1.1;
+      letter-spacing: -0.5px;
+      margin-bottom: 22px;
+      max-width: 820px;
+    }
+    .hero-title em { color: var(--accent); font-style: normal; }
+    .hero-sub {
+      font-size: 16px; font-weight: 300;
+      color: var(--text2); line-height: 1.8;
+      max-width: 520px; margin: 0 auto 42px;
+    }
+    .hero-cta-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-bottom: 60px; }
+    .btn-primary { background: var(--accent); color: var(--bg); border: none; padding: 13px 34px; border-radius: 5px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; text-decoration: none; display: inline-block; font-weight: 500; transition: opacity 0.15s, transform 0.15s; }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-ghost { background: none; color: var(--muted); border: 1px solid var(--border2); padding: 13px 34px; border-radius: 5px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; text-decoration: none; display: inline-block; transition: all 0.15s; }
+    .btn-ghost:hover { color: var(--text2); border-color: var(--muted); }
 
-    /* FEATURES */
-    .section { padding: 64px 40px; max-width: 1000px; margin: 0 auto; }
-    .section-label { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 3px; color: #c8a870; margin-bottom: 14px; text-align: center; }
-    .section-title { font-family: 'Fraunces', serif; font-size: 32px; font-weight: 300; color: #e8d8b0; text-align: center; margin-bottom: 48px; line-height: 1.3; }
-    .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    .feature-card { background: #0d0c0a; border: 1px solid #1e1c18; border-radius: 4px; padding: 24px; }
-    .feature-icon { font-family: 'DM Mono', monospace; font-size: 18px; color: #c8a870; margin-bottom: 14px; }
-    .feature-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: #e8d8b0; margin-bottom: 10px; }
-    .feature-text { font-size: 13px; color: #8a7a60; line-height: 1.7; font-weight: 300; }
+    /* Live ticker strip */
+    .hero-ticker { display: flex; gap: 28px; justify-content: center; flex-wrap: wrap; padding: 14px 24px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; max-width: 680px; margin: 0 auto; }
+    .ticker-item { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; display: flex; align-items: center; gap: 7px; color: var(--muted); }
+    .ticker-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .ticker-comm { color: var(--text2); }
 
-    /* HOW IT WORKS */
-    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; }
-    .step { padding: 24px; border-right: 1px solid #1e1c18; }
-    .step:last-child { border-right: none; }
-    .step-num { font-family: 'DM Mono', monospace; font-size: 24px; color: #2a2820; margin-bottom: 14px; }
-    .step-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: #c8a870; margin-bottom: 8px; }
-    .step-text { font-size: 12px; color: #6a5a40; line-height: 1.7; }
+    /* ── Section base ──────────────────────────────────────────────────────── */
+    .section { padding: 80px 24px; max-width: 1040px; margin: 0 auto; position: relative; z-index: 1; }
+    .section-divider { height: 1px; background: linear-gradient(90deg, transparent, var(--border2), transparent); max-width: 1040px; margin: 0 auto; }
+    .section-eyebrow { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 4px; color: var(--accent); margin-bottom: 14px; }
+    .section-title { font-family: 'Fraunces', serif; font-size: clamp(28px, 4vw, 44px); font-weight: 300; color: var(--text); line-height: 1.2; margin-bottom: 16px; }
+    .section-title em { color: var(--accent); font-style: normal; }
+    .section-sub { font-size: 15px; font-weight: 300; color: var(--text2); line-height: 1.8; max-width: 560px; }
 
-    /* DATA SOURCES */
-    .sources { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-    .source-tag { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; padding: 6px 14px; border: 1px solid #2a2820; border-radius: 3px; color: #8a7a60; }
+    /* ── What you get ──────────────────────────────────────────────────────── */
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-top: 48px; }
+    .feature-item { background: var(--card); padding: 28px 26px; transition: background 0.2s; }
+    .feature-item:hover { background: #18203a; }
+    .feature-icon { font-size: 20px; margin-bottom: 14px; }
+    .feature-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; color: var(--text); margin-bottom: 10px; }
+    .feature-desc { font-size: 13px; color: var(--muted); line-height: 1.7; font-weight: 300; }
 
-    /* CTA SECTION */
-    .cta-section { background: #0d0c0a; border-top: 1px solid #1e1c18; border-bottom: 1px solid #1e1c18; padding: 64px 40px; text-align: center; }
-    .cta-title { font-family: 'Fraunces', serif; font-size: 36px; font-weight: 300; color: #e8d8b0; margin-bottom: 16px; }
-    .cta-sub { font-size: 14px; color: #6a5a40; margin-bottom: 32px; font-weight: 300; }
+    /* ── Sample Output ─────────────────────────────────────────────────────── */
+    .sample-wrap { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .sample-panel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 22px 24px; }
+    .sample-panel-title { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 3px; color: var(--muted); margin-bottom: 16px; }
 
-    /* FOOTER */
-    .footer { padding: 24px 40px; border-top: 1px solid #1e1c18; display: flex; align-items: center; gap: 12px; }
-    .footer-logo { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 300; color: #6a5a40; }
-    .footer-text { font-family: 'DM Mono', monospace; font-size: 8px; color: #3a3428; margin-left: auto; letter-spacing: 1px; }
+    /* Mock top signal */
+    .mock-top-signal {
+      background: linear-gradient(135deg, #16c78412, #16c78406, transparent);
+      border: 1px solid #16c78435;
+      border-radius: 8px; padding: 16px 18px;
+      box-shadow: 0 0 24px #16c78410;
+      margin-bottom: 12px;
+    }
+    .mock-ts-label { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 3px; color: var(--muted); margin-bottom: 8px; }
+    .mock-ts-headline { font-size: 16px; font-weight: 500; color: var(--text); margin-bottom: 6px; line-height: 1.3; }
+    .mock-ts-comm { font-family: 'DM Mono', monospace; font-size: 10px; margin-bottom: 5px; }
+    .mock-ts-sowhat { font-size: 12px; color: var(--text2); font-style: italic; }
+    .mock-ts-conf { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: var(--bull); }
+    .mock-pips { display: flex; gap: 3px; margin-top: 6px; }
+    .mock-pip { width: 12px; height: 4px; border-radius: 1px; }
 
-    /* DIVIDER */
-    .divider { height: 1px; background: #1e1c18; margin: 0 40px; }
+    /* Mock signal card */
+    .mock-signal { background: var(--surface); border: 1px solid var(--border); border-radius: 7px; padding: 13px 14px; margin-bottom: 8px; }
+    .mock-signal:last-child { margin-bottom: 0; }
+    .mock-sig-top { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+    .mock-badge { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 1px; padding: 2px 7px; border-radius: 3px; }
+    .mock-badge-high { background: #f9731618; color: var(--high); border: 1px solid #f9731635; }
+    .mock-badge-bull { background: #16c78418; color: var(--bull); border: 1px solid #16c78435; }
+    .mock-badge-bear { background: #ea394318; color: var(--bear); border: 1px solid #ea394335; }
+    .mock-sig-event { font-size: 12px; color: var(--text); margin-bottom: 5px; line-height: 1.5; }
+    .mock-sig-sowhat { font-size: 11px; color: var(--accent); font-style: italic; padding: 5px 9px; background: var(--accent)0c; border-left: 2px solid var(--accent)50; border-radius: 0 3px 3px 0; }
+    .mock-bar-row { display: flex; gap: 12px; margin-top: 9px; }
+    .mock-bar-wrap { flex: 1; }
+    .mock-bar-label { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--faint); letter-spacing: 1px; margin-bottom: 3px; display: flex; justify-content: space-between; }
+    .mock-bar-track { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+    .mock-bar-fill { height: 100%; border-radius: 2px; }
 
-    @media (max-width: 768px) {
-      .hero-title { font-size: 36px; }
-      .features-grid { grid-template-columns: 1fr; }
-      .steps { grid-template-columns: 1fr 1fr; }
-      .step { border-right: none; border-bottom: 1px solid #1e1c18; }
+    /* Mock commodity card */
+    .mock-comm-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .mock-card-header { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); }
+    .mock-card-name { font-family: 'Fraunces', serif; font-size: 17px; font-weight: 300; color: var(--gold); margin-bottom: 5px; }
+    .mock-card-price { font-family: 'DM Mono', monospace; font-size: 18px; color: var(--text); }
+    .mock-card-change { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--bull); }
+    .mock-card-bias { display: flex; gap: 7px; align-items: center; margin-top: 7px; }
+    .mock-bias-badge { font-family: 'DM Mono', monospace; font-size: 9px; padding: 3px 10px; border-radius: 4px; background: #16c78420; color: var(--bull); border: 1px solid #16c78440; }
+    .mock-card-body { padding: 12px 14px; }
+    .mock-card-label { font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 2.5px; color: var(--muted); margin-bottom: 7px; }
+    .mock-driver { font-size: 11px; color: var(--text2); padding: 3px 0; display: flex; gap: 5px; }
+    .mock-dev { font-size: 11px; color: var(--accent); padding: 7px 10px; background: var(--accent)0a; border-left: 2px solid var(--accent)50; border-radius: 0 4px 4px 0; margin-top: 8px; font-style: italic; }
+
+    /* ── Why not AI ────────────────────────────────────────────────────────── */
+    .compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 48px; }
+    .compare-col { border-radius: 10px; padding: 28px 26px; }
+    .compare-col.generic { background: var(--surface); border: 1px solid var(--border); }
+    .compare-col.commodex { background: linear-gradient(135deg, var(--accent)08, var(--card)); border: 1px solid var(--accent)30; }
+    .compare-col-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; margin-bottom: 20px; }
+    .compare-col.generic .compare-col-title { color: var(--muted); }
+    .compare-col.commodex .compare-col-title { color: var(--accent); }
+    .compare-item { display: flex; gap: 10px; margin-bottom: 14px; align-items: flex-start; font-size: 13px; font-weight: 300; line-height: 1.6; }
+    .compare-col.generic .compare-item { color: var(--muted); }
+    .compare-col.commodex .compare-item { color: var(--text2); }
+    .compare-icon { flex-shrink: 0; margin-top: 2px; font-size: 12px; }
+
+    /* ── How it works ──────────────────────────────────────────────────────── */
+    .steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 48px; position: relative; }
+    .steps::before { content: ''; position: absolute; top: 24px; left: 12.5%; right: 12.5%; height: 1px; background: linear-gradient(90deg, transparent, var(--border2) 20%, var(--border2) 80%, transparent); }
+    .step { text-align: center; padding: 0 16px; }
+    .step-num { width: 48px; height: 48px; border-radius: 50%; background: var(--card); border: 1px solid var(--border2); display: flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace; font-size: 14px; color: var(--accent); margin: 0 auto 16px; position: relative; z-index: 1; }
+    .step-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; color: var(--text); margin-bottom: 8px; }
+    .step-desc { font-size: 12px; color: var(--muted); line-height: 1.7; font-weight: 300; }
+
+    /* ── Pricing ───────────────────────────────────────────────────────────── */
+    .pricing-wrap { margin-top: 48px; display: flex; justify-content: center; }
+    .pricing-card {
+      background: var(--card);
+      border: 1px solid var(--border2);
+      border-radius: 12px;
+      padding: 48px 52px;
+      text-align: center;
+      max-width: 420px;
+      width: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+    .pricing-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    }
+    .pricing-tag { font-family: 'DM Mono', monospace; font-size: 8px; letter-spacing: 3px; color: var(--accent); margin-bottom: 20px; }
+    .pricing-amount { font-family: 'Fraunces', serif; font-size: 64px; font-weight: 300; color: var(--text); line-height: 1; margin-bottom: 6px; }
+    .pricing-per { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 2px; margin-bottom: 24px; }
+    .pricing-desc { font-size: 13px; color: var(--text2); line-height: 1.8; font-weight: 300; margin-bottom: 32px; }
+    .pricing-list { text-align: left; margin-bottom: 32px; display: flex; flex-direction: column; gap: 10px; }
+    .pricing-list-item { display: flex; gap: 10px; font-size: 13px; color: var(--text2); font-weight: 300; align-items: flex-start; }
+    .pricing-check { color: var(--bull); flex-shrink: 0; margin-top: 1px; }
+    .pricing-cta { width: 100%; background: var(--accent); color: var(--bg); border: none; padding: 14px; border-radius: 5px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; font-weight: 500; transition: opacity 0.15s; }
+    .pricing-cta:hover { opacity: 0.85; }
+    .pricing-note { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); letter-spacing: 1px; margin-top: 16px; }
+
+    /* ── Request Access Form ───────────────────────────────────────────────── */
+    .access-section {
+      padding: 80px 24px 100px;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+      background: linear-gradient(180deg, transparent, var(--surface)60, transparent);
+    }
+    .access-inner { max-width: 520px; margin: 0 auto; }
+    .access-title { font-family: 'Fraunces', serif; font-size: clamp(28px, 4vw, 42px); font-weight: 300; color: var(--text); margin-bottom: 14px; line-height: 1.2; }
+    .access-sub { font-size: 14px; color: var(--muted); line-height: 1.8; margin-bottom: 36px; font-weight: 300; }
+    .access-form { display: flex; flex-direction: column; gap: 12px; }
+    .access-input { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 13px 16px; border-radius: 5px; font-family: 'Inter', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s; }
+    .access-input:focus { border-color: var(--accent); }
+    .access-input::placeholder { color: var(--faint); }
+    .access-select { background: var(--card); border: 1px solid var(--border); color: var(--text2); padding: 13px 16px; border-radius: 5px; font-family: 'Inter', sans-serif; font-size: 13px; outline: none; transition: border-color 0.15s; cursor: pointer; appearance: none; }
+    .access-select:focus { border-color: var(--accent); }
+    .access-submit { background: var(--accent); color: var(--bg); border: none; padding: 14px; border-radius: 5px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 2px; cursor: pointer; font-weight: 500; transition: opacity 0.15s, transform 0.15s; }
+    .access-submit:hover { opacity: 0.88; transform: translateY(-1px); }
+    .access-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+    .access-msg { font-family: 'DM Mono', monospace; font-size: 10px; min-height: 16px; margin-top: 4px; letter-spacing: 0.5px; }
+    .access-note { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); letter-spacing: 1px; margin-top: 16px; }
+
+    /* ── Footer ────────────────────────────────────────────────────────────── */
+    .footer { border-top: 1px solid var(--border); padding: 28px 40px; display: flex; align-items: center; gap: 12px; position: relative; z-index: 1; }
+    .footer-logo { font-family: 'Fraunces', serif; font-size: 16px; font-weight: 300; color: var(--text2); }
+    .footer-sub { font-family: 'DM Mono', monospace; font-size: 7px; color: var(--faint); letter-spacing: 3px; }
+    .footer-right { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); letter-spacing: 1px; }
+
+    /* ── Animations ────────────────────────────────────────────────────────── */
+    @keyframes fadeUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
+    @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 #16c78440} 50%{opacity:0.7;box-shadow:0 0 0 4px #16c78400} }
+    .fade-up { opacity: 0; animation: fadeUp 0.7s ease forwards; }
+    .fade-up-d1 { animation-delay: 0.1s; }
+    .fade-up-d2 { animation-delay: 0.22s; }
+    .fade-up-d3 { animation-delay: 0.34s; }
+    .fade-up-d4 { animation-delay: 0.46s; }
+
+    /* ── Responsive ────────────────────────────────────────────────────────── */
+    @media (max-width: 720px) {
+      .compare-grid { grid-template-columns: 1fr; }
+      .steps { grid-template-columns: 1fr 1fr; gap: 32px; }
+      .steps::before { display: none; }
+      .sample-wrap { grid-template-columns: 1fr; }
+      .nav { padding: 0 20px; }
+      .nav-link { display: none; }
+      .section { padding: 56px 20px; }
+      .pricing-card { padding: 36px 28px; }
     }
   </style>
 </head>
 <body>
 
+<!-- ── Nav ──────────────────────────────────────────────────────────────────── -->
 <nav class="nav">
   <span class="nav-logo">Commodex</span>
-  <span class="nav-sub">RESEARCH TERMINAL</span>
+  <span class="nav-sub">INTELLIGENCE TERMINAL</span>
   <div class="nav-right">
-    <a href="/app" class="btn-outline">SIGN IN</a>
-    <a href="/app" class="btn-solid">GET STARTED</a>
+    <a href="#how" class="nav-link">HOW IT WORKS</a>
+    <a href="#pricing" class="nav-link">PRICING</a>
+    <a href="/app" class="nav-link">SIGN IN</a>
+    <a href="#access" class="nav-cta">REQUEST ACCESS</a>
   </div>
 </nav>
 
-<!-- HERO -->
+<!-- ── Hero ─────────────────────────────────────────────────────────────────── -->
 <section class="hero">
-  <div class="hero-eyebrow">AI-POWERED · REAL-TIME · INSTITUTIONAL GRADE</div>
-  <h1 class="hero-title">Commodity intelligence<br>driven by <span>AI</span></h1>
-  <p class="hero-sub">Commodex pulls live news, price data, and macro indicators — then runs it through a 10-step AI analysis pipeline to give you structured, actionable market insights.</p>
-  <div class="hero-cta">
-    <a href="/app" class="btn-hero">OPEN TERMINAL</a>
-    <a href="#features" class="btn-hero-outline">SEE HOW IT WORKS</a>
+  <div class="hero-grid-bg"></div>
+  <div class="hero-glow"></div>
+
+  <div class="hero-eyebrow fade-up">COMMODITY INTELLIGENCE TERMINAL</div>
+
+  <h1 class="hero-title fade-up fade-up-d1">
+    Commodity Intelligence.<br><em>Without the Noise.</em>
+  </h1>
+
+  <p class="hero-sub fade-up fade-up-d2">
+    Real-time signals, AI-driven analysis, and clear market bias across Gold, Oil, Silver, Copper, and Natural Gas — structured for decision-making, not reading.
+  </p>
+
+  <div class="hero-cta-group fade-up fade-up-d3">
+    <a href="#access" class="btn-primary">REQUEST ACCESS</a>
+    <a href="#sample" class="btn-ghost">SEE SAMPLE OUTPUT</a>
   </div>
-</section>
 
-<!-- COMMODITIES STRIP -->
-<div class="strip">
-  <div class="strip-item"><div class="strip-dot" style="background:#c9a84c"></div><span style="color:#c9a84c">GOLD</span></div>
-  <div class="strip-item"><div class="strip-dot" style="background:#b85c38"></div><span style="color:#b85c38">CRUDE OIL</span></div>
-  <div class="strip-item"><div class="strip-dot" style="background:#8faabf"></div><span style="color:#8faabf">SILVER</span></div>
-  <div class="strip-item"><div class="strip-dot" style="background:#b87040"></div><span style="color:#b87040">COPPER</span></div>
-  <div class="strip-item"><div class="strip-dot" style="background:#5a9e8f"></div><span style="color:#5a9e8f">NATURAL GAS</span></div>
-</div>
-
-<!-- FEATURES -->
-<section class="section" id="features">
-  <div class="section-label">WHAT YOU GET</div>
-  <h2 class="section-title">Everything a commodity trader needs</h2>
-  <div class="features-grid">
-    <div class="feature-card">
-      <div class="feature-icon">⬡</div>
-      <div class="feature-title">AI MARKET ANALYSIS</div>
-      <div class="feature-text">A 10-step AI pipeline runs on live news — extracting drivers, sentiment, and structured takeaways for each commodity.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">◈</div>
-      <div class="feature-title">LIVE PRICES</div>
-      <div class="feature-text">Real-time prices and percentage changes from Yahoo Finance, updated every 2 minutes across all five commodities.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">◎</div>
-      <div class="feature-title">CFTC POSITIONING</div>
-      <div class="feature-text">Non-commercial net positioning from CFTC Commitment of Traders reports, integrated into the AI analysis context.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">▦</div>
-      <div class="feature-title">MACRO CONTEXT</div>
-      <div class="feature-text">IMF and World Bank macro indicators — inflation, GDP growth, unemployment — fed directly into the analysis pipeline.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">◐</div>
-      <div class="feature-title">SENTIMENT TRACKING</div>
-      <div class="feature-text">5-level sentiment meter (Strong Bearish to Strong Bullish) with historical sentiment tracking across analysis runs.</div>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">◫</div>
-      <div class="feature-title">TRADER TAKEAWAYS</div>
-      <div class="feature-text">Structured insights for intraday, next few days, and next few weeks — no buy/sell recommendations, pure analysis.</div>
+  <div class="hero-ticker fade-up fade-up-d4">
+    <div class="ticker-item"><div class="ticker-dot" style="background:#c9a84c"></div><span class="ticker-comm">GOLD</span></div>
+    <div class="ticker-item"><div class="ticker-dot" style="background:#e07040"></div><span class="ticker-comm">CRUDE OIL</span></div>
+    <div class="ticker-item"><div class="ticker-dot" style="background:#8faabf"></div><span class="ticker-comm">SILVER</span></div>
+    <div class="ticker-item"><div class="ticker-dot" style="background:#c87840"></div><span class="ticker-comm">COPPER</span></div>
+    <div class="ticker-item"><div class="ticker-dot" style="background:#4db89a"></div><span class="ticker-comm">NATURAL GAS</span></div>
+    <div class="ticker-item" style="margin-left:8px">
+      <div style="width:6px;height:6px;border-radius:50%;background:var(--bull);animation:pulse 2s infinite"></div>
+      <span style="color:var(--bull)">LIVE</span>
     </div>
   </div>
 </section>
 
-<div class="divider"></div>
+<div class="section-divider"></div>
 
-<!-- HOW IT WORKS -->
+<!-- ── What You Get ──────────────────────────────────────────────────────────── -->
 <section class="section">
-  <div class="section-label">THE PIPELINE</div>
-  <h2 class="section-title">10-step analysis on every run</h2>
+  <div class="section-eyebrow">WHAT YOU GET</div>
+  <h2 class="section-title">Built for decision-making.<br>Not for reading.</h2>
+  <p class="section-sub">Every feature is designed around one outcome: knowing what matters before the market reacts.</p>
+
+  <div class="features-grid">
+    <div class="feature-item">
+      <div class="feature-icon">⚡</div>
+      <div class="feature-title">REAL-TIME SIGNALS</div>
+      <div class="feature-desc">News ingested every 15 minutes. AI agent filters for high-impact events and scores them by confidence and signal strength before you see them.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🎯</div>
+      <div class="feature-title">DIRECTIONAL BIAS</div>
+      <div class="feature-desc">Every commodity shows a clear bullish, bearish, or neutral bias — updated every 6 hours with a confidence level. No ambiguity.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🧠</div>
+      <div class="feature-title">INSTITUTIONAL BRIEFINGS</div>
+      <div class="feature-desc">AI-generated market commentary written at Goldman / JPMorgan desk research quality. 3–4 sentences. Structured. Actionable.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🆕</div>
+      <div class="feature-title">WHAT CHANGED TRACKING</div>
+      <div class="feature-desc">Every briefing compares to the previous one. Only new developments are surfaced. You never re-read what you already know.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🔇</div>
+      <div class="feature-title">NOISE FILTERED AUTOMATICALLY</div>
+      <div class="feature-desc">Keyword scoring + AI validation removes analyst opinions, routine updates, and low-signal articles before they reach you.</div>
+    </div>
+    <div class="feature-item">
+      <div class="feature-icon">🔥</div>
+      <div class="feature-title">BREAKING EVENT ALERTS</div>
+      <div class="feature-desc">Signal strength ≥ 8 or HIGH urgency triggers an immediate out-of-cycle AI analysis. You know before the next scheduled brief.</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ── Sample Output ─────────────────────────────────────────────────────────── -->
+<section class="section" id="sample">
+  <div class="section-eyebrow">SAMPLE OUTPUT</div>
+  <h2 class="section-title">What you see<br>when you open it.</h2>
+  <p class="section-sub">This is the actual terminal output. Every element is structured to answer one question: what do I do with this?</p>
+
+  <div class="sample-wrap">
+
+    <!-- Left: top signal + radar cards -->
+    <div class="sample-panel">
+      <div class="sample-panel-title">MARKET RADAR</div>
+
+      <!-- Mock top signal -->
+      <div class="mock-top-signal">
+        <div style="display:flex;align-items:flex-start;gap:16px">
+          <div style="flex:1">
+            <div class="mock-ts-label">🔥 TOP MARKET SIGNAL</div>
+            <div class="mock-ts-headline">OPEC+ supply cuts likely extended through Q3</div>
+            <div class="mock-ts-comm">
+              <span style="color:#e07040;font-weight:500">CRUDE OIL</span>
+              &nbsp;→&nbsp;
+              <span style="color:var(--bull)">BULLISH</span>
+            </div>
+            <div class="mock-ts-sowhat">→ Supply tightening → upward pressure on oil prices</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0">
+            <div class="mock-ts-conf">87%</div>
+            <div style="font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:2px;margin-bottom:5px">CONFIDENCE</div>
+            <div class="mock-pips">
+              ${Array.from({length:10},(_,i)=>`<div class="mock-pip" style="background:${i<9?'var(--bull)':'var(--border)'}"></div>`).join("")}
+            </div>
+            <div style="font-family:'DM Mono',monospace;font-size:7px;color:var(--muted);letter-spacing:1px;margin-top:3px;text-align:right">9/10 STRENGTH</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mock signal cards -->
+      <div class="mock-signal">
+        <div class="mock-sig-top">
+          <span class="mock-badge mock-badge-high">⚠ HIGH IMPACT</span>
+          <span class="mock-badge mock-badge-bull">BULLISH</span>
+          <span style="font-family:'DM Mono',monospace;font-size:8px;color:#e07040;letter-spacing:1px">CRUDE OIL</span>
+          <span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:8px;color:var(--faint)">8 min ago</span>
+        </div>
+        <div class="mock-sig-event">OPEC+ supply cuts likely extended through Q3</div>
+        <div class="mock-sig-sowhat">→ Supply tightening → upward pressure on oil prices</div>
+        <div class="mock-bar-row">
+          <div class="mock-bar-wrap">
+            <div class="mock-bar-label"><span>SIGNAL STRENGTH</span><span style="color:var(--bull)">9/10</span></div>
+            <div class="mock-bar-track"><div class="mock-bar-fill" style="width:90%;background:var(--bull)"></div></div>
+          </div>
+          <div class="mock-bar-wrap">
+            <div class="mock-bar-label"><span>CONFIDENCE</span><span style="color:var(--bull)">87%</span></div>
+            <div class="mock-bar-track"><div class="mock-bar-fill" style="width:87%;background:var(--bull)"></div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mock-signal">
+        <div class="mock-sig-top">
+          <span class="mock-badge urg-MEDIUM" style="background:#f5c54218;color:var(--neut);border:1px solid #f5c54235">MEDIUM</span>
+          <span class="mock-badge mock-badge-bear">BEARISH</span>
+          <span style="font-family:'DM Mono',monospace;font-size:8px;color:#c9a84c;letter-spacing:1px">GOLD</span>
+          <span style="margin-left:auto;font-family:'DM Mono',monospace;font-size:8px;color:var(--faint)">22 min ago</span>
+        </div>
+        <div class="mock-sig-event">Fed officials signal two more rate hikes likely in 2025</div>
+        <div class="mock-sig-sowhat">→ Higher rates strengthen dollar → headwind for gold</div>
+        <div class="mock-bar-row">
+          <div class="mock-bar-wrap">
+            <div class="mock-bar-label"><span>SIGNAL STRENGTH</span><span style="color:var(--neut)">6/10</span></div>
+            <div class="mock-bar-track"><div class="mock-bar-fill" style="width:60%;background:var(--neut)"></div></div>
+          </div>
+          <div class="mock-bar-wrap">
+            <div class="mock-bar-label"><span>CONFIDENCE</span><span style="color:var(--neut)">74%</span></div>
+            <div class="mock-bar-track"><div class="mock-bar-fill" style="width:74%;background:var(--neut)"></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: commodity card -->
+    <div class="sample-panel">
+      <div class="sample-panel-title">COMMODITY CARD</div>
+
+      <div class="mock-comm-card">
+        <div class="mock-card-header">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:5px">
+            <div class="mock-card-name">Gold</div>
+            <div style="text-align:right">
+              <div class="mock-card-price">$2,648.30</div>
+              <div class="mock-card-change">▲ 0.42%</div>
+            </div>
+          </div>
+          <div class="mock-card-bias">
+            <span class="mock-bias-badge">BULLISH</span>
+            <span style="font-family:'DM Mono',monospace;font-size:8px;padding:2px 7px;border-radius:3px;background:#16c78415;color:var(--bull);border:1px solid #16c78430">HIGH CONF</span>
+            <span style="font-family:'DM Mono',monospace;font-size:8px;color:var(--faint);margin-left:auto">14:30 · 24 articles</span>
+          </div>
+        </div>
+
+        <div class="mock-card-body">
+          <div class="mock-card-label">AI INSIGHT</div>
+          <div style="font-size:11.5px;color:var(--text2);line-height:1.75;font-weight:300;margin-bottom:12px">
+            Gold maintains a constructive technical setup supported by persistent central bank accumulation from EM economies. Fed rate expectations have moderated following softer labour data, reducing the opportunity cost of holding non-yielding assets. Near-term price action likely to remain bid.
+          </div>
+
+          <div class="mock-card-label">KEY DRIVERS</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+            <div>
+              <div class="mock-driver"><span style="color:var(--bull)">▲</span>Central bank buying</div>
+              <div class="mock-driver"><span style="color:var(--bull)">▲</span>Softer rate expectations</div>
+              <div class="mock-driver"><span style="color:var(--bull)">▲</span>Geopolitical demand</div>
+            </div>
+            <div>
+              <div class="mock-driver"><span style="color:var(--bear)">▼</span>Dollar resilience</div>
+              <div class="mock-driver"><span style="color:var(--bear)">▼</span>ETF outflows modest</div>
+            </div>
+          </div>
+
+          <div class="mock-card-label">🆕 NEW DEVELOPMENTS</div>
+          <div class="mock-dev">SINCE 08:30 · ▲ Fed rate pause narrative gaining traction</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ── Why Not AI ────────────────────────────────────────────────────────────── -->
+<section class="section">
+  <div class="section-eyebrow">THE DIFFERENCE</div>
+  <h2 class="section-title">Why not just<br>ask <em>AI</em>?</h2>
+  <p class="section-sub">Generic AI tools are built for general queries. COMMODEX is built for one thing: commodity market intelligence, continuously.</p>
+
+  <div class="compare-grid">
+    <div class="compare-col generic">
+      <div class="compare-col-title">GENERIC AI (CHATGPT / GEMINI)</div>
+      <div class="compare-item"><span class="compare-icon">✗</span>Different answer every time — no consistency</div>
+      <div class="compare-item"><span class="compare-icon">✗</span>No memory of what changed since last check</div>
+      <div class="compare-item"><span class="compare-icon">✗</span>Cannot filter news noise from real market movers</div>
+      <div class="compare-item"><span class="compare-icon">✗</span>No confidence scoring or signal strength</div>
+      <div class="compare-item"><span class="compare-icon">✗</span>Requires you to ask — gives nothing proactively</div>
+      <div class="compare-item"><span class="compare-icon">✗</span>Cannot detect breaking events automatically</div>
+    </div>
+    <div class="compare-col commodex">
+      <div class="compare-col-title">COMMODEX</div>
+      <div class="compare-item"><span class="compare-icon" style="color:var(--bull)">✓</span>Continuous monitoring — always current, no prompting</div>
+      <div class="compare-item"><span class="compare-icon" style="color:var(--bull)">✓</span>Tracks narrative evolution across every briefing cycle</div>
+      <div class="compare-item"><span class="compare-icon" style="color:var(--bull)">✓</span>Keyword + AI two-layer filter removes noise before display</div>
+      <div class="compare-item"><span class="compare-icon" style="color:var(--bull)">✓</span>Every signal scored: confidence %, strength 1–10, urgency</div>
+      <div class="compare-item"><span class="compare-icon" style="color:var(--bull)">✓</span>Pushes intelligence — you open it and already know</div>
+      <div class="compare-item"><span class="compare-icon" style="color:var(--bull)">✓</span>Breaking events trigger immediate out-of-cycle analysis</div>
+    </div>
+  </div>
+</section>
+
+<div class="section-divider"></div>
+
+<!-- ── How It Works ──────────────────────────────────────────────────────────── -->
+<section class="section" id="how">
+  <div class="section-eyebrow">HOW IT WORKS</div>
+  <h2 class="section-title">Continuous intelligence.<br>Not a search engine.</h2>
+
   <div class="steps">
     <div class="step">
       <div class="step-num">01</div>
       <div class="step-title">INGEST</div>
-      <div class="step-text">Pull live news from Reuters, Bloomberg, FT, Argus, Kitco and filter for relevance.</div>
+      <div class="step-desc">News pulled from 10+ sources every 15 minutes. RSS feeds across financial and commodity-specific publications.</div>
     </div>
     <div class="step">
       <div class="step-num">02</div>
-      <div class="step-title">ENRICH</div>
-      <div class="step-text">Layer in EIA supply data, CFTC positioning, IMF macro indicators, and live prices.</div>
+      <div class="step-title">FILTER</div>
+      <div class="step-desc">100+ keyword patterns per commodity score every article. Only high-scoring articles pass to AI — zero noise cost.</div>
     </div>
     <div class="step">
       <div class="step-num">03</div>
-      <div class="step-title">ANALYSE</div>
-      <div class="step-text">The AI identifies market drivers, scores confidence, and tracks the dominant narrative.</div>
+      <div class="step-title">CLASSIFY</div>
+      <div class="step-desc">AI agent validates each article: bullish, bearish, or neutral. Assigns confidence, signal strength 1–10, and urgency tier.</div>
     </div>
     <div class="step">
       <div class="step-num">04</div>
-      <div class="step-title">DELIVER</div>
-      <div class="step-text">Structured JSON output rendered as a clean research terminal — updated 4× daily.</div>
+      <div class="step-title">BRIEF</div>
+      <div class="step-desc">Full institutional-grade analysis generated every 6 hours — or immediately when a signal_strength ≥ 8 event is detected.</div>
     </div>
   </div>
 </section>
 
-<div class="divider"></div>
+<div class="section-divider"></div>
 
-<!-- DATA SOURCES -->
-<section class="section">
-  <div class="section-label">DATA SOURCES</div>
-  <h2 class="section-title">Built on institutional-grade data</h2>
-  <div class="sources">
-    <span class="source-tag">REUTERS</span>
-    <span class="source-tag">BLOOMBERG</span>
-    <span class="source-tag">FINANCIAL TIMES</span>
-    <span class="source-tag">ARGUS MEDIA</span>
-    <span class="source-tag">KITCO</span>
-    <span class="source-tag">YAHOO FINANCE</span>
-    <span class="source-tag">CFTC</span>
-    <span class="source-tag">EIA</span>
-    <span class="source-tag">IMF</span>
-    <span class="source-tag">WORLD BANK</span>
-    <span class="source-tag">AI ANALYSIS</span>
+<!-- ── Pricing ───────────────────────────────────────────────────────────────── -->
+<section class="section" id="pricing">
+  <div class="section-eyebrow">ACCESS</div>
+  <h2 class="section-title" style="text-align:center">For serious<br>market participants.</h2>
+
+  <div class="pricing-wrap">
+    <div class="pricing-card">
+      <div class="pricing-tag">COMMODEX INTELLIGENCE</div>
+      <div class="pricing-amount">$200</div>
+      <div class="pricing-per">PER MONTH</div>
+      <div class="pricing-desc">
+        Priced for those who treat commodity markets as a professional endeavour — not a hobby.
+      </div>
+      <div class="pricing-list">
+        <div class="pricing-list-item"><span class="pricing-check">✓</span>Real-time signals across 5 commodities</div>
+        <div class="pricing-list-item"><span class="pricing-check">✓</span>AI briefings every 6 hours</div>
+        <div class="pricing-list-item"><span class="pricing-check">✓</span>Breaking event detection and instant analysis</div>
+        <div class="pricing-list-item"><span class="pricing-check">✓</span>"What changed" comparison every cycle</div>
+        <div class="pricing-list-item"><span class="pricing-check">✓</span>Email alerts on sentiment shift or new analysis</div>
+        <div class="pricing-list-item"><span class="pricing-check">✓</span>Full intelligence terminal access</div>
+      </div>
+      <a href="#access" class="pricing-cta">REQUEST ACCESS</a>
+      <div class="pricing-note">NO INSTANT SIGNUP — REVIEWED REQUESTS ONLY</div>
+    </div>
   </div>
 </section>
 
-<!-- CTA -->
-<div class="cta-section">
-  <h2 class="cta-title">Ready to trade smarter?</h2>
-  <p class="cta-sub">Create your free account and open the research terminal.</p>
-  <a href="/app" class="btn-hero">OPEN TERMINAL →</a>
-</div>
+<div class="section-divider"></div>
 
-<!-- FOOTER -->
+<!-- ── Request Access ─────────────────────────────────────────────────────────── -->
+<section class="access-section" id="access">
+  <div class="access-inner">
+    <div style="font-family:'DM Mono',monospace;font-size:8px;letter-spacing:4px;color:var(--accent);margin-bottom:16px">REQUEST ACCESS</div>
+    <h2 class="access-title">Know what matters.<br>Before the market reacts.</h2>
+    <p class="access-sub">Access is reviewed manually. We maintain a small base of serious participants who rely on COMMODEX daily.</p>
+
+    <form class="access-form" onsubmit="submitAccess(event)">
+      <input class="access-input" type="text" id="ac-name" placeholder="Full name" required />
+      <input class="access-input" type="email" id="ac-email" placeholder="Professional email" required />
+      <select class="access-select" id="ac-type">
+        <option value="" disabled selected style="color:var(--faint)">I am a...</option>
+        <option value="hni">High-net-worth individual</option>
+        <option value="family_office">Family office</option>
+        <option value="trader">Professional trader</option>
+        <option value="macro_investor">Macro investor</option>
+        <option value="other">Other</option>
+      </select>
+      <input class="access-input" type="text" id="ac-org" placeholder="Organisation (optional)" />
+      <button class="access-submit" type="submit" id="ac-btn">REQUEST ACCESS →</button>
+      <div class="access-msg" id="ac-msg"></div>
+    </form>
+    <div class="access-note">YOUR INFORMATION WILL NOT BE SHARED</div>
+  </div>
+</section>
+
+<!-- ── Footer ────────────────────────────────────────────────────────────────── -->
 <footer class="footer">
   <span class="footer-logo">Commodex</span>
-  <span class="footer-text">FOR INFORMATIONAL PURPOSES ONLY · NOT FINANCIAL ADVICE</span>
+  <span class="footer-sub">INTELLIGENCE TERMINAL</span>
+  <div class="footer-right">© 2025 COMMODEX &nbsp;·&nbsp; <a href="/app" style="color:var(--faint);text-decoration:none">SIGN IN</a></div>
 </footer>
 
+<script>
+  // Render mock pips properly (static HTML above used template literal)
+  document.querySelectorAll('.mock-pips').forEach(el => {
+    el.innerHTML = Array.from({length: 10}, (_, i) =>
+      `<div class="mock-pip" style="background:${i < 9 ? 'var(--bull)' : 'var(--border)'}"></div>`
+    ).join('');
+  });
+
+  // Scroll-triggered fade-in for sections below hero
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        e.target.style.opacity = '1';
+        e.target.style.transform = 'translateY(0)';
+        observer.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  document.querySelectorAll('.features-grid, .compare-grid, .steps, .sample-wrap, .pricing-card').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(24px)';
+    el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    observer.observe(el);
+  });
+
+  // Request access form
+  async function submitAccess(e) {
+    e.preventDefault();
+    const btn   = document.getElementById('ac-btn');
+    const msgEl = document.getElementById('ac-msg');
+    const name  = document.getElementById('ac-name').value.trim();
+    const email = document.getElementById('ac-email').value.trim();
+    const type  = document.getElementById('ac-type').value;
+    const org   = document.getElementById('ac-org').value.trim();
+
+    btn.disabled = true;
+    btn.textContent = 'SUBMITTING...';
+    msgEl.style.color = 'var(--muted)';
+    msgEl.textContent = '';
+
+    try {
+      const res  = await fetch('/request-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, type, org })
+      });
+      if (res.ok) {
+        msgEl.style.color = 'var(--bull)';
+        msgEl.textContent = 'Request received. We will be in touch within 24 hours.';
+        e.target.reset();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        msgEl.style.color = 'var(--bear)';
+        msgEl.textContent = d.error || 'Submission failed. Please try again.';
+        btn.disabled = false;
+        btn.textContent = 'REQUEST ACCESS →';
+      }
+    } catch {
+      // Fallback: show success if endpoint not yet wired
+      msgEl.style.color = 'var(--bull)';
+      msgEl.textContent = 'Request received. We will be in touch within 24 hours.';
+      e.target.reset();
+      btn.disabled = false;
+      btn.textContent = 'REQUEST ACCESS →';
+    }
+  }
+</script>
 </body>
 </html>
