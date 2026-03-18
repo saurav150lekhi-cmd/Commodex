@@ -1001,7 +1001,7 @@ function renderNews() {
   } else {
     items = (allArticles[currentNewsFilter] || []).map(a => ({...a, commodity: currentNewsFilter}));
   }
-  items.sort((a, b) => (b.published || '').localeCompare(a.published || ''));
+  items.sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
   const seen = new Set();
   items = items.filter(a => { if (seen.has(a.title)) return false; seen.add(a.title); return true; }).slice(0, 80);
   document.getElementById('newsCount').textContent = items.length;
