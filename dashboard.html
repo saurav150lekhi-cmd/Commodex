@@ -33,10 +33,59 @@
     .header-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
     .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--bull); animation: pulse 2s infinite; }
     @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 #16c78440} 50%{opacity:0.6;box-shadow:0 0 0 4px #16c78400} }
-    .analytics-btn { background: none; border: 1px solid var(--border2); color: var(--muted); padding: 4px 10px; border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; text-decoration: none; transition: all 0.15s; }
-    .analytics-btn:hover { color: var(--accent); border-color: var(--accent); }
     .signout-btn { background: none; border: none; color: var(--faint); font-family: 'DM Mono', monospace; font-size: 9px; cursor: pointer; letter-spacing: 1px; transition: color 0.15s; }
     .signout-btn:hover { color: var(--muted); }
+
+    /* ── Profile dropdown ────────────────────────────────────────────────────── */
+    .profile-wrap { position: relative; }
+    .profile-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 6px; padding: 5px 12px 5px 8px;
+      cursor: pointer; transition: border-color 0.15s;
+    }
+    .profile-btn:hover { border-color: var(--border2); }
+    .profile-avatar {
+      width: 24px; height: 24px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent)40, var(--accent)15);
+      border: 1px solid var(--accent)50;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; color: var(--accent);
+      flex-shrink: 0;
+    }
+    .profile-email-label { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--text2); letter-spacing: 0.5px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .profile-chevron { font-size: 8px; color: var(--muted); transition: transform 0.2s; }
+    .profile-btn.open .profile-chevron { transform: rotate(180deg); }
+
+    .profile-dropdown {
+      display: none; position: absolute; top: calc(100% + 8px); right: 0;
+      width: 240px; background: var(--surface);
+      border: 1px solid var(--border2); border-radius: 8px;
+      box-shadow: 0 8px 32px #00000050; z-index: 500;
+      overflow: hidden;
+      animation: dropDown 0.18s ease;
+    }
+    @keyframes dropDown { from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)} }
+    .profile-dropdown.open { display: block; }
+
+    .pd-header { padding: 14px 16px 12px; border-bottom: 1px solid var(--border); }
+    .pd-name { font-size: 13px; color: var(--text); font-weight: 400; margin-bottom: 2px; }
+    .pd-email { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); letter-spacing: 0.5px; }
+    .pd-plan { display: inline-block; margin-top: 8px; font-family: 'DM Mono', monospace; font-size: 7px; letter-spacing: 1.5px; padding: 2px 8px; border-radius: 3px; background: var(--accent)18; color: var(--accent); border: 1px solid var(--accent)35; }
+
+    .pd-section { padding: 6px 0; border-bottom: 1px solid var(--border); }
+    .pd-section:last-child { border-bottom: none; }
+    .pd-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 16px; cursor: pointer;
+      transition: background 0.1s; text-decoration: none;
+      font-size: 12px; color: var(--text2); font-weight: 300;
+    }
+    .pd-item:hover { background: var(--card); color: var(--text); }
+    .pd-item-icon { font-size: 13px; width: 18px; text-align: center; flex-shrink: 0; }
+    .pd-item-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); margin-top: 1px; letter-spacing: 0.5px; }
+    .pd-item-danger { color: var(--bear) !important; }
+    .pd-item-danger:hover { background: #ea394310 !important; }
 
     /* ── Verify banner ───────────────────────────────────────────────────────── */
     .verify-banner { background: #1a1200; border-bottom: 1px solid #f5c54240; padding: 8px 24px; font-family: 'DM Mono', monospace; font-size: 10px; color: var(--neut); display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
@@ -271,8 +320,46 @@
   <span class="logo-sub">INTELLIGENCE TERMINAL</span>
   <div class="header-right">
     <div class="live-dot"></div>
-    <a href="/analytics" class="analytics-btn">ANALYTICS</a>
-    <button class="signout-btn" onclick="signOut()">SIGN OUT</button>
+    <div class="profile-wrap" id="profile-wrap">
+      <div class="profile-btn" id="profile-btn" onclick="toggleProfile()">
+        <div class="profile-avatar" id="profile-avatar">—</div>
+        <span class="profile-email-label" id="profile-email-label">PROFILE</span>
+        <span class="profile-chevron">▾</span>
+      </div>
+      <div class="profile-dropdown" id="profile-dropdown">
+        <div class="pd-header">
+          <div class="pd-name" id="pd-name">—</div>
+          <div class="pd-email" id="pd-email">—</div>
+          <span class="pd-plan">COMMODEX INTELLIGENCE</span>
+        </div>
+        <div class="pd-section">
+          <a href="/analytics" class="pd-item">
+            <span class="pd-item-icon">📊</span>
+            <div><div>Analytics</div><div class="pd-item-sub">SENTIMENT HISTORY · TRENDS</div></div>
+          </a>
+          <div class="pd-item" onclick="scrollToAlerts()">
+            <span class="pd-item-icon">🔔</span>
+            <div><div>Alert Preferences</div><div class="pd-item-sub">PER-COMMODITY EMAIL ALERTS</div></div>
+          </div>
+        </div>
+        <div class="pd-section">
+          <div class="pd-item" onclick="toggleProfile();checkVerificationBanner(false)">
+            <span class="pd-item-icon">✉</span>
+            <div><div>Email Verification</div><div class="pd-item-sub">VERIFY YOUR ACCOUNT</div></div>
+          </div>
+          <div class="pd-item" onclick="toggleProfile();showForgot();showLoginOverlay()">
+            <span class="pd-item-icon">🔑</span>
+            <div><div>Change Password</div><div class="pd-item-sub">RESET VIA EMAIL LINK</div></div>
+          </div>
+        </div>
+        <div class="pd-section">
+          <div class="pd-item pd-item-danger" onclick="signOut()">
+            <span class="pd-item-icon">↩</span>
+            <div>Sign Out</div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -480,6 +567,42 @@
     localStorage.removeItem("refresh_token");
     showLoginOverlay();
   }
+
+  // ── Profile Dropdown ──────────────────────────────────────────────────────────
+  function toggleProfile() {
+    const btn  = document.getElementById("profile-btn");
+    const drop = document.getElementById("profile-dropdown");
+    const open = drop.classList.toggle("open");
+    btn.classList.toggle("open", open);
+  }
+
+  function setProfileInfo(email) {
+    const initial = (email || "?")[0].toUpperCase();
+    const el = document.getElementById("profile-avatar");
+    const lbl = document.getElementById("profile-email-label");
+    const pdEmail = document.getElementById("pd-email");
+    const pdName  = document.getElementById("pd-name");
+    if (el)  el.textContent  = initial;
+    if (lbl) lbl.textContent = email || "PROFILE";
+    if (pdEmail) pdEmail.textContent = email || "—";
+    if (pdName)  pdName.textContent  = email ? email.split("@")[0] : "—";
+  }
+
+  function scrollToAlerts() {
+    toggleProfile();
+    // Scroll intel-grid to first alert toggle visible
+    const first = document.querySelector(".cc-footer");
+    if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", e => {
+    const wrap = document.getElementById("profile-wrap");
+    if (wrap && !wrap.contains(e.target)) {
+      document.getElementById("profile-dropdown")?.classList.remove("open");
+      document.getElementById("profile-btn")?.classList.remove("open");
+    }
+  });
 
   async function submitForgot() {
     const email  = document.getElementById("forgot-email").value.trim();
@@ -1080,7 +1203,7 @@
     loadSignals();
     loadAlerts();
     loadNotify();
-    apiFetch("/auth/me").then(r => r && r.json()).then(d => d && checkVerificationBanner(d.email_verified)).catch(()=>{});
+    apiFetch("/auth/me").then(r => r && r.json()).then(d => { if (d) { checkVerificationBanner(d.email_verified); setProfileInfo(d.email); } }).catch(()=>{});
   }
 
   const _origHide = hideLoginOverlay;
