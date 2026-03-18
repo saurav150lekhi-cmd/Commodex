@@ -280,11 +280,6 @@
   .dp-meta-cell { background: rgba(8,10,16,0.6); border: 1px solid var(--border); padding: 10px 14px; }
   .dp-meta-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.65); margin-bottom: 4px; }
   .dp-meta-val { font-size: 16px; font-weight: 800; }
-  .dp-level-row { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid rgba(30,35,54,0.5); }
-  .dp-level-row:last-child { border-bottom: none; }
-  .dp-level-tag { font-size: 7px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; width: 22px; flex-shrink: 0; }
-  .dp-level-price { font-size: 13px; font-weight: 800; width: 72px; flex-shrink: 0; font-family: var(--mono); }
-  .dp-level-label { font-size: 11px; color: rgba(209,212,220,0.6); font-family: var(--sans); line-height: 1.4; }
   .dp-section { margin-bottom: 20px; }
   .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 12px; }
   .dp-why-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
@@ -535,10 +530,6 @@
                 <div class="dp-section" id="dp-summary-section">
                   <div class="dp-section-lbl">AI ANALYSIS</div>
                   <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.7;font-family:var(--sans)">—</div>
-                </div>
-                <div class="dp-section" id="dp-levels-section">
-                  <div class="dp-section-lbl">KEY LEVELS</div>
-                  <div id="dp-key-levels"></div>
                 </div>
                 <div class="dp-section" id="dp-signal-section">
                   <div class="dp-section-lbl">SIGNAL DETAIL</div>
@@ -1157,26 +1148,6 @@ async function openDetail(name) {
   // AI Summary
   document.getElementById('dp-summary').textContent = analysis.market_summary || '—';
 
-  // Key Levels
-  const levels = analysis.key_levels || {};
-  const support    = (levels.support    || []).filter(l => l.price);
-  const resistance = (levels.resistance || []).filter(l => l.price);
-  let levelsHtml = '';
-  resistance.forEach(l => {
-    levelsHtml += `<div class="dp-level-row">
-      <span class="dp-level-tag" style="color:${BEAR_C}">RES</span>
-      <span class="dp-level-price" style="color:${BEAR_C}">$${Number(l.price).toLocaleString()}</span>
-      <span class="dp-level-label">${l.label || ''}</span>
-    </div>`;
-  });
-  support.forEach(l => {
-    levelsHtml += `<div class="dp-level-row">
-      <span class="dp-level-tag" style="color:${BULL_C}">SUP</span>
-      <span class="dp-level-price" style="color:${BULL_C}">$${Number(l.price).toLocaleString()}</span>
-      <span class="dp-level-label">${l.label || ''}</span>
-    </div>`;
-  });
-  document.getElementById('dp-key-levels').innerHTML = levelsHtml || '<div style="font-size:11px;color:var(--muted)">Levels will populate after next analysis run</div>';
 
   // Set alert toggle state for this commodity
   try {
