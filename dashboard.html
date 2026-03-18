@@ -1118,16 +1118,6 @@ async function openDetail(name) {
   const chgEl = document.getElementById('dp-chg');
   chgEl.textContent = (chg.cls === 'up' ? '▲ ' : chg.cls === 'dn' ? '▼ ' : '') + (chg.text === '—' ? '—' : Math.abs(price?.change||0).toFixed(2) + '%');
   chgEl.style.color = chgColor;
-  const fill = document.getElementById('dp-conf-fill');
-  fill.style.width = confPct + '%'; fill.style.background = color;
-  const pctEl = document.getElementById('dp-conf-pct');
-  pctEl.textContent = confPct + '%'; pctEl.style.color = color;
-  document.getElementById('dp-risk').textContent = risk.label;
-  document.getElementById('dp-risk').style.color = risk.color;
-  document.getElementById('dp-signal').textContent = badge.text;
-  document.getElementById('dp-signal').style.color = badge.color;
-  document.getElementById('dp-ticker').textContent = meta.ticker || '—';
-  document.getElementById('dp-exch').textContent = meta.exchange || '—';
 
   // WHY — up drivers then risks subheading for down drivers
   const upDrivers   = drivers.up   || [];
