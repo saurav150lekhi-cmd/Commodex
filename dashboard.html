@@ -568,10 +568,6 @@
                   <div class="dp-section-lbl">AI ANALYSIS</div>
                   <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.7;font-family:var(--sans)">—</div>
                 </div>
-                <div class="dp-section" id="dp-signal-section">
-                  <div class="dp-section-lbl">CURRENT BIAS</div>
-                  <div id="dp-signal-items"></div>
-                </div>
               </div>
               <!-- RIGHT COLUMN -->
               <div class="dp-col">
@@ -1191,22 +1187,6 @@ async function openDetail(name) {
     ).join('');
   }
   document.getElementById('dp-why').innerHTML = whyHtml || '<div style="font-size:11px;color:var(--muted)">No drivers identified</div>';
-
-  // SIGNALS — render in both columns
-  const sigSec = document.getElementById('dp-signal-section');
-  sigSec.style.background = `${color}08`;
-  const sigs = [
-    { lbl: 'WATCH TODAY',     txt: takeaways.intraday       || '—' },
-    { lbl: 'NEAR-TERM',      txt: takeaways.next_few_days  || '—' },
-    { lbl: 'BIAS',           txt: takeaways.next_few_weeks || '—' },
-  ];
-  const sigHtml = sigs.map(s =>
-    `<div class="dp-sig-item">
-      <span class="dp-sig-arrow" style="color:${color}">→</span>
-      <span class="dp-sig-txt"><span style="font-size:8px;font-weight:800;letter-spacing:0.1em;color:${color};opacity:.7;margin-right:4px">${s.lbl}</span>${s.txt}</span>
-    </div>`
-  ).join('');
-  document.getElementById('dp-signal-items').innerHTML = sigHtml;
 
   // AI Summary
   document.getElementById('dp-summary').textContent = analysis.market_summary || '—';
