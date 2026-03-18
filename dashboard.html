@@ -82,7 +82,12 @@
     .radar-sub { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--muted); letter-spacing: 2px; }
     .radar-live { display: flex; align-items: center; gap: 5px; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--bull); letter-spacing: 1px; }
     .radar-live-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--bull); animation: pulse 2s infinite; }
-    .radar-ts { margin-left: auto; font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); }
+    .radar-ts { font-family: 'DM Mono', monospace; font-size: 8px; color: var(--faint); }
+    .radar-search-wrap { margin-left: auto; display: flex; align-items: center; gap: 0; }
+    .radar-search { background: var(--card); border: 1px solid var(--border); border-radius: 5px; color: var(--text2); font-family: 'DM Mono', monospace; font-size: 10px; padding: 5px 12px 5px 30px; outline: none; width: 200px; transition: border-color 0.15s, width 0.2s; letter-spacing: 0.5px; }
+    .radar-search::placeholder { color: var(--faint); letter-spacing: 1px; }
+    .radar-search:focus { border-color: var(--accent); width: 220px; }
+    .radar-search-icon { position: absolute; pointer-events: none; font-size: 11px; color: var(--muted); margin-left: 10px; }
     .radar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
     .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 14px 0; letter-spacing: 1px; text-align: center; }
 
@@ -285,6 +290,14 @@
     <span class="radar-sub">AI SIGNAL DETECTION</span>
     <div class="radar-live"><div class="radar-live-dot"></div>MONITORING</div>
     <span class="radar-ts" id="radar-ts"></span>
+    <div class="radar-search-wrap" style="position:relative">
+      <span class="radar-search-icon">⌕</span>
+      <input class="radar-search" id="comm-search" type="text" placeholder="SEARCH COMMODITY..."
+        oninput="filterCards(this.value)" list="comm-list" autocomplete="off" />
+      <datalist id="comm-list">
+        <option value="Gold"><option value="Crude Oil"><option value="Silver"><option value="Copper"><option value="Natural Gas">
+      </datalist>
+    </div>
   </div>
   <div class="radar-grid" id="radar-signals">
     <div class="radar-empty">Scanning markets for signals...</div>
@@ -848,6 +861,21 @@
       if (!res || !res.ok) return;
       renderRadar(await res.json());
     } catch(e) {}
+  }
+
+  // ── Commodity Search ─────────────────────────────────────────────────────────
+  function filterCards(query) {
+    const q = query.trim().toLowerCase();
+    const grid = document.getElementById("card-grid");
+    if (!grid) return;
+    // Show/hide cards based on query; empty query shows all
+    Array.from(grid.children).forEach(card => {
+      if (!q) { card.style.display = ""; return; }
+      // Match against commodity name stored in .cc-name text
+      const nameEl = card.querySelector(".cc-name");
+      const name   = nameEl ? nameEl.textContent.toLowerCase() : "";
+      card.style.display = name.includes(q) ? "" : "none";
+    });
   }
 
   // ── Data Loader ───────────────────────────────────────────────────────────────
