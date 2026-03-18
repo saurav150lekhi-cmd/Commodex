@@ -142,7 +142,12 @@ NEWS_SOURCES = [
     # ── Tier 8 — Official / policy feeds ─────────────────────────────────────
     "https://www.federalreserve.gov/feeds/press_all.xml",          # Federal Reserve press releases
     "https://www.opec.org/opec_web/en/press_room/rss.htm",         # OPEC official press releases
-    # ── Tier 9 — Copper specialist ────────────────────────────────────────────
+    # ── Tier 9 — Natural gas specialist ──────────────────────────────────────
+    "https://lngprime.com/feed/",                                  # LNG Prime (tankers, terminals, prices)
+    "https://www.icis.com/explore/resources/news/rss/?feed=gas",   # ICIS gas news
+    "https://www.rechargenews.com/feed",                           # Recharge News (LNG, renewables impact)
+    "https://energymonitor.ai/feed/",                              # Energy Monitor (gas/LNG transitions)
+    # ── Tier 10 — Copper specialist ───────────────────────────────────────────
     "https://copperalliance.org/feed/",                            # Copper Alliance (demand, applications)
     "https://www.mining.com/tag/copper/feed/",                     # Mining.com copper tag
     "https://www.fastmarkets.com/commodities/base-metals/copper/feed/", # Fastmarkets copper
@@ -154,7 +159,7 @@ COMMODITIES = {
     "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
     "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil"],
     "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories", "china pmi", "manufacturing pmi", "china manufacturing", "freeport mcmoran", "bhp copper", "antofagasta", "codelco", "chile copper", "copper smelter", "copper concentrate", "copper scrap", "dr copper", "copper warehouse", "copper stocks lme", "comex copper stocks"],
-    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports", "lng tanker", "lng carrier", "lng terminal", "lng exports", "lng imports", "sabine pass", "freeport lng"],
+    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports", "lng tanker", "lng carrier", "lng terminal", "lng exports", "lng imports", "sabine pass", "freeport lng", "ttf price", "nbp gas", "european gas storage", "norway gas", "gazprom", "russia gas", "calcasieu pass", "corpus christi lng", "cove point lng", "heating degree days", "hdd", "gas feedgas", "lng utilization", "pipeline flow", "winter gas", "summer gas", "gas withdrawal", "gas injection"],
 }
 
 GOOGLE_SEARCHES = {
@@ -571,7 +576,104 @@ def fetch_china_pmi():
     return result
 
 
-# ── 11. BLS — CPI and PPI (free public API, no key required) ───────────────────
+# ── 11. TTF European natural gas price — Stooq (free, no key) ────────────────
+def fetch_ttf_price():
+    """Fetch TTF Dutch natural gas price — European benchmark (free, no key)."""
+    # TTF is the European gas benchmark; drives LNG export pricing globally
+    symbols = {
+        "TTF": ("ttf.f",   "TTF Dutch Natural Gas (EUR/MWh)"),
+        "NBP": ("nbp.f",   "NBP UK Natural Gas (p/therm)"),
+    }
+    result = {}
+    for name, (sym, label) in symbols.items():
+        try:
+            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                row   = lines[-1].split(",")
+                close = float(row[6])
+                open_ = float(row[3])
+                chg   = round(((close - open_) / open_) * 100, 2) if open_ else None
+                result[name] = {"label": label, "price": close, "change": chg}
+        except Exception as e:
+            log.debug("TTF/NBP fetch failed for %s: %s", name, e)
+    return result
+
+
+# ── 12. ENTSOG — European gas pipeline flows (free API, no key) ───────────────
+def fetch_entsog_flows():
+    """Fetch European natural gas pipeline flows from ENTSOG transparency platform."""
+    result = {}
+    try:
+        # Get aggregated EU gas flow (physical flow, most recent day)
+        url = ("https://transparency.entsog.eu/api/v1/operationaldata"
+               "?limit=5&indicator=Physical+Flow&periodType=day"
+               "&pointDirection=DE-TSO-0001ITP-00096entry"  # key German entry point
+               "&timezone=UTC")
+        data = fetch_json(url, timeout=12)
+        if data and data.get("operationalData"):
+            rows = data["operationalData"]
+            if rows:
+                latest = rows[0]
+                result["eu_pipeline_flow"] = {
+                    "label":  "EU Gas Pipeline Flow (DE entry)",
+                    "value":  latest.get("value"),
+                    "unit":   latest.get("unit", "kWh/d"),
+                    "period": latest.get("periodFrom", ""),
+                }
+    except Exception as e:
+        log.debug("ENTSOG fetch failed: %s", e)
+
+    # Also fetch Norway→EU flow (Norway supplies ~30% of EU gas)
+    try:
+        url = ("https://transparency.entsog.eu/api/v1/operationaldata"
+               "?limit=3&indicator=Physical+Flow&periodType=day"
+               "&pointDirection=NO-TSO-0001ITP-00482exit"
+               "&timezone=UTC")
+        data = fetch_json(url, timeout=12)
+        if data and data.get("operationalData"):
+            rows = data["operationalData"]
+            if rows:
+                result["norway_eu_flow"] = {
+                    "label":  "Norway→EU Gas Flow",
+                    "value":  rows[0].get("value"),
+                    "unit":   rows[0].get("unit", "kWh/d"),
+                    "period": rows[0].get("periodFrom", ""),
+                }
+    except Exception as e:
+        log.debug("ENTSOG Norway flow fetch failed: %s", e)
+    return result
+
+
+# ── 13. DOE LNG export tracking — scraped from EIA (no extra key) ─────────────
+def fetch_lng_export_data():
+    """Fetch US LNG export capacity utilization from EIA (uses existing EIA key)."""
+    result = {}
+    if not EIA_API_KEY:
+        return result
+    # US LNG exports (monthly, bcf/d)
+    series = {
+        "lng_exports_monthly": "NG.N9133US2.M",   # US LNG exports (MMcf/month)
+        "lng_feedgas":         "NG.N9070US2.D",   # LNG feedgas demand (daily proxy for utilization)
+    }
+    for key, series_id in series.items():
+        url = f"https://api.eia.gov/v2/seriesid/{series_id}?api_key={EIA_API_KEY}&length=2"
+        data = fetch_json(url)
+        if data:
+            rows = data.get("response", {}).get("data", [])
+            if rows:
+                result[key] = {
+                    "latest":   rows[0].get("value"),
+                    "previous": rows[1].get("value") if len(rows) > 1 else None,
+                    "unit":     rows[0].get("unit", ""),
+                    "period":   rows[0].get("period", ""),
+                }
+    return result
+
+
+# ── 14. BLS — CPI and PPI (free public API, no key required) ───────────────────
 def fetch_bls_data():
     """Fetch US CPI and PPI from BLS public API v1 (no API key needed)."""
     result = {}
@@ -691,7 +793,8 @@ def fetch_treasury_yields():
 
 # ── Build macro context string for Claude ─────────────────────────────────────
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
-                        bls=None, weather=None, treasury=None, comex_copper=None, pmi=None):
+                        bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
+                        ttf=None, entsog=None, lng_exports=None):
     lines = []
 
     # FRED macro indicators — grouped by relevance
@@ -861,6 +964,34 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
         lines.append("US WEATHER (7-DAY FORECAST):")
         for city, w in weather.items():
             lines.append(f"  {city}: avg {w['avg_temp_f']}°F | HDD: {w['hdd_7day']} | CDD: {w['cdd_7day']} → {w['demand_signal']}")
+
+    # TTF / NBP European gas prices — natural gas
+    if ttf and commodity_name == "Natural Gas":
+        lines.append("EUROPEAN GAS PRICES:")
+        for name, d in ttf.items():
+            chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+            lines.append(f"  {d['label']}: {d['price']}{chg}")
+
+    # ENTSOG European pipeline flows — natural gas
+    if entsog and commodity_name == "Natural Gas":
+        lines.append("EUROPEAN GAS PIPELINE FLOWS (ENTSOG):")
+        for key, d in entsog.items():
+            if d.get("value"):
+                lines.append(f"  {d['label']}: {d['value']:,} {d['unit']} ({d['period']})")
+
+    # LNG export data — natural gas
+    if lng_exports and commodity_name == "Natural Gas":
+        lines.append("US LNG EXPORTS:")
+        if "lng_feedgas" in lng_exports:
+            d = lng_exports["lng_feedgas"]
+            chg = ""
+            if d.get("latest") and d.get("previous"):
+                diff = float(d["latest"]) - float(d["previous"])
+                chg = f" (change: {diff:+.0f}) — {'utilization up' if diff > 0 else 'utilization down'}"
+            lines.append(f"  LNG Feedgas Demand: {d['latest']} {d['unit']}{chg} ({d['period']})")
+        if "lng_exports_monthly" in lng_exports:
+            d = lng_exports["lng_exports_monthly"]
+            lines.append(f"  Monthly LNG Exports: {d['latest']} {d['unit']} ({d['period']})")
 
     # PMI — copper & crude oil (manufacturing demand signal)
     if pmi and commodity_name in ("Copper", "Crude Oil"):
@@ -1230,10 +1361,13 @@ def run_analysis():
         bls          = fetch_bls_data()
         weather      = fetch_weather_data()
         treasury     = fetch_treasury_yields()
-        comex_copper = fetch_comex_copper_stocks()
-        pmi          = fetch_china_pmi()
-        log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, LME copper=%s, BDI=%s",
-                 len(fred), len(bls), len(treasury), len(weather), len(pmi),
+        comex_copper  = fetch_comex_copper_stocks()
+        pmi           = fetch_china_pmi()
+        ttf           = fetch_ttf_price()
+        entsog        = fetch_entsog_flows()
+        lng_exports   = fetch_lng_export_data()
+        log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, LME copper=%s, BDI=%s",
+                 len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog),
                  lme_copper["value"] if lme_copper else "unavailable",
                  bdi["value"] if bdi else "unavailable")
 
@@ -1251,7 +1385,8 @@ def run_analysis():
             log.info("Analysing %s (%d articles)...", commodity, len(articles))
             macro_context = build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity,
                                                 bls=bls, weather=weather, treasury=treasury,
-                                                comex_copper=comex_copper, pmi=pmi)
+                                                comex_copper=comex_copper, pmi=pmi,
+                                                ttf=ttf, entsog=entsog, lng_exports=lng_exports)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
