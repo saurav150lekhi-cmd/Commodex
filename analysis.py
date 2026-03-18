@@ -120,14 +120,21 @@ NEWS_SOURCES = [
     "https://www.theice.com/rss/news",                             # ICE exchange news
     "https://www.lme.com/en/news-and-events/news/rss",            # LME news
     "https://www.cmegroup.com/rss/cme-group-news.xml",            # CME Group news
+    # ── Tier 4 — Tanker / shipping / trade flow ────────────────────────────────
+    "https://gcaptain.com/feed/",                                  # gCaptain maritime (tankers, LNG)
+    "https://splash247.com/feed/",                                 # Splash 247 shipping intelligence
+    "https://www.tradewindsnews.com/rss",                          # TradeWinds tanker market news
+    "https://www.offshore-technology.com/feed/",                   # Offshore oil & gas operations
+    "https://www.lngworldnews.com/feed/",                          # LNG shipping & trade
+    "https://www.hellenicshippingnews.com/feed/",                  # already have but keep (energy focus)
 ]
 
 COMMODITIES = {
     "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "gold rises", "gold falls", "gold hits", "gold climbs"],
-    "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls"],
+    "Crude Oil":   ["crude oil", "wti", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil"],
     "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
     "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories"],
-    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports"],
+    "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports", "lng tanker", "lng carrier", "lng terminal", "lng exports", "lng imports", "sabine pass", "freeport lng"],
 }
 
 GOOGLE_SEARCHES = {
@@ -229,6 +236,11 @@ def fetch_eia_data():
         "gasoline_inventory":  "PET.WGTSTUS1.W",
         "distillate_inventory":"PET.WDISTUS1.W",
         "refinery_utilization":"PET.WPULEUS2.W",
+        # Tanker / trade flow proxies
+        "cushing_stocks":      "PET.WCSSTUS1.W",    # Cushing OK hub stocks (WTI pricing)
+        "crude_imports_opec":  "PET.WCRIMS2.W",     # OPEC imports = tanker flow signal
+        "crude_imports_total": "PET.WCRIMPUS2.W",   # Total US crude imports
+        "crude_exports":       "PET.WCREXUS2.W",    # US crude exports
     }
     for key, series_id in series.items():
         url = f"https://api.eia.gov/v2/seriesid/{series_id}?api_key={EIA_API_KEY}&length=2"
@@ -356,10 +368,20 @@ def fetch_fred_data():
     if not FRED_API_KEY:
         return {}
     series = {
-        "dxy":   ("DTWEXBGS", "US Dollar Index (DXY)"),
-        "us10y": ("DGS10",    "US 10Y Treasury Yield (%)"),
-        "indpro":("INDPRO",   "US Industrial Production Index"),
-        "cpi":   ("CPIAUCSL", "US CPI (Inflation Index)"),
+        "dxy":        ("DTWEXBGS",         "US Dollar Index (DXY)"),
+        "us10y":      ("DGS10",            "US 10Y Treasury Yield (%)"),
+        "us2y":       ("DGS2",             "US 2Y Treasury Yield (%)"),
+        "yield_curve":("T10Y2Y",           "US 10Y-2Y Yield Spread (%)"),
+        "fedfunds":   ("FEDFUNDS",         "Fed Funds Rate (%)"),
+        "indpro":     ("INDPRO",           "US Industrial Production Index"),
+        "cpi":        ("CPIAUCSL",         "US CPI (Inflation Index)"),
+        "m2":         ("M2SL",             "US M2 Money Supply (Billions USD)"),
+        "vix":        ("VIXCLS",           "VIX Volatility Index"),
+        "eurusd":     ("DEXUSEU",          "EUR/USD Exchange Rate"),
+        "cnyusd":     ("DEXCHUS",          "CNY/USD Exchange Rate"),
+        "gold_lbma":  ("GOLDAMGBD228NLBM", "Gold LBMA Price (USD/troy oz)"),
+        "wti_spot":   ("DCOILWTICO",       "WTI Crude Oil Spot (USD/bbl)"),
+        "natgas_spot":("DHHNGSP",          "Henry Hub Nat Gas Spot (USD/mmBtu)"),
     }
     result = {}
     for key, (series_id, label) in series.items():
@@ -441,12 +463,63 @@ def fetch_bdi():
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name):
     lines = []
 
-    # FRED macro indicators (DXY, 10Y, Industrial Production, CPI)
+    # FRED macro indicators — grouped by relevance
     if fred:
-        lines.append("FRED MACRO INDICATORS:")
-        for key, d in fred.items():
+        # Rate environment — all commodities
+        rate_keys = ["fedfunds", "us10y", "us2y", "yield_curve", "dxy"]
+        rate_lines = []
+        for k in rate_keys:
+            if k in fred:
+                d = fred[k]
+                chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+                rate_lines.append(f"  {d['label']}: {d['value']}{chg_str} ({d['date']})")
+        if rate_lines:
+            lines.append("RATE & DOLLAR ENVIRONMENT:")
+            lines.extend(rate_lines)
+
+        # Risk sentiment — all commodities
+        if "vix" in fred:
+            d = fred["vix"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            vix_val = d['value']
+            vix_regime = "elevated fear" if vix_val > 25 else "moderate" if vix_val > 18 else "complacency"
+            lines.append(f"RISK SENTIMENT: VIX {vix_val}{chg_str} — {vix_regime} ({d['date']})")
+
+        # Inflation / money supply — gold & silver signal
+        if commodity_name in ("Gold", "Silver"):
+            for k in ["cpi", "m2"]:
+                if k in fred:
+                    d = fred[k]
+                    chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+                    lines.append(f"INFLATION/MONEY: {d['label']}: {d['value']}{chg_str} ({d['date']})")
+
+        # Currency — gold, copper, silver
+        if commodity_name in ("Gold", "Silver", "Copper"):
+            for k in ["eurusd", "cnyusd"]:
+                if k in fred:
+                    d = fred[k]
+                    chg_str = f" (chg: {d['change']:+.4f})" if d.get("change") is not None else ""
+                    lines.append(f"CURRENCY: {d['label']}: {d['value']}{chg_str} ({d['date']})")
+
+        # Direct commodity spot prices from FRED (cross-reference)
+        if commodity_name == "Gold" and "gold_lbma" in fred:
+            d = fred["gold_lbma"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            lines.append(f"GOLD LBMA FIX: {d['label']}: {d['value']}{chg_str} ({d['date']})")
+        if commodity_name == "Crude Oil" and "wti_spot" in fred:
+            d = fred["wti_spot"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            lines.append(f"WTI SPOT (FRED): {d['value']}{chg_str} ({d['date']})")
+        if commodity_name == "Natural Gas" and "natgas_spot" in fred:
+            d = fred["natgas_spot"]
             chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
-            lines.append(f"  {d['label']}: {d['value']}{chg_str} ({d['date']})")
+            lines.append(f"HENRY HUB SPOT (FRED): {d['value']}{chg_str} ({d['date']})")
+
+        # Industrial production — copper & crude
+        if commodity_name in ("Copper", "Crude Oil") and "indpro" in fred:
+            d = fred["indpro"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            lines.append(f"INDUSTRIAL PRODUCTION: {d['value']}{chg_str} ({d['date']})")
 
     # Baltic Dry Index
     if bdi:
@@ -507,6 +580,27 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
         if "refinery_utilization" in eia and commodity_name == "Crude Oil":
             d = eia["refinery_utilization"]
             lines.append(f"  US Refinery Utilization: {d['latest']} {d['unit']} ({d['period']})")
+        if "cushing_stocks" in eia and commodity_name == "Crude Oil":
+            d = eia["cushing_stocks"]
+            chg = ""
+            if d.get("latest") and d.get("previous"):
+                diff = float(d["latest"]) - float(d["previous"])
+                chg = f" (change: {diff:+.0f})"
+            lines.append(f"  Cushing OK Crude Stocks: {d['latest']} {d['unit']}{chg} ({d['period']})")
+        if commodity_name == "Crude Oil":
+            if "crude_imports_opec" in eia:
+                d = eia["crude_imports_opec"]
+                chg = ""
+                if d.get("latest") and d.get("previous"):
+                    diff = float(d["latest"]) - float(d["previous"])
+                    chg = f" (change: {diff:+.0f}) — {'tanker flow up' if diff > 0 else 'tanker flow down'}"
+                lines.append(f"  OPEC Crude Imports (tanker proxy): {d['latest']} {d['unit']}{chg} ({d['period']})")
+            if "crude_imports_total" in eia:
+                d = eia["crude_imports_total"]
+                lines.append(f"  Total US Crude Imports: {d['latest']} {d['unit']} ({d['period']})")
+            if "crude_exports" in eia:
+                d = eia["crude_exports"]
+                lines.append(f"  US Crude Exports: {d['latest']} {d['unit']} ({d['period']})")
     # CFTC
     if cftc and commodity_name in cftc:
         d = cftc[commodity_name]
