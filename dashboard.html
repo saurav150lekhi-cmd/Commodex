@@ -129,7 +129,7 @@
     .ts-hidden { display: none; }
 
     .radar-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
-    .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 14px 0; letter-spacing: 1px; text-align: center; }
+    .radar-empty { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--faint); padding: 6px 0; letter-spacing: 1px; text-align: center; }
 
     /* Signal Cards */
     .signal-card { background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 13px 15px; transition: border-color 0.2s; animation: fadeSlide 0.4s ease; cursor: default; }
@@ -542,12 +542,20 @@
   let newsFilter = null;
 
   // ── Commodity Card Grid ───────────────────────────────────────────────────────
+  const SENTIMENT_SORT = { "STRONG_BULLISH":0, "BULLISH":1, "STRONG_BEARISH":2, "BEARISH":3, "NEUTRAL":4 };
+
   function renderAllCommodities() {
     const grid = document.getElementById("card-grid");
     const commodities = Object.keys(COMM_COLORS);
     if (!commodities.some(c => appData[c])) return;
 
-    grid.innerHTML = commodities.map(name => buildCard(name)).join("");
+    const sorted = [...commodities].sort((a, b) => {
+      const sa = SENTIMENT_SORT[appData[a]?.analysis?.sentiment] ?? 4;
+      const sb = SENTIMENT_SORT[appData[b]?.analysis?.sentiment] ?? 4;
+      return sa - sb;
+    });
+
+    grid.innerHTML = sorted.map(name => buildCard(name)).join("");
 
     requestAnimationFrame(() => {
       commodities.forEach(name => {
