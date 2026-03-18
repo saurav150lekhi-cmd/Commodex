@@ -516,6 +516,10 @@
                 </div>
               </div>
               <div style="display:flex;align-items:center;gap:20px">
+                <div style="display:flex;align-items:center;gap:10px;border:1px solid var(--border);padding:6px 12px;background:rgba(8,10,16,0.6)">
+                  <span style="font-size:9px;font-weight:800;letter-spacing:0.12em;color:rgba(93,100,120,0.7)">EMAIL ALERT</span>
+                  <div class="toggle" id="dp-alert-toggle" onclick="toggleAlert(activeDetailName, this)"></div>
+                </div>
                 <div id="dp-bias" class="dp-bias-val">—</div>
                 <div class="dp-price-block">
                   <div id="dp-price" class="dp-price">—</div>
@@ -1175,6 +1179,17 @@ async function openDetail(name) {
       const hist = await hres.json();
       const scores = hist.reverse().slice(-14).map(r => SENT_SCORE[r.sentiment] ?? 0);
       document.getElementById('dp-spark').innerHTML = makeSpark(scores, color);
+    }
+  } catch {}
+
+  // Set alert toggle state for this commodity
+  try {
+    const aRes = await fetch('/auth/alerts', { headers: authH() });
+    if (aRes.ok) {
+      const alerts = await aRes.json();
+      const entry = alerts.find(a => a.commodity === name);
+      const tog = document.getElementById('dp-alert-toggle');
+      if (entry?.enabled) tog.classList.add('on'); else tog.classList.remove('on');
     }
   } catch {}
 
