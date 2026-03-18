@@ -329,6 +329,14 @@
   .loading-dot:nth-child(2) { animation-delay: 0.2s; }
   .loading-dot:nth-child(3) { animation-delay: 0.4s; }
   .loading-text { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+  /* Key Data Panel */
+  .kd-row { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid rgba(30,35,54,0.5); gap:8px; }
+  .kd-row:last-child { border-bottom:none; }
+  .kd-label { font-size:9px; letter-spacing:0.1em; color:var(--muted); flex:1; }
+  .kd-right { display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .kd-value { font-size:11px; color:var(--text); letter-spacing:0.05em; font-variant-numeric:tabular-nums; }
+  .kd-change { font-size:9px; letter-spacing:0.05em; }
+  .kd-signal { font-size:8px; letter-spacing:0.1em; padding:2px 5px; border:1px solid currentColor; opacity:0.7; }
   /* Calendar */
   .cal-group-hdr { font-size:9px; font-weight:800; letter-spacing:0.15em; color:var(--gold); margin:20px 0 8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
   .cal-event { display:flex; align-items:flex-start; gap:12px; padding:10px 14px; border-bottom:1px solid rgba(30,35,54,0.6); transition:background 0.15s; }
@@ -567,6 +575,10 @@
                 <div class="dp-section" id="dp-summary-section">
                   <div class="dp-section-lbl">AI ANALYSIS</div>
                   <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.7;font-family:var(--sans)">—</div>
+                </div>
+                <div class="dp-section" id="dp-keydata-section">
+                  <div class="dp-section-lbl">KEY DATA</div>
+                  <div id="dp-keydata-rows"></div>
                 </div>
               </div>
               <!-- RIGHT COLUMN -->
@@ -1191,6 +1203,9 @@ async function openDetail(name) {
   // AI Summary
   document.getElementById('dp-summary').textContent = analysis.market_summary || '—';
 
+  // Key Data Panel
+  loadKeyData(name);
+
 
   // Set alert toggle state for this commodity
   try {
@@ -1277,6 +1292,41 @@ async function toggleNotify(el) {
 // INIT
 // ══════════════════════════════════════════════════════════════════════════════
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+// ── Key Data Panel ────────────────────────────────────────────────────────────
+let macroCache = null;
+async function loadKeyData(commodity) {
+  const container = document.getElementById('dp-keydata-rows');
+  if (!container) return;
+  container.innerHTML = '<div style="font-size:9px;color:var(--muted);padding:8px 0">Loading...</div>';
+  try {
+    if (!macroCache) {
+      const res = await fetch('/macro', { headers: authH() });
+      if (!res.ok) { container.innerHTML = '<div style="font-size:9px;color:var(--muted);padding:8px 0">Data unavailable — run analysis first</div>'; return; }
+      macroCache = await res.json();
+    }
+    const rows = macroCache[commodity] || [];
+    if (!rows.length) { container.innerHTML = '<div style="font-size:9px;color:var(--muted);padding:8px 0">No data available</div>'; return; }
+    container.innerHTML = rows.map(r => {
+      const chgHtml = r.change
+        ? `<span class="kd-change" style="color:${r.change.startsWith('+') ? '#22c55e' : '#ef4444'}">${r.change}</span>`
+        : '';
+      const sigHtml = r.signal
+        ? `<span class="kd-signal" style="color:${r.signal_color || 'var(--muted)'}">${r.signal}</span>`
+        : '';
+      return `<div class="kd-row">
+        <span class="kd-label">${r.label}</span>
+        <div class="kd-right">
+          ${chgHtml}
+          <span class="kd-value">${r.value}</span>
+          ${sigHtml}
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    container.innerHTML = '<div style="font-size:9px;color:var(--muted);padding:8px 0">Data unavailable</div>';
+  }
+}
 
 // ── Economic Calendar ──────────────────────────────────────────────────────────
 let calendarData = { upcoming_events: [], past_events: [] };

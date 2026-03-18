@@ -31,6 +31,7 @@ FRED_API_KEY      = os.environ.get("FRED_API_KEY", "")
 DATABASE_URL      = os.environ.get("DATABASE_URL", "sqlite:///commodex.db")
 JWT_SECRET_KEY    = os.environ.get("JWT_SECRET_KEY", "change-me-in-production")
 CALENDAR_FILE     = os.path.join(os.path.dirname(os.path.abspath(__file__)), "calendar.json")
+MACRO_CACHE_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "macro_cache.json")
 
 # Fix Render's postgres:// URI (SQLAlchemy requires postgresql://)
 if DATABASE_URL.startswith("postgres://"):
@@ -1814,6 +1815,17 @@ def run_analysis():
                 "breaking":  commodity in breaking_this_run,
             }
         latest_results = results
+        # Save macro snapshot for Key Data Panel
+        try:
+            macro_snapshot = {"last_updated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")}
+            for c in COMMODITIES:
+                macro_snapshot[c] = build_macro_snapshot(
+                    c, fred, cftc, eia, bdi, lme_copper,
+                    gold_etf, silver_data, oil_prices, rig_count,
+                    tanker_rates, spr, pmi, ttf, weather, lng_exports)
+            save_macro_cache(macro_snapshot)
+        except Exception as e:
+            log.warning("Macro snapshot save failed: %s", e)
         # Write to DB
         run_at = datetime.now(timezone.utc)
         try:
@@ -1872,6 +1884,186 @@ def run_analysis():
             log.error("Analysis notification emails failed: %s", e)
     finally:
         analysis_status["running"] = False
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MACRO DATA SNAPSHOT (KEY DATA PANEL)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _fmt(val, decimals=2, suffix=""):
+    if val is None: return "—"
+    try: return f"{float(val):.{decimals}f}{suffix}"
+    except: return str(val)
+
+def _chg(val, decimals=2, suffix=""):
+    if val is None: return None
+    try: return f"{float(val):+.{decimals}f}{suffix}"
+    except: return None
+
+def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
+                         gold_etf, silver_data, oil_prices, rig_count,
+                         tanker_rates, spr, pmi, ttf, weather, lng_exports):
+    """Build a structured key-data snapshot for the frontend Key Data Panel."""
+    rows = []  # each row: {label, value, change, signal, signal_color}
+    BULL = "#22c55e"; BEAR = "#ef4444"; NEUT = "#fbbf24"; MUTED = "#5d6478"
+
+    def row(label, value, change=None, signal=None, signal_color=None):
+        rows.append({"label": label, "value": value,
+                     "change": change, "signal": signal, "signal_color": signal_color})
+
+    if commodity == "Gold":
+        if "tips_10y" in fred:
+            d = fred["tips_10y"]
+            sc = BULL if d["value"] < 0 else BEAR
+            sig = "SUPPORTIVE" if d["value"] < 0 else "HEADWIND"
+            row("10Y Real Yield (TIPS)", f"{_fmt(d['value'], 2)}%", _chg(d.get("change"), 3, "%"), sig, sc)
+        if "breakeven_10y" in fred:
+            d = fred["breakeven_10y"]
+            row("Breakeven Inflation", f"{_fmt(d['value'], 2)}%", _chg(d.get("change"), 3, "%"))
+        if "dxy" in fred:
+            d = fred["dxy"]
+            sc = BEAR if d.get("change", 0) and d["change"] > 0 else BULL
+            row("DXY (US Dollar Index)", _fmt(d["value"], 2), _chg(d.get("change"), 2), None, sc)
+        if gold_etf and "GLD" in gold_etf:
+            row("GLD ETF Holdings", f"{gold_etf['GLD']['value']} t", None, "INSTITUTIONAL DEMAND")
+        if silver_data and "gold_silver_ratio" in silver_data:
+            d = silver_data["gold_silver_ratio"]
+            sc = BULL if d["value"] > 80 else NEUT
+            row("Gold / Silver Ratio", _fmt(d["value"], 1), None, d["signal"][:18], sc)
+        if cftc and "Gold" in cftc:
+            d = cftc["Gold"]
+            sc = BULL if d["net_position"] > 0 else BEAR
+            row("CFTC Net Position", f"{d['net_position']:+,}", None, d["positioning"], sc)
+        if gold_etf and "GDX" in gold_etf:
+            d = gold_etf["GDX"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("GDX Miners ETF", f"${_fmt(d['price'], 2)}", _chg(d.get("change"), 2, "%"), None, sc)
+        if "vix" in fred:
+            d = fred["vix"]
+            sc = BULL if d["value"] > 20 else MUTED
+            sig = "FEAR (gold +)" if d["value"] > 25 else "ELEVATED" if d["value"] > 18 else "CALM"
+            row("VIX Volatility", _fmt(d["value"], 1), _chg(d.get("change"), 2), sig, sc)
+
+    elif commodity == "Silver":
+        if silver_data and "gold_silver_ratio" in silver_data:
+            d = silver_data["gold_silver_ratio"]
+            sc = BULL if d["value"] > 80 else NEUT
+            row("Gold / Silver Ratio", _fmt(d["value"], 1), None, d["signal"][:20], sc)
+        if "tips_10y" in fred:
+            d = fred["tips_10y"]
+            sc = BULL if d["value"] < 0 else BEAR
+            row("10Y Real Yield (TIPS)", f"{_fmt(d['value'], 2)}%", _chg(d.get("change"), 3, "%"),
+                "SUPPORTIVE" if d["value"] < 0 else "HEADWIND", sc)
+        if silver_data and "SLV" in silver_data:
+            d = silver_data["SLV"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("SLV ETF", f"${_fmt(d['price'], 2)}", _chg(d.get("change"), 2, "%"))
+        if silver_data and "SIL" in silver_data:
+            d = silver_data["SIL"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("SIL Miners ETF", f"${_fmt(d['price'], 2)}", _chg(d.get("change"), 2, "%"))
+        if cftc and "Silver" in cftc:
+            d = cftc["Silver"]
+            sc = BULL if d["net_position"] > 0 else BEAR
+            row("CFTC Net Position", f"{d['net_position']:+,}", None, d["positioning"], sc)
+        if pmi and "china_manufacturing_pmi" in pmi:
+            d = pmi["china_manufacturing_pmi"]
+            sc = BULL if d["signal"] == "EXPANSION" else BEAR
+            row("China Mfg PMI", _fmt(d["value"], 1), None, d["signal"], sc)
+        if silver_data and "comex_silver_stocks" in silver_data:
+            d = silver_data["comex_silver_stocks"]
+            row("COMEX Silver Stocks", f"{d['value']:,} oz")
+
+    elif commodity == "Crude Oil":
+        if oil_prices and "brent" in oil_prices:
+            d = oil_prices["brent"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("Brent Crude", f"${_fmt(d['price'], 2)}", _chg(d.get("change"), 2, "%"), None, sc)
+        if oil_prices and "brent_wti_spread" in oil_prices:
+            d = oil_prices["brent_wti_spread"]
+            row("Brent / WTI Spread", f"${d['value']:+.2f}/bbl")
+        if oil_prices and "wti_curve" in oil_prices:
+            d = oil_prices["wti_curve"]
+            sc = BEAR if "CONTANGO" in d["structure"] else BULL
+            row("WTI Futures Structure", d["structure"].split("(")[0].strip(),
+                f"M1-M6: {d['m1_m6_spread']:+.2f}", None, sc)
+        if cftc and "Crude Oil" in cftc:
+            d = cftc["Crude Oil"]
+            sc = BULL if d["net_position"] > 0 else BEAR
+            row("CFTC Net Position", f"{d['net_position']:+,}", None, d["positioning"], sc)
+        if rig_count and "oil_rigs" in rig_count:
+            row("Baker Hughes Oil Rigs", str(rig_count["oil_rigs"]["value"]), None, "WEEKLY")
+        if spr:
+            chg = f"{spr['change']:+.0f}" if spr.get("change") else None
+            row("US SPR Stocks", f"{spr['latest']:.0f} {spr['unit']}", chg)
+        if tanker_rates and "BDTI" in tanker_rates:
+            d = tanker_rates["BDTI"]
+            sc = BULL if (d.get("change") or 0) > 0 else MUTED
+            row("Baltic Dirty Tanker (BDTI)", str(d["value"]), _chg(d.get("change"), 2, "%"), None, sc)
+        if eia and "cushing_stocks" in eia:
+            d = eia["cushing_stocks"]
+            diff = float(d["latest"]) - float(d["previous"]) if d.get("latest") and d.get("previous") else None
+            sc = BEAR if diff and diff > 0 else BULL if diff else None
+            row("Cushing Stocks", f"{d['latest']} {d['unit']}", f"{diff:+.0f}" if diff else None,
+                "BEARISH BUILD" if diff and diff > 0 else "BULLISH DRAW" if diff else None, sc)
+
+    elif commodity == "Copper":
+        if pmi and "china_manufacturing_pmi" in pmi:
+            d = pmi["china_manufacturing_pmi"]
+            sc = BULL if d["signal"] == "EXPANSION" else BEAR
+            row("China Mfg PMI", _fmt(d["value"], 1), None, d["signal"], sc)
+        if pmi and "us_manufacturing_pmi" in pmi:
+            d = pmi["us_manufacturing_pmi"]
+            sc = BULL if d["signal"] == "EXPANSION" else BEAR
+            row("US ISM PMI", _fmt(d["value"], 1), None, d["signal"], sc)
+        if lme_copper:
+            row("LME Copper Stocks", f"{lme_copper['value']:,} t")
+        if cftc and "Copper" in cftc:
+            d = cftc["Copper"]
+            sc = BULL if d["net_position"] > 0 else BEAR
+            row("CFTC Net Position", f"{d['net_position']:+,}", None, d["positioning"], sc)
+        if bdi:
+            sc = BULL if (bdi.get("change") or 0) > 0 else MUTED
+            row("Baltic Dry Index (BDI)", str(bdi["value"]), _chg(bdi.get("change"), 2, "%"), None, sc)
+        if "cnyusd" in fred:
+            d = fred["cnyusd"]
+            row("CNY / USD", _fmt(d["value"], 4), _chg(d.get("change"), 4))
+
+    elif commodity == "Natural Gas":
+        if ttf and "TTF" in ttf:
+            d = ttf["TTF"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("TTF Dutch Gas", f"{_fmt(d['price'], 2)} EUR/MWh", _chg(d.get("change"), 2, "%"), None, sc)
+        if weather:
+            ny = weather.get("New York", {})
+            ch = weather.get("Chicago", {})
+            if ny: row("HDD 7-Day (New York)", str(ny["hdd_7day"]), None, ny["demand_signal"])
+            if ch: row("HDD 7-Day (Chicago)",  str(ch["hdd_7day"]), None, ch["demand_signal"])
+        if eia and "natgas_storage" in eia:
+            d = eia["natgas_storage"]
+            diff = float(d["latest"]) - float(d["previous"]) if d.get("latest") and d.get("previous") else None
+            sc = BEAR if diff and diff > 0 else BULL if diff else None
+            row("EIA Gas Storage", f"{d['latest']} {d['unit']}", f"{diff:+.0f} bcf" if diff else None,
+                "INJECTION" if diff and diff > 0 else "WITHDRAWAL" if diff else None, sc)
+        if cftc and "Natural Gas" in cftc:
+            d = cftc["Natural Gas"]
+            sc = BULL if d["net_position"] > 0 else BEAR
+            row("CFTC Net Position", f"{d['net_position']:+,}", None, d["positioning"], sc)
+        if lng_exports and "lng_feedgas" in lng_exports:
+            d = lng_exports["lng_feedgas"]
+            row("LNG Feedgas Demand", f"{d['latest']} {d['unit']}", None, "EXPORT UTILIZATION")
+        if rig_count and "us_total" in rig_count:
+            row("Total US Rig Count", str(rig_count["us_total"]["value"]), None, "BAKER HUGHES")
+
+    return rows
+
+
+def save_macro_cache(snapshot):
+    try:
+        with open(MACRO_CACHE_FILE, "w") as f:
+            json.dump(snapshot, f, indent=2)
+    except Exception as e:
+        log.error("Failed to save macro_cache.json: %s", e)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 # ECONOMIC CALENDAR ENGINE
@@ -2328,6 +2520,18 @@ def get_history(commodity):
         for r in rows
     ]
     return jsonify(result)
+
+
+@app.route("/macro")
+@jwt_required()
+def get_macro():
+    """Return the latest macro key-data snapshot for the Key Data Panel."""
+    try:
+        with open(MACRO_CACHE_FILE, "r") as f:
+            data = json.load(f)
+        return jsonify(data)
+    except Exception:
+        return jsonify({"error": "Macro data not yet available. Run analysis first."}), 404
 
 
 @app.route("/calendar")
