@@ -532,7 +532,7 @@
                   <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.7;font-family:var(--sans)">—</div>
                 </div>
                 <div class="dp-section" id="dp-signal-section">
-                  <div class="dp-section-lbl">SIGNAL DETAIL</div>
+                  <div class="dp-section-lbl">CURRENT BIAS</div>
                   <div id="dp-signal-items"></div>
                 </div>
               </div>
@@ -1126,9 +1126,9 @@ async function openDetail(name) {
   const sigSec = document.getElementById('dp-signal-section');
   sigSec.style.background = `${color}08`;
   const sigs = [
-    { lbl: 'INTRADAY',       txt: takeaways.intraday       || '—' },
-    { lbl: 'NEXT FEW DAYS',  txt: takeaways.next_few_days  || '—' },
-    { lbl: 'NEXT FEW WEEKS', txt: takeaways.next_few_weeks || '—' },
+    { lbl: 'WATCH TODAY',     txt: takeaways.intraday       || '—' },
+    { lbl: 'NEAR-TERM',      txt: takeaways.next_few_days  || '—' },
+    { lbl: 'BIAS',           txt: takeaways.next_few_weeks || '—' },
   ];
   const sigHtml = sigs.map(s =>
     `<div class="dp-sig-item">

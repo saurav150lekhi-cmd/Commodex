@@ -872,7 +872,7 @@ STEP 5 - PRICE ACTION CONTEXT: Determine if current price movement confirms, con
 
 STEP 6 - MARKET SUMMARY: Write a 3-4 sentence institutional research commentary in the style of Goldman Sachs or JPMorgan. Lead with the single dominant price driver. Follow with supply/demand dynamics and current sentiment bias. Be precise and insight-driven — avoid generic statements. Sound authoritative, not descriptive.
 
-STEP 7 - TRADER TAKEAWAYS: Generate observational insights for three timeframes: Intraday, Next Few Days, Next Few Weeks. Never give buy/sell recommendations.
+STEP 7 - CURRENT BIAS BREAKDOWN: Generate observational insights reflecting current conditions. Focus on what to watch today, what near-term catalysts exist, and what the structural bias is based on current macro and news. Never give buy/sell recommendations. Never imply a specific timeframe — describe the bias as it stands now.
 
 STEP 8 - DRIVER CONFIDENCE: Assign HIGH, MEDIUM or LOW confidence based on number of supporting events, source consistency, and price alignment.
 
@@ -889,9 +889,9 @@ STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price lev
   },
   "price_action_context": "confirms or contradicts or unclear - one sentence explanation",
   "trader_takeaways": {
-    "intraday": "what to monitor today",
-    "next_few_days": "catalysts to watch this week",
-    "next_few_weeks": "structural themes for medium term"
+    "intraday": "what to monitor in today's session",
+    "next_few_days": "near-term catalysts and events to watch",
+    "next_few_weeks": "structural bias based on current macro and positioning"
   },
   "confidence": "HIGH or MEDIUM or LOW",
   "dominant_narrative": {
