@@ -1,1072 +1,562 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Commodex — Commodity Intelligence Terminal</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:wght@300;400;500&display=swap" rel="stylesheet">
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bull: #26a69a;
-      --bear: #ef5350;
-      --bg: #0c0e14;
-      --card: #131828;
-      --border: #1e2336;
-      --text: #e8eaf0;
-      --muted: #6b7280;
-      --dim: #374151;
-      --topbar: #0e1019;
-    }
-
-    html, body {
-      height: 100%;
-      overflow: hidden;
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'IBM Plex Mono', monospace;
-    }
-
-    /* ══ AUTH OVERLAY ══════════════════════════════════════════════════════════ */
-    #authOverlay {
-      position: fixed;
-      inset: 0;
-      background: var(--bg);
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .auth-box {
-      width: 100%;
-      max-width: 380px;
-      padding: 40px;
-      background: var(--card);
-      border: 1px solid var(--border);
-    }
-
-    .auth-brand {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.15em;
-      color: var(--muted);
-      margin-bottom: 32px;
-    }
-    .auth-brand span { color: var(--bull); }
-
-    .auth-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 26px;
-      font-weight: 300;
-      color: var(--text);
-      margin-bottom: 24px;
-    }
-
-    .auth-form { display: none; flex-direction: column; gap: 14px; }
-    .auth-form.active { display: flex; }
-
-    .auth-label {
-      font-size: 9px;
-      letter-spacing: 0.15em;
-      color: var(--muted);
-      text-transform: uppercase;
-      display: block;
-      margin-bottom: 5px;
-    }
-
-    .auth-input {
-      width: 100%;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 12px;
-      padding: 9px 11px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .auth-input:focus { border-color: rgba(38,166,154,0.5); }
-    .auth-input::placeholder { color: var(--dim); }
-
-    .auth-btn {
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 11px;
-      font-weight: 500;
-      letter-spacing: 0.1em;
-      color: #0c0e14;
-      background: var(--bull);
-      border: none;
-      cursor: pointer;
-      padding: 11px;
-      transition: background 0.15s;
-      margin-top: 4px;
-    }
-    .auth-btn:hover { background: #2bbbae; }
-    .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .auth-switch {
-      font-size: 10px;
-      color: var(--muted);
-      text-align: center;
-      margin-top: 4px;
-    }
-    .auth-switch a {
-      color: var(--bull);
-      cursor: pointer;
-      text-decoration: none;
-    }
-    .auth-switch a:hover { text-decoration: underline; }
-
-    .auth-msg {
-      font-size: 10px;
-      padding: 8px 10px;
-      display: none;
-    }
-    .auth-msg.success { background: rgba(38,166,154,0.1); border: 1px solid rgba(38,166,154,0.3); color: var(--bull); display: block; }
-    .auth-msg.error { background: rgba(239,83,80,0.1); border: 1px solid rgba(239,83,80,0.3); color: var(--bear); display: block; }
-    .auth-msg.info { background: rgba(107,114,128,0.1); border: 1px solid var(--border); color: var(--muted); display: block; }
-
-    .auth-divider {
-      font-size: 9px;
-      letter-spacing: 0.1em;
-      color: var(--dim);
-      text-align: center;
-      position: relative;
-      margin: 4px 0;
-    }
-
-    /* ══ TERMINAL LAYOUT ═══════════════════════════════════════════════════════ */
-    #terminal {
-      display: none;
-      flex-direction: column;
-      height: 100vh;
-      overflow: hidden;
-    }
-    #terminal.visible { display: flex; }
-
-    /* ── Topbar ── */
-    .topbar {
-      height: 40px;
-      background: var(--topbar);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 16px;
-      flex-shrink: 0;
-    }
-
-    .tb-brand {
-      font-size: 12px;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      color: var(--text);
-      flex-shrink: 0;
-    }
-    .tb-brand span { color: var(--bull); }
-
-    .tb-live {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 9px;
-      letter-spacing: 0.12em;
-      color: var(--bull);
-    }
-    .tb-live-dot {
-      width: 5px;
-      height: 5px;
-      border-radius: 50%;
-      background: var(--bull);
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-
-    .tb-sep { width: 1px; height: 18px; background: var(--border); flex-shrink: 0; }
-
-    .tb-badge {
-      font-size: 8px;
-      letter-spacing: 0.1em;
-      padding: 2px 7px;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      white-space: nowrap;
-    }
-    .tb-badge.open { color: var(--bull); border-color: rgba(38,166,154,0.3); }
-    .tb-badge.closed { color: var(--bear); border-color: rgba(239,83,80,0.3); }
-
-    .tb-status {
-      font-size: 8px;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-    .tb-status span { color: var(--bull); }
-    .tb-status.running span { color: var(--gold, #f59e0b); }
-
-    .tb-spacer { flex: 1; }
-
-    .tb-clock {
-      font-size: 11px;
-      font-weight: 400;
-      letter-spacing: 0.08em;
-      color: var(--text);
-      flex-shrink: 0;
-    }
-
-    .tb-exit {
-      font-size: 8px;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      background: none;
-      border: 1px solid var(--border);
-      cursor: pointer;
-      padding: 3px 10px;
-      transition: all 0.15s;
-      text-decoration: none;
-      flex-shrink: 0;
-    }
-    .tb-exit:hover { color: var(--text); border-color: var(--dim); }
-
-    .tb-user-btn {
-      font-size: 8px;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      background: none;
-      border: 1px solid var(--border);
-      cursor: pointer;
-      padding: 3px 10px;
-      transition: all 0.15s;
-      flex-shrink: 0;
-    }
-    .tb-user-btn:hover { color: var(--text); border-color: var(--dim); }
-
-    /* ── Watchlist bar ── */
-    .watchbar {
-      height: 34px;
-      background: var(--bg);
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      padding: 0 16px;
-      gap: 0;
-      overflow: hidden;
-      flex-shrink: 0;
-    }
-
-    .watch-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 0 16px;
-      border-right: 1px solid var(--border);
-      height: 100%;
-      flex-shrink: 0;
-    }
-    .watch-item:first-child { padding-left: 0; }
-
-    .watch-name { font-size: 9px; letter-spacing: 0.12em; color: var(--muted); }
-
-    .watch-price { font-size: 11px; font-weight: 500; color: var(--text); }
-
-    .watch-chg {
-      font-size: 9px;
-      font-weight: 400;
-      padding: 1px 5px;
-    }
-    .watch-chg.up { color: var(--bull); }
-    .watch-chg.dn { color: var(--bear); }
-    .watch-chg.flat { color: var(--muted); }
-
-    /* ── Main body ── */
-    .main-body {
-      display: flex;
-      flex: 1;
-      overflow: hidden;
-    }
-
-    /* ── Left sidebar — News ── */
-    .sidebar {
-      width: 260px;
-      flex-shrink: 0;
-      background: var(--topbar);
-      border-right: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    .sidebar-header {
-      padding: 10px 12px 0;
-      flex-shrink: 0;
-    }
-
-    .sidebar-title {
-      font-size: 9px;
-      letter-spacing: 0.15em;
-      color: var(--muted);
-      text-transform: uppercase;
-      margin-bottom: 8px;
-    }
-
-    .news-tabs {
-      display: flex;
-      gap: 0;
-      border-bottom: 1px solid var(--border);
-      margin: 0 -12px;
-    }
-
-    .news-tab {
-      font-size: 8px;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 6px 10px;
-      border-bottom: 2px solid transparent;
-      transition: all 0.15s;
-      white-space: nowrap;
-    }
-    .news-tab:hover { color: var(--text); }
-    .news-tab.active { color: var(--bull); border-bottom-color: var(--bull); }
-
-    .news-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px 0;
-    }
-    .news-list::-webkit-scrollbar { width: 3px; }
-    .news-list::-webkit-scrollbar-track { background: transparent; }
-    .news-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    .news-item {
-      padding: 8px 12px;
-      border-bottom: 1px solid rgba(30,35,54,0.5);
-      cursor: pointer;
-      transition: background 0.1s;
-    }
-    .news-item:hover { background: rgba(255,255,255,0.02); }
-
-    .news-item-top {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      margin-bottom: 3px;
-    }
-
-    .news-tag {
-      font-size: 7px;
-      letter-spacing: 0.1em;
-      padding: 1px 4px;
-      border: 1px solid;
-      text-transform: uppercase;
-    }
-    .news-tag.gold { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
-    .news-tag.silver { color: #9ca3af; border-color: rgba(156,163,175,0.3); }
-    .news-tag.oil { color: #60a5fa; border-color: rgba(96,165,250,0.3); }
-    .news-tag.copper { color: #fb923c; border-color: rgba(251,146,60,0.3); }
-    .news-tag.gas { color: #a78bfa; border-color: rgba(167,139,250,0.3); }
-    .news-tag.HIGH { color: var(--bear); border-color: rgba(239,83,80,0.3); }
-    .news-tag.MEDIUM { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
-    .news-tag.LOW { color: var(--muted); border-color: var(--border); }
-
-    .news-headline {
-      font-size: 10px;
-      font-weight: 400;
-      color: var(--text);
-      line-height: 1.35;
-      margin-bottom: 3px;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .news-meta {
-      font-size: 8px;
-      color: var(--muted);
-      display: flex;
-      gap: 6px;
-    }
-
-    /* ── Right panel ── */
-    .right-panel {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-    }
-
-    /* Scan bar */
-    .scanbar {
-      background: var(--topbar);
-      border-bottom: 1px solid var(--border);
-      padding: 0 16px;
-      display: flex;
-      align-items: center;
-      height: 38px;
-      gap: 10px;
-      flex-shrink: 0;
-    }
-
-    .scanbar-label {
-      font-size: 8px;
-      letter-spacing: 0.18em;
-      color: var(--muted);
-      flex-shrink: 0;
-    }
-
-    .scanbar-sep { width: 1px; height: 16px; background: var(--border); flex-shrink: 0; }
-
-    .scanbar-items { display: flex; gap: 16px; flex: 1; overflow: hidden; }
-
-    .scanbar-item {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-size: 9px;
-      white-space: nowrap;
-      cursor: pointer;
-    }
-    .scanbar-item .sname { color: var(--muted); letter-spacing: 0.1em; }
-    .scanbar-item .sbull { color: var(--bull); font-weight: 500; }
-    .scanbar-item .sbear { color: var(--bear); font-weight: 500; }
-    .scanbar-item .sneutral { color: var(--dim); }
-
-    /* Cards area */
-    .cards-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 8px 16px;
-      border-bottom: 1px solid var(--border);
-      background: var(--bg);
-      flex-shrink: 0;
-    }
-
-    .cards-hdr-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .cards-count { font-size: 9px; letter-spacing: 0.1em; color: var(--muted); }
-
-    .filter-input {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid var(--border);
-      color: var(--text);
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 10px;
-      padding: 4px 10px;
-      outline: none;
-      width: 160px;
-      transition: border-color 0.15s;
-    }
-    .filter-input:focus { border-color: rgba(38,166,154,0.3); }
-    .filter-input::placeholder { color: var(--dim); }
-
-    .last-update { font-size: 8px; color: var(--muted); letter-spacing: 0.08em; }
-
-    .cards-scroll {
-      flex: 1;
-      overflow-y: auto;
-      padding: 12px;
-    }
-    .cards-scroll::-webkit-scrollbar { width: 4px; }
-    .cards-scroll::-webkit-scrollbar-track { background: transparent; }
-    .cards-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-      gap: 8px;
-    }
-
-    /* Decision cards */
-    .dcard {
-      background: var(--card);
-      border: 1px solid var(--border);
-      position: relative;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    .dcard-top-bar { height: 2px; width: 100%; flex-shrink: 0; }
-    .dcard-top-bar.bull { background: var(--bull); }
-    .dcard-top-bar.bear { background: var(--bear); }
-    .dcard-top-bar.neutral { background: var(--dim); }
-
-    .dcard-body { padding: 12px 14px; flex: 1; display: flex; flex-direction: column; }
-
-    .dcard-hdr {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      margin-bottom: 7px;
-    }
-
-    .dcard-bias-lbl { font-size: 7px; letter-spacing: 0.15em; font-weight: 500; }
-    .dcard-bias-lbl.bull { color: var(--bull); }
-    .dcard-bias-lbl.bear { color: var(--bear); }
-    .dcard-bias-lbl.neutral { color: var(--muted); }
-
-    .dcard-badges { display: flex; gap: 4px; align-items: center; }
-
-    .dcard-badge {
-      font-size: 7px;
-      letter-spacing: 0.1em;
-      font-weight: 500;
-      padding: 1px 5px;
-      border: 1px solid;
-    }
-    .dcard-badge.bull { color: var(--bull); border-color: rgba(38,166,154,0.3); }
-    .dcard-badge.bear { color: var(--bear); border-color: rgba(239,83,80,0.3); }
-    .dcard-badge.neutral { color: var(--muted); border-color: var(--border); }
-    .dcard-badge.breaking { color: var(--bear); border-color: rgba(239,83,80,0.5); background: rgba(239,83,80,0.08); }
-
-    .dcard-conf-row { display: flex; align-items: center; gap: 6px; margin-bottom: 9px; }
-    .dcard-conf-bar { flex: 1; height: 2px; background: var(--border); position: relative; }
-    .dcard-conf-fill { position: absolute; left: 0; top: 0; height: 100%; transition: width 0.5s; }
-    .dcard-conf-fill.bull { background: var(--bull); }
-    .dcard-conf-fill.bear { background: var(--bear); }
-    .dcard-conf-fill.neutral { background: var(--dim); }
-    .dcard-conf-pct { font-size: 8px; color: var(--muted); white-space: nowrap; }
-
-    .dcard-instrument {
-      margin-bottom: 9px;
-      padding-bottom: 9px;
-      border-bottom: 1px solid var(--border);
-    }
-
-    .dcard-name {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 20px;
-      font-weight: 400;
-      color: var(--text);
-      letter-spacing: 0.01em;
-      margin-bottom: 2px;
-      line-height: 1.1;
-    }
-
-    .dcard-meta-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .dcard-meta { font-size: 7px; color: var(--muted); letter-spacing: 0.08em; }
-
-    .dcard-price { font-size: 10px; font-weight: 500; text-align: right; }
-    .dcard-price .chg { font-size: 8px; opacity: 0.8; margin-left: 3px; }
-
-    .dcard-section-lbl { font-size: 7px; letter-spacing: 0.15em; color: var(--muted); margin-bottom: 4px; }
-
-    .dcard-why { margin-bottom: 8px; }
-
-    .dcard-bullets { list-style: none; }
-    .dcard-bullets li {
-      font-size: 9px;
-      color: #9ca3af;
-      padding: 2px 0 2px 8px;
-      position: relative;
-      line-height: 1.4;
-      font-family: 'Inter', sans-serif;
-    }
-    .dcard-bullets li::before { content: '—'; position: absolute; left: 0; color: var(--dim); font-size: 8px; }
-
-    .dcard-signal { margin-bottom: 8px; }
-
-    .dcard-signal-line {
-      font-size: 9px;
-      color: #9ca3af;
-      padding: 2px 0;
-      line-height: 1.4;
-      border-left: 1px solid var(--border);
-      padding-left: 7px;
-      margin-bottom: 2px;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .dcard-footer {
-      margin-top: auto;
-      padding-top: 8px;
-      border-top: 1px solid var(--border);
-      font-size: 8px;
-      color: var(--muted);
-      line-height: 1.4;
-      font-family: 'Inter', sans-serif;
-    }
-
-    /* Loading / empty states */
-    .loading-state {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex: 1;
-      flex-direction: column;
-      gap: 12px;
-    }
-    .loading-dot {
-      width: 6px; height: 6px;
-      border-radius: 50%;
-      background: var(--bull);
-      animation: ldot 1.2s infinite;
-    }
-    .loading-dot:nth-child(2) { animation-delay: 0.2s; }
-    .loading-dot:nth-child(3) { animation-delay: 0.4s; }
-    .loading-dots { display: flex; gap: 6px; }
-    @keyframes ldot { 0%,80%,100% { opacity:.3; } 40% { opacity:1; } }
-    .loading-text { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
-
-    .empty-state {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 200px;
-      font-size: 10px;
-      color: var(--dim);
-      letter-spacing: 0.1em;
-    }
-
-    /* Profile panel */
-    .profile-panel {
-      position: fixed;
-      top: 40px; right: 0;
-      width: 280px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-top: none;
-      z-index: 200;
-      display: none;
-    }
-    .profile-panel.open { display: block; }
-
-    .pp-header { padding: 16px; border-bottom: 1px solid var(--border); }
-    .pp-email { font-size: 11px; color: var(--text); margin-bottom: 2px; }
-    .pp-status { font-size: 9px; color: var(--muted); }
-    .pp-status.unverified { color: #f59e0b; }
-
-    .pp-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
-    .pp-section-title { font-size: 8px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
-
-    .pp-alert-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 4px 0;
-    }
-    .pp-alert-name { font-size: 10px; color: var(--text); }
-
-    .toggle {
-      width: 32px; height: 16px;
-      background: var(--border);
-      border-radius: 8px;
-      position: relative;
-      cursor: pointer;
-      transition: background 0.2s;
-      flex-shrink: 0;
-    }
-    .toggle::after {
-      content: '';
-      position: absolute;
-      width: 12px; height: 12px;
-      border-radius: 50%;
-      background: var(--muted);
-      top: 2px; left: 2px;
-      transition: all 0.2s;
-    }
-    .toggle.on { background: rgba(38,166,154,0.3); }
-    .toggle.on::after { left: 18px; background: var(--bull); }
-
-    .pp-logout {
-      display: block;
-      width: 100%;
-      text-align: left;
-      font-family: 'IBM Plex Mono', monospace;
-      font-size: 10px;
-      color: var(--bear);
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 12px 16px;
-      transition: background 0.1s;
-    }
-    .pp-logout:hover { background: rgba(239,83,80,0.05); }
-
-    /* Detail view */
-    .detail-view {
-      display: none;
-      flex: 1;
-      overflow: hidden;
-      flex-direction: column;
-    }
-    .detail-view.active { display: flex; }
-
-    .detail-header {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 16px;
-      border-bottom: 1px solid var(--border);
-      background: var(--topbar);
-      flex-shrink: 0;
-    }
-
-    .detail-back {
-      font-size: 9px;
-      letter-spacing: 0.1em;
-      color: var(--bull);
-      background: none;
-      border: 1px solid rgba(38,166,154,0.3);
-      cursor: pointer;
-      padding: 3px 10px;
-      transition: all 0.15s;
-      white-space: nowrap;
-    }
-    .detail-back:hover { background: rgba(38,166,154,0.08); }
-
-    .detail-title {
-      font-family: 'Cormorant Garamond', serif;
-      font-size: 22px;
-      font-weight: 300;
-      color: var(--text);
-    }
-
-    .detail-badge {
-      font-size: 8px;
-      letter-spacing: 0.1em;
-      font-weight: 500;
-      padding: 2px 7px;
-      border: 1px solid;
-    }
-    .detail-badge.bull { color: var(--bull); border-color: rgba(38,166,154,0.3); }
-    .detail-badge.bear { color: var(--bear); border-color: rgba(239,83,80,0.3); }
-    .detail-badge.neutral { color: var(--muted); border-color: var(--border); }
-
-    .detail-price {
-      font-size: 13px;
-      font-weight: 500;
-      margin-left: auto;
-    }
-
-    .detail-body {
-      flex: 1;
-      overflow-y: auto;
-      padding: 16px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-      align-content: start;
-    }
-    .detail-body::-webkit-scrollbar { width: 4px; }
-    .detail-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-
-    .detail-full {
-      grid-column: 1 / -1;
-    }
-
-    .detail-block {
-      background: var(--card);
-      border: 1px solid var(--border);
-      padding: 14px 16px;
-    }
-
-    .detail-block-title {
-      font-size: 8px;
-      letter-spacing: 0.18em;
-      color: var(--muted);
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .detail-summary {
-      font-size: 12px;
-      color: #d1d5db;
-      line-height: 1.7;
-      font-family: 'Inter', sans-serif;
-    }
-
-    .detail-drivers { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-    .detail-driver-col-title {
-      font-size: 8px;
-      letter-spacing: 0.12em;
-      margin-bottom: 6px;
-    }
-    .detail-driver-col-title.bull { color: var(--bull); }
-    .detail-driver-col-title.bear { color: var(--bear); }
-
-    .detail-driver-list { list-style: none; }
-    .detail-driver-list li {
-      font-size: 10px;
-      color: #9ca3af;
-      padding: 3px 0 3px 10px;
-      position: relative;
-      line-height: 1.4;
-      font-family: 'Inter', sans-serif;
-      border-bottom: 1px solid rgba(30,35,54,0.5);
-    }
-    .detail-driver-list li:last-child { border-bottom: none; }
-    .detail-driver-list li::before { content: '—'; position: absolute; left: 0; color: var(--dim); font-size: 8px; }
-
-    .detail-takeaway {
-      font-size: 10px;
-      color: #9ca3af;
-      line-height: 1.6;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--border);
-      font-family: 'Inter', sans-serif;
-    }
-    .detail-takeaway:last-child { border-bottom: none; }
-    .detail-takeaway-label { font-size: 8px; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 2px; }
-
-    .detail-narrative {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .detail-narrative-theme {
-      font-size: 11px;
-      color: var(--text);
-      font-family: 'Inter', sans-serif;
-    }
-    .detail-narrative-status {
-      font-size: 8px;
-      letter-spacing: 0.1em;
-      padding: 2px 6px;
-      border: 1px solid var(--border);
-      color: var(--muted);
-    }
-    .detail-narrative-status.Strengthening { color: var(--bull); border-color: rgba(38,166,154,0.3); }
-    .detail-narrative-status.Weakening { color: var(--bear); border-color: rgba(239,83,80,0.3); }
-    .detail-narrative-status.Shifting { color: #f59e0b; border-color: rgba(245,158,11,0.3); }
-
-    .detail-conf-row { display: flex; align-items: center; gap: 8px; }
-    .detail-conf-bar { flex: 1; height: 3px; background: var(--border); position: relative; border-radius: 1px; }
-    .detail-conf-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 1px; }
-    .detail-conf-fill.bull { background: var(--bull); }
-    .detail-conf-fill.bear { background: var(--bear); }
-    .detail-conf-fill.neutral { background: var(--dim); }
-    .detail-conf-pct { font-size: 10px; color: var(--text); white-space: nowrap; }
-
-    .detail-articles-list { max-height: 280px; overflow-y: auto; }
-    .detail-articles-list::-webkit-scrollbar { width: 3px; }
-    .detail-articles-list::-webkit-scrollbar-thumb { background: var(--border); }
-    .detail-article-item {
-      padding: 7px 0;
-      border-bottom: 1px solid var(--border);
-      cursor: pointer;
-    }
-    .detail-article-item:last-child { border-bottom: none; }
-    .detail-article-item:hover .detail-article-title { color: var(--text); }
-    .detail-article-title {
-      font-size: 10px;
-      color: #9ca3af;
-      line-height: 1.4;
-      margin-bottom: 2px;
-      font-family: 'Inter', sans-serif;
-      transition: color 0.1s;
-    }
-    .detail-article-meta { font-size: 8px; color: var(--dim); display: flex; gap: 8px; }
-
-    @media (max-width: 768px) {
-      .sidebar { display: none; }
-      .cards-grid { grid-template-columns: 1fr 1fr; }
-    }
-    @media (max-width: 480px) {
-      .cards-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Commodex — Terminal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bull: #26a69a;
+    --bear: #ef5350;
+    --muted: #5d6478;
+    --fg: #d1d4dc;
+    --card: #131828;
+    --border: #1e2336;
+    --bg: #0c0e14;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'Inter', system-ui, sans-serif;
+  }
+  html, body { height: 100%; overflow: hidden; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: 12px; display: flex; flex-direction: column; }
+  a { color: inherit; text-decoration: none; }
+
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.75); }
+  }
+
+  /* ══ AUTH OVERLAY ══════════════════════════════════════════════════════════ */
+  #authOverlay {
+    position: fixed; inset: 0; background: var(--bg); z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-box {
+    width: 100%; max-width: 380px; padding: 40px;
+    background: var(--card); border: 1px solid var(--border);
+  }
+  .auth-brand {
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.15em; color: var(--muted); margin-bottom: 32px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .auth-brand-logo {
+    width: 20px; height: 20px; background: var(--bull);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .auth-brand-logo span { font-weight: 900; font-size: 11px; color: #000; }
+  .auth-title {
+    font-family: 'Cormorant Garamond', serif; font-size: 26px;
+    font-weight: 300; color: var(--fg); margin-bottom: 24px;
+  }
+  .auth-form { display: none; flex-direction: column; gap: 14px; }
+  .auth-form.active { display: flex; }
+  .auth-label { font-size: 9px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; display: block; margin-bottom: 5px; }
+  .auth-input {
+    width: 100%; background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    color: var(--fg); font-family: var(--mono); font-size: 12px;
+    padding: 9px 11px; outline: none; transition: border-color 0.15s;
+  }
+  .auth-input:focus { border-color: rgba(38,166,154,0.5); }
+  .auth-input::placeholder { color: var(--muted); opacity: 0.5; }
+  .auth-btn {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: 0.1em; color: #000; background: var(--bull);
+    border: none; cursor: pointer; padding: 11px; transition: background 0.15s; margin-top: 4px;
+  }
+  .auth-btn:hover { background: #2bbbae; }
+  .auth-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .auth-switch { font-size: 10px; color: var(--muted); text-align: center; margin-top: 4px; }
+  .auth-switch a { color: var(--bull); cursor: pointer; text-decoration: none; }
+  .auth-switch a:hover { text-decoration: underline; }
+  .auth-msg { font-size: 10px; padding: 8px 10px; display: none; }
+  .auth-msg.success { background: rgba(38,166,154,0.1); border: 1px solid rgba(38,166,154,0.3); color: var(--bull); display: block; }
+  .auth-msg.error { background: rgba(239,83,80,0.1); border: 1px solid rgba(239,83,80,0.3); color: var(--bear); display: block; }
+  .auth-msg.info { background: rgba(107,114,128,0.1); border: 1px solid var(--border); color: var(--muted); display: block; }
+
+  /* ══ TERMINAL ══════════════════════════════════════════════════════════════ */
+  #terminal { display: none; flex-direction: column; height: 100vh; overflow: hidden; }
+  #terminal.visible { display: flex; }
+
+  /* ── TOPBAR ── */
+  #topbar {
+    height: 44px; border-bottom: 1px solid var(--border);
+    background: #080a10; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 16px; flex-shrink: 0;
+  }
+  .tb-left { display: flex; align-items: center; gap: 14px; }
+  .tb-brand { display: flex; align-items: center; gap: 8px; }
+  .tb-logo { width: 20px; height: 20px; background: var(--bull); display: flex; align-items: center; justify-content: center; }
+  .tb-logo span { font-weight: 900; font-size: 11px; color: #000; }
+  .tb-name { font-weight: 900; font-size: 13px; letter-spacing: 0.16em; }
+  .live-dot { display: inline-flex; align-items: center; gap: 4px; }
+  .live-dot::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--bull); animation: pulse-dot 1.2s ease-in-out infinite; }
+  .live-label { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; color: var(--bull); }
+  .tb-markets { display: flex; align-items: center; gap: 6px; }
+  .market-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 8px; border: 1px solid var(--border); color: rgba(209,212,220,0.7); }
+  .market-badge.open { border-color: rgba(38,166,154,0.4); color: var(--bull); }
+  .market-badge.closed { border-color: rgba(239,83,80,0.3); color: var(--bear); }
+  .tb-right { display: flex; align-items: center; gap: 16px; }
+  .tb-feed { display: flex; align-items: center; gap: 5px; font-size: 9px; color: rgba(93,100,120,0.9); letter-spacing: 0.08em; }
+  .tb-status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--bull); animation: pulse-dot 1.2s ease-in-out infinite; display: inline-block; flex-shrink: 0; }
+  .tb-ai { font-size: 9px; color: rgba(93,100,120,0.9); letter-spacing: 0.08em; }
+  .tb-time { font-size: 11px; font-weight: 600; color: var(--fg); letter-spacing: 0.06em; }
+  .tb-sep { width: 1px; height: 16px; background: var(--border); }
+  .tb-user { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; border: 1px solid var(--border); padding: 4px 12px; color: rgba(93,100,120,0.7); cursor: pointer; background: none; font-family: var(--mono); }
+  .tb-user:hover { color: var(--fg); border-color: rgba(209,212,220,0.3); }
+  .tb-exit { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; border: 1px solid var(--border); padding: 4px 12px; color: rgba(93,100,120,0.7); cursor: pointer; text-decoration: none; }
+  .tb-exit:hover { color: var(--fg); }
+
+  /* ── WATCHLIST BAR ── */
+  #watchlist {
+    height: 32px; border-bottom: 1px solid var(--border);
+    background: #090b10; display: flex; align-items: center;
+    padding: 0 12px; flex-shrink: 0; overflow-x: auto;
+  }
+  #watchlist::-webkit-scrollbar { height: 0; }
+  .wl-label { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(93,100,120,0.8); padding-right: 12px; border-right: 1px solid var(--border); margin-right: 12px; white-space: nowrap; }
+  .wl-item { display: flex; align-items: center; gap: 6px; padding: 0 12px; border-right: 1px solid var(--border); white-space: nowrap; cursor: pointer; height: 100%; }
+  .wl-item:hover { background: rgba(255,255,255,0.02); }
+  .wl-name { font-size: 10px; font-weight: 700; color: var(--fg); }
+  .wl-price { font-size: 10px; font-weight: 600; color: rgba(209,212,220,0.7); }
+  .wl-change { font-size: 10px; font-weight: 700; }
+  .wl-change.up { color: var(--bull); }
+  .wl-change.dn { color: var(--bear); }
+  .wl-change.flat { color: var(--muted); }
+
+  /* ── BODY LAYOUT ── */
+  #body { display: flex; flex: 1; overflow: hidden; }
+
+  /* ── LEFT SIDEBAR ── */
+  #news-sidebar {
+    width: 256px; flex-shrink: 0; border-right: 1px solid var(--border);
+    background: #090b10; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar-header { padding: 8px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .sidebar-title { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.9); }
+  .sidebar-count { font-size: 9px; font-weight: 700; background: rgba(93,100,120,0.2); color: rgba(93,100,120,0.9); padding: 1px 6px; }
+  .news-filters { display: flex; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .news-filter { font-size: 9px; font-weight: 700; padding: 3px 10px; cursor: pointer; color: rgba(93,100,120,0.8); border: 1px solid var(--border); background: none; font-family: var(--mono); }
+  .news-filter.active { background: rgba(38,166,154,0.12); border-color: rgba(38,166,154,0.4); color: var(--bull); }
+  .news-filter:hover:not(.active) { color: var(--fg); }
+  .news-list { flex: 1; overflow-y: auto; }
+  .news-list::-webkit-scrollbar { width: 2px; }
+  .news-list::-webkit-scrollbar-thumb { background: var(--border); }
+  .news-item { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .news-item:hover { background: rgba(255,255,255,0.02); }
+  .news-item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
+  .news-item-body { flex: 1; }
+  .news-tag { display: inline-block; font-size: 7px; font-weight: 800; letter-spacing: 0.1em; padding: 2px 5px; margin-bottom: 5px; text-transform: uppercase; }
+  .news-tag.HIGH { background: rgba(239,83,80,0.15); color: var(--bear); }
+  .news-tag.MEDIUM { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .news-tag.LOW { background: rgba(93,100,120,0.15); color: var(--muted); }
+  .news-headline { font-size: 11px; color: var(--fg); line-height: 1.45; margin-bottom: 6px; font-family: var(--sans); }
+  .news-meta { display: flex; align-items: center; gap: 6px; }
+  .news-source { font-size: 8px; color: rgba(93,100,120,0.7); }
+  .news-dot { font-size: 8px; color: rgba(93,100,120,0.4); }
+  .news-age { font-size: 8px; color: rgba(93,100,120,0.6); }
+  .news-unread { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+  .news-empty { padding: 20px 12px; font-size: 10px; color: var(--muted); text-align: center; }
+
+  /* ── MAIN ── */
+  #main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+
+  /* ── SCAN BAR ── */
+  #scan-bar { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: #090b10; flex-shrink: 0; overflow-x: auto; }
+  #scan-bar::-webkit-scrollbar { height: 0; }
+  .scan-label-cell { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border-right: 1px solid var(--border); flex-shrink: 0; }
+  .scan-cell { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-right: 1px solid var(--border); flex-shrink: 0; cursor: pointer; transition: background 0.12s; }
+  .scan-cell:hover { background: rgba(255,255,255,0.03); }
+  .scan-cell.active-scan { background: rgba(38,166,154,0.08); }
+  .s-name { font-size: 10px; font-weight: 800; color: rgba(209,212,220,0.8); }
+  .s-pct  { font-size: 10px; font-weight: 700; }
+  .s-badge { font-size: 8px; font-weight: 800; padding: 1px 6px; }
+
+  /* ── GRID HEADER ── */
+  #grid-header { padding: 7px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
+  .grid-title { font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(93,100,120,0.8); }
+  .grid-meta { font-size: 9px; color: rgba(209,212,220,0.5); margin-left: 10px; }
+  .grid-filter { width: 130px; background: #080a10; border: 1px solid var(--border); color: var(--fg); font-family: var(--mono); font-size: 10px; padding: 4px 8px 4px 24px; outline: none; }
+  .grid-filter::placeholder { color: var(--muted); opacity: 0.6; }
+  .filter-wrap { position: relative; }
+  .filter-icon { position: absolute; left: 7px; top: 50%; transform: translateY(-50%); color: rgba(93,100,120,0.5); font-size: 10px; pointer-events: none; }
+
+  /* ── CONTENT ROW ── */
+  #content-row { flex: 1; display: flex; overflow: hidden; }
+
+  /* ── CARDS AREA ── */
+  #cards-area { flex: 1; overflow-y: auto; padding: 16px 20px; min-width: 0; }
+  #cards-area::-webkit-scrollbar { width: 3px; }
+  #cards-area::-webkit-scrollbar-thumb { background: var(--border); }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+
+  /* ── DECISION CARD ── */
+  .dcard { background: var(--card); border: 1px solid var(--border); overflow: hidden; cursor: pointer; position: relative; transition: transform 0.08s, box-shadow 0.1s, border-color 0.15s; }
+  .dcard:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .dcard.selected { border-color: rgba(38,166,154,0.5); box-shadow: 0 0 24px rgba(38,166,154,0.15); }
+  .dcard.selected-bear { border-color: rgba(239,83,80,0.5); box-shadow: 0 0 24px rgba(239,83,80,0.15); }
+  .dcard-top { height: 2px; }
+  .dcard-header { padding: 10px 14px; border-bottom-width: 1px; border-bottom-style: solid; }
+  .dcard-bias-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .dcard-bias-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(93,100,120,0.8); margin-right: 8px; }
+  .dcard-bias-val { font-weight: 900; font-size: 14px; letter-spacing: 0.08em; }
+  .new-badge { display: flex; align-items: center; gap: 3px; }
+  .new-dot { width: 5px; height: 5px; border-radius: 50%; animation: pulse-dot 0.9s ease-in-out infinite; }
+  .new-txt { font-size: 7px; font-weight: 800; letter-spacing: 0.12em; }
+  .conf-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .conf-bg { flex: 1; height: 5px; background: rgba(0,0,0,0.45); overflow: hidden; }
+  .conf-fill { height: 100%; transition: width 0.5s; }
+  .conf-pct { font-size: 13px; font-weight: 800; flex-shrink: 0; }
+  .risk-row { display: flex; align-items: center; gap: 8px; }
+  .risk-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.7); }
+  .risk-val { font-size: 9px; font-weight: 800; }
+  .mid-dot { color: var(--border); }
+  .sig-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; }
+  .dcard-instrument { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+  .inst-name { font-size: 13px; font-weight: 800; color: var(--fg); line-height: 1.2; }
+  .inst-ticker-row { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
+  .inst-tick { font-size: 9px; color: var(--muted); }
+  .inst-exch { font-size: 8px; border: 1px solid var(--border); padding: 0 4px; color: rgba(93,100,120,0.7); }
+  .inst-price { font-size: 16px; font-weight: 800; color: var(--fg); text-align: right; line-height: 1; }
+  .inst-chg { font-size: 11px; font-weight: 700; text-align: right; margin-top: 2px; }
+  .dcard-why { padding: 8px 14px; }
+  .section-lbl { font-size: 7px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 5px; }
+  .why-item { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; }
+  .why-bul { font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .why-txt { font-size: 11px; color: rgba(209,212,220,0.87); line-height: 1.4; font-family: var(--sans); }
+  .dcard-signal { padding: 7px 14px 8px; border-top-width: 1px; border-top-style: solid; }
+  .sig-item { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 3px; }
+  .sig-arrow { font-size: 10px; font-weight: 700; flex-shrink: 0; }
+  .sig-txt { font-size: 10px; font-weight: 600; color: rgba(209,212,220,0.93); line-height: 1.4; font-family: var(--sans); }
+  .dcard-footer { display: flex; align-items: center; justify-content: space-between; padding: 4px 14px; border-top: 1px solid var(--border); background: rgba(8,10,16,0.5); }
+  .dcard-delta { font-size: 8px; color: rgba(93,100,120,0.45); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }
+  .dcard-expand { font-size: 8px; color: rgba(93,100,120,0.35); }
+
+  /* ── DETAIL PANEL ── */
+  #detail-panel {
+    width: 0; flex-shrink: 0; overflow: hidden;
+    border-left: 1px solid transparent;
+    background: #0d0f1a;
+    display: flex; flex-direction: column;
+    transition: width 0.26s cubic-bezier(0.4,0,0.2,1), border-color 0.26s;
+  }
+  #detail-panel.open { width: 380px; border-left-color: var(--border); overflow-y: auto; }
+  #detail-panel::-webkit-scrollbar { width: 2px; }
+  #detail-panel::-webkit-scrollbar-thumb { background: var(--border); }
+  #dp-inner { min-width: 380px; opacity: 0; transition: opacity 0.18s 0.1s; }
+  #detail-panel.open #dp-inner { opacity: 1; }
+  .dp-topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    background: #080a10; position: sticky; top: 0; z-index: 2;
+  }
+  .dp-close {
+    width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 14px; color: rgba(93,100,120,0.7); border: 1px solid var(--border);
+    flex-shrink: 0; background: none; font-family: var(--mono);
+  }
+  .dp-close:hover { color: var(--fg); border-color: rgba(209,212,220,0.3); }
+  .dp-label { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); }
+  .dp-name { font-size: 17px; font-weight: 800; color: var(--fg); letter-spacing: -0.01em; }
+  .dp-hero { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+  .dp-bias-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .dp-bias-val { font-weight: 900; font-size: 22px; letter-spacing: 0.06em; }
+  .dp-price-block { text-align: right; }
+  .dp-price { font-size: 22px; font-weight: 800; color: var(--fg); line-height: 1; }
+  .dp-chg { font-size: 13px; font-weight: 700; margin-top: 2px; }
+  .dp-conf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .dp-conf-lbl { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.7); width: 80px; flex-shrink: 0; }
+  .dp-conf-bg { flex: 1; height: 6px; background: rgba(0,0,0,0.5); overflow: hidden; }
+  .dp-conf-fill { height: 100%; transition: width 0.5s; }
+  .dp-conf-pct { font-size: 13px; font-weight: 800; width: 40px; text-align: right; flex-shrink: 0; }
+  .dp-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .dp-meta-cell { background: rgba(8,10,16,0.6); border: 1px solid var(--border); padding: 7px 10px; }
+  .dp-meta-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.65); margin-bottom: 3px; }
+  .dp-meta-val { font-size: 14px; font-weight: 800; }
+  .dp-sparkline { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .dp-sparkline svg { display: block; width: 100%; }
+  .dp-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 9px; }
+  .dp-why-item { display: flex; align-items: flex-start; gap: 7px; margin-bottom: 8px; }
+  .dp-why-bul { font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
+  .dp-why-txt { font-size: 12px; color: rgba(209,212,220,0.9); line-height: 1.5; font-family: var(--sans); }
+  .dp-sig-item { display: flex; align-items: flex-start; gap: 7px; margin-bottom: 6px; }
+  .dp-sig-arrow { font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .dp-sig-txt { font-size: 12px; font-weight: 600; color: rgba(209,212,220,0.93); line-height: 1.45; font-family: var(--sans); }
+  .dp-drivers { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .dp-driver-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid rgba(30,35,54,0.5); }
+  .dp-driver-row:last-child { border-bottom: none; }
+  .dp-driver-name { font-size: 10px; color: rgba(209,212,220,0.7); flex: 1; }
+  .dp-driver-bar-wrap { flex: 1; margin: 0 10px; height: 3px; background: rgba(0,0,0,0.4); }
+  .dp-driver-bar { height: 100%; transition: width 0.5s; }
+  .dp-driver-val { font-size: 10px; font-weight: 700; width: 34px; text-align: right; }
+  .dp-footer { padding: 10px 16px; border-top: 1px solid var(--border); background: rgba(8,10,16,0.7); }
+  .dp-disclaimer { font-size: 8px; color: rgba(93,100,120,0.4); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.5; }
+
+  /* ── PROFILE PANEL ── */
+  .profile-panel {
+    position: fixed; top: 44px; right: 0;
+    width: 280px; background: var(--card); border: 1px solid var(--border);
+    border-top: none; z-index: 200; display: none;
+  }
+  .profile-panel.open { display: block; }
+  .pp-header { padding: 16px; border-bottom: 1px solid var(--border); }
+  .pp-email { font-size: 11px; color: var(--fg); margin-bottom: 2px; }
+  .pp-section { padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .pp-section-title { font-size: 8px; letter-spacing: 0.15em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+  .pp-alert-row { display: flex; align-items: center; justify-content: space-between; padding: 4px 0; }
+  .pp-alert-name { font-size: 10px; color: var(--fg); }
+  .toggle { width: 32px; height: 16px; background: var(--border); border-radius: 8px; position: relative; cursor: pointer; transition: background 0.2s; flex-shrink: 0; }
+  .toggle::after { content: ''; position: absolute; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); top: 2px; left: 2px; transition: all 0.2s; }
+  .toggle.on { background: rgba(38,166,154,0.3); }
+  .toggle.on::after { left: 18px; background: var(--bull); }
+  .pp-logout { display: block; width: 100%; text-align: left; font-family: var(--mono); font-size: 10px; color: var(--bear); background: none; border: none; cursor: pointer; padding: 12px 16px; transition: background 0.1s; }
+  .pp-logout:hover { background: rgba(239,83,80,0.05); }
+
+  /* ── LOADING ── */
+  .loading-state { display: flex; align-items: center; justify-content: center; padding: 60px 20px; flex-direction: column; gap: 12px; }
+  .loading-dots { display: flex; gap: 6px; }
+  .loading-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--bull); animation: pulse-dot 1.2s infinite; }
+  .loading-dot:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dot:nth-child(3) { animation-delay: 0.4s; }
+  .loading-text { font-size: 10px; color: var(--muted); letter-spacing: 0.1em; }
+</style>
 </head>
 <body>
 
 <!-- ══ AUTH OVERLAY ══════════════════════════════════════════════════════════ -->
 <div id="authOverlay">
   <div class="auth-box">
-    <div class="auth-brand"><span>CMDX</span> / COMMODEX</div>
+    <div class="auth-brand">
+      <div class="auth-brand-logo"><span>C</span></div>
+      COMMODEX
+    </div>
     <div class="auth-title" id="authTitle">Sign in</div>
 
-    <!-- Login -->
     <form class="auth-form active" id="loginForm" onsubmit="doLogin(event)">
-      <div>
-        <label class="auth-label">Email</label>
-        <input class="auth-input" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" required>
-      </div>
-      <div>
-        <label class="auth-label">Password</label>
-        <input class="auth-input" type="password" id="loginPwd" placeholder="Password" autocomplete="current-password" required>
-      </div>
+      <div><label class="auth-label">Email</label><input class="auth-input" type="email" id="loginEmail" placeholder="you@example.com" autocomplete="email" required></div>
+      <div><label class="auth-label">Password</label><input class="auth-input" type="password" id="loginPwd" placeholder="Password" autocomplete="current-password" required></div>
       <button class="auth-btn" type="submit" id="loginBtn">Sign in →</button>
       <div id="loginMsg" class="auth-msg"></div>
-      <div class="auth-switch">
-        <a onclick="showForm('forgot')">Forgot password?</a> &nbsp;·&nbsp;
-        <a onclick="showForm('register')">Create account</a>
-      </div>
+      <div class="auth-switch"><a onclick="showForm('forgot')">Forgot password?</a> &nbsp;·&nbsp; <a onclick="showForm('register')">Create account</a></div>
     </form>
 
-    <!-- Register -->
     <form class="auth-form" id="registerForm" onsubmit="doRegister(event)">
-      <div>
-        <label class="auth-label">Email</label>
-        <input class="auth-input" type="email" id="regEmail" placeholder="you@example.com" autocomplete="email" required>
-      </div>
-      <div>
-        <label class="auth-label">Password (min 8 chars)</label>
-        <input class="auth-input" type="password" id="regPwd" placeholder="Password" autocomplete="new-password" required>
-      </div>
+      <div><label class="auth-label">Email</label><input class="auth-input" type="email" id="regEmail" placeholder="you@example.com" autocomplete="email" required></div>
+      <div><label class="auth-label">Password (min 8 chars)</label><input class="auth-input" type="password" id="regPwd" placeholder="Password" autocomplete="new-password" required></div>
       <button class="auth-btn" type="submit" id="regBtn">Create account →</button>
       <div id="regMsg" class="auth-msg"></div>
       <div class="auth-switch"><a onclick="showForm('login')">Already have an account? Sign in</a></div>
     </form>
 
-    <!-- Forgot -->
     <form class="auth-form" id="forgotForm" onsubmit="doForgot(event)">
-      <div>
-        <label class="auth-label">Email</label>
-        <input class="auth-input" type="email" id="forgotEmail" placeholder="you@example.com" required>
-      </div>
+      <div><label class="auth-label">Email</label><input class="auth-input" type="email" id="forgotEmail" placeholder="you@example.com" required></div>
       <button class="auth-btn" type="submit" id="forgotBtn">Send reset link →</button>
       <div id="forgotMsg" class="auth-msg"></div>
       <div class="auth-switch"><a onclick="showForm('login')">← Back to sign in</a></div>
     </form>
 
-    <!-- Reset -->
     <form class="auth-form" id="resetForm" onsubmit="doReset(event)">
-      <div>
-        <label class="auth-label">New Password (min 8 chars)</label>
-        <input class="auth-input" type="password" id="resetPwd" placeholder="New password" required>
-      </div>
+      <div><label class="auth-label">New Password (min 8 chars)</label><input class="auth-input" type="password" id="resetPwd" placeholder="New password" required></div>
       <button class="auth-btn" type="submit" id="resetBtn">Reset password →</button>
       <div id="resetMsg" class="auth-msg"></div>
     </form>
   </div>
 </div>
 
-<!-- ══ TERMINAL ════════════════════════════════════════════════════════════════ -->
+<!-- ══ TERMINAL ════════════════════════════════════════════════════════════ -->
 <div id="terminal">
 
-  <!-- Topbar -->
-  <div class="topbar">
-    <div class="tb-brand"><span>CMDX</span> / COMMODEX</div>
-    <div class="tb-live"><div class="tb-live-dot"></div>LIVE</div>
-    <div class="tb-sep"></div>
-    <div class="tb-badge" id="badgeNYMEX">NYMEX</div>
-    <div class="tb-badge" id="badgeICE">ICE</div>
-    <div class="tb-badge" id="badgeLME">LME</div>
-    <div class="tb-sep"></div>
-    <div class="tb-status" id="statusNews">NEWS <span id="newsAge">—</span></div>
-    <div class="tb-sep"></div>
-    <div class="tb-status" id="statusAI">AI <span id="aiAge">—</span></div>
-    <div class="tb-spacer"></div>
-    <div class="tb-clock" id="tbClock">00:00:00 UTC</div>
-    <div class="tb-sep"></div>
-    <button class="tb-user-btn" id="userBtn" onclick="toggleProfile()">ACCOUNT</button>
-    <a class="tb-exit" href="/">EXIT</a>
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="tb-left">
+      <div class="tb-brand">
+        <div class="tb-logo"><span>C</span></div>
+        <span class="tb-name">COMMODEX</span>
+      </div>
+      <div class="live-dot"><span class="live-label">LIVE</span></div>
+      <div class="tb-markets">
+        <span class="market-badge" id="badgeNYMEX">NYMEX ●</span>
+        <span class="market-badge" id="badgeICE">ICE ●</span>
+        <span class="market-badge" id="badgeLME">LME ●</span>
+      </div>
+    </div>
+    <div class="tb-right">
+      <div class="tb-feed">
+        <span class="tb-status-dot"></span>
+        NEWS <span id="newsAge" style="color:var(--fg);opacity:0.6;margin:0 3px">—</span>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="tb-ai">AI <span id="aiAge" style="color:var(--fg);opacity:0.6;margin-left:3px">—</span></div>
+      <div class="tb-sep"></div>
+      <div class="tb-time" id="clock">00:00:00 UTC</div>
+      <div class="tb-sep"></div>
+      <button class="tb-user" id="userBtn" onclick="toggleProfile()">ACCOUNT</button>
+      <a class="tb-exit" href="/">EXIT</a>
+    </div>
   </div>
 
-  <!-- Watchlist bar -->
-  <div class="watchbar" id="watchbar">
-    <div class="watch-item"><span class="watch-name">GOLD</span><span class="watch-price" id="wp-Gold">—</span><span class="watch-chg flat" id="wc-Gold">—</span></div>
-    <div class="watch-item"><span class="watch-name">SILVER</span><span class="watch-price" id="wp-Silver">—</span><span class="watch-chg flat" id="wc-Silver">—</span></div>
-    <div class="watch-item"><span class="watch-name">CRUDE OIL</span><span class="watch-price" id="wp-Crude Oil">—</span><span class="watch-chg flat" id="wc-Crude Oil">—</span></div>
-    <div class="watch-item"><span class="watch-name">COPPER</span><span class="watch-price" id="wp-Copper">—</span><span class="watch-chg flat" id="wc-Copper">—</span></div>
-    <div class="watch-item"><span class="watch-name">NAT GAS</span><span class="watch-price" id="wp-Natural Gas">—</span><span class="watch-chg flat" id="wc-Natural Gas">—</span></div>
+  <!-- WATCHLIST BAR -->
+  <div id="watchlist">
+    <span class="wl-label">◎ WATCHLIST</span>
+    <div class="wl-item" onclick="openDetail('Gold')">
+      <span class="wl-name">GOLD</span>
+      <span class="wl-price" id="wp-Gold">—</span>
+      <span class="wl-change flat" id="wc-Gold">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Silver')">
+      <span class="wl-name">SILVER</span>
+      <span class="wl-price" id="wp-Silver">—</span>
+      <span class="wl-change flat" id="wc-Silver">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Crude Oil')">
+      <span class="wl-name">CRUDE OIL</span>
+      <span class="wl-price" id="wp-Crude Oil">—</span>
+      <span class="wl-change flat" id="wc-Crude Oil">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Copper')">
+      <span class="wl-name">COPPER</span>
+      <span class="wl-price" id="wp-Copper">—</span>
+      <span class="wl-change flat" id="wc-Copper">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Natural Gas')">
+      <span class="wl-name">NAT GAS</span>
+      <span class="wl-price" id="wp-Natural Gas">—</span>
+      <span class="wl-change flat" id="wc-Natural Gas">—</span>
+    </div>
   </div>
 
-  <!-- Main body -->
-  <div class="main-body">
+  <!-- BODY -->
+  <div id="body">
 
-    <!-- Left sidebar -->
-    <div class="sidebar">
+    <!-- LEFT SIDEBAR -->
+    <div id="news-sidebar">
       <div class="sidebar-header">
-        <div class="sidebar-title">News Feed</div>
-        <div class="news-tabs">
-          <button class="news-tab active" data-filter="All" onclick="setNewsFilter('All', this)">All</button>
-          <button class="news-tab" data-filter="Gold" onclick="setNewsFilter('Gold', this)">Gold</button>
-          <button class="news-tab" data-filter="Silver" onclick="setNewsFilter('Silver', this)">Silver</button>
-          <button class="news-tab" data-filter="Crude Oil" onclick="setNewsFilter('Crude Oil', this)">Crude</button>
-          <button class="news-tab" data-filter="Copper" onclick="setNewsFilter('Copper', this)">Copper</button>
-          <button class="news-tab" data-filter="Natural Gas" onclick="setNewsFilter('Natural Gas', this)">Gas</button>
-        </div>
+        <span class="sidebar-title">NEWS FEED</span>
+        <span class="sidebar-count" id="newsCount">—</span>
+      </div>
+      <div class="news-filters">
+        <button class="news-filter active" onclick="setNewsFilter('All',this)">All</button>
+        <button class="news-filter" onclick="setNewsFilter('Gold',this)">Gold</button>
+        <button class="news-filter" onclick="setNewsFilter('Silver',this)">Silver</button>
+        <button class="news-filter" onclick="setNewsFilter('Crude Oil',this)">Crude</button>
+        <button class="news-filter" onclick="setNewsFilter('Copper',this)">Copper</button>
+        <button class="news-filter" onclick="setNewsFilter('Natural Gas',this)">Gas</button>
       </div>
       <div class="news-list" id="newsList">
-        <div class="empty-state">Loading news...</div>
+        <div class="news-empty">Loading news...</div>
       </div>
     </div>
 
-    <!-- Right panel -->
-    <div class="right-panel">
+    <!-- MAIN -->
+    <div id="main">
 
-      <!-- Scan bar -->
-      <div class="scanbar">
-        <span class="scanbar-label">DECISIONS</span>
-        <div class="scanbar-sep"></div>
-        <div class="scanbar-items" id="scanbarItems">
-          <span class="scanbar-item"><span class="sname">GOLD</span><span class="sneutral">—</span></span>
-          <span class="scanbar-item"><span class="sname">SILVER</span><span class="sneutral">—</span></span>
-          <span class="scanbar-item"><span class="sname">CRUDE</span><span class="sneutral">—</span></span>
-          <span class="scanbar-item"><span class="sname">COPPER</span><span class="sneutral">—</span></span>
-          <span class="scanbar-item"><span class="sname">NAT GAS</span><span class="sneutral">—</span></span>
+      <!-- SCAN BAR -->
+      <div id="scan-bar">
+        <div class="scan-label-cell">
+          <svg style="width:9px;height:9px;stroke:var(--muted);fill:none;stroke-width:2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          <span style="font-size:8px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(93,100,120,0.9)">DECISIONS</span>
+        </div>
+        <div id="scanbarItems" style="display:contents"></div>
+      </div>
+
+      <!-- GRID HEADER -->
+      <div id="grid-header">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="grid-title">Decision Engine</span>
+          <span class="grid-meta" id="gridMeta">5 instruments · click any card to expand</span>
+        </div>
+        <div class="filter-wrap">
+          <span class="filter-icon">⌕</span>
+          <input class="grid-filter" id="filterInput" type="text" placeholder="Filter..." oninput="filterCards(this.value)">
         </div>
       </div>
 
-      <!-- Cards header -->
-      <div class="cards-header" id="cardsHeader">
-        <div class="cards-hdr-left">
-          <span class="cards-count" id="cardsCount">5 commodities</span>
-          <input class="filter-input" id="filterInput" placeholder="filter commodities..." oninput="filterCards(this.value)">
-        </div>
-        <span class="last-update" id="lastUpdate">—</span>
-      </div>
+      <!-- CONTENT ROW -->
+      <div id="content-row">
 
-      <!-- Cards scroll -->
-      <div class="cards-scroll" id="cardsScrollArea">
-        <div class="cards-grid" id="cardsGrid">
-          <div class="loading-state">
-            <div class="loading-dots">
-              <div class="loading-dot"></div>
-              <div class="loading-dot"></div>
-              <div class="loading-dot"></div>
+        <!-- CARDS -->
+        <div id="cards-area">
+          <div class="cards-grid" id="cardsGrid">
+            <div class="loading-state">
+              <div class="loading-dots">
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+              </div>
+              <div class="loading-text">Loading analysis...</div>
             </div>
-            <div class="loading-text">Loading analysis...</div>
           </div>
         </div>
-      </div>
 
-      <!-- Detail view (replaces cards when a commodity is clicked) -->
-      <div class="detail-view" id="detailView">
-        <div class="detail-header">
-          <button class="detail-back" onclick="closeDetail()">← ALL COMMODITIES</button>
-          <div class="detail-title" id="detailTitle">—</div>
-          <div class="detail-badge" id="detailBadge">—</div>
-          <div class="detail-price" id="detailPrice"></div>
+        <!-- DETAIL PANEL -->
+        <div id="detail-panel">
+          <div id="dp-inner">
+            <div class="dp-topbar">
+              <div>
+                <div class="dp-label">INSTRUMENT DETAIL</div>
+                <div class="dp-name" id="dp-name">—</div>
+              </div>
+              <button class="dp-close" onclick="closeDetail()">✕</button>
+            </div>
+            <div class="dp-hero">
+              <div class="dp-bias-row">
+                <div id="dp-bias" class="dp-bias-val">—</div>
+                <div class="dp-price-block">
+                  <div id="dp-price" class="dp-price">—</div>
+                  <div id="dp-chg" class="dp-chg">—</div>
+                </div>
+              </div>
+              <div class="dp-conf-row">
+                <span class="dp-conf-lbl">CONFIDENCE</span>
+                <div class="dp-conf-bg"><div id="dp-conf-fill" class="dp-conf-fill"></div></div>
+                <span id="dp-conf-pct" class="dp-conf-pct">—</span>
+              </div>
+              <div class="dp-meta-grid">
+                <div class="dp-meta-cell"><div class="dp-meta-lbl">RISK LEVEL</div><div id="dp-risk" class="dp-meta-val">—</div></div>
+                <div class="dp-meta-cell"><div class="dp-meta-lbl">SIGNAL</div><div id="dp-signal" class="dp-meta-val">—</div></div>
+                <div class="dp-meta-cell"><div class="dp-meta-lbl">TICKER</div><div id="dp-ticker" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:12px">—</div></div>
+                <div class="dp-meta-cell"><div class="dp-meta-lbl">EXCHANGE</div><div id="dp-exch" class="dp-meta-val" style="color:rgba(93,100,120,0.9);font-size:12px">—</div></div>
+              </div>
+            </div>
+            <div class="dp-sparkline">
+              <div class="dp-section-lbl" style="margin-bottom:6px">SENTIMENT HISTORY</div>
+              <svg id="dp-spark" height="60" viewBox="0 0 348 60" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="dp-section">
+              <div class="dp-section-lbl">WHY THIS BIAS</div>
+              <div id="dp-why"></div>
+            </div>
+            <div class="dp-section" id="dp-signal-section">
+              <div class="dp-section-lbl">SIGNAL DETAIL</div>
+              <div id="dp-signal-items"></div>
+            </div>
+            <div class="dp-drivers">
+              <div class="dp-section-lbl" style="margin-bottom:8px">SIGNAL DRIVERS</div>
+              <div id="dp-drivers-list"></div>
+            </div>
+            <div class="dp-footer">
+              <div class="dp-disclaimer">For informational purposes only · Not financial advice · Updated automatically</div>
+            </div>
+          </div>
         </div>
-        <div class="detail-body" id="detailBody"></div>
-      </div>
 
-    </div>
-  </div>
-</div>
+      </div><!-- #content-row -->
+    </div><!-- #main -->
+  </div><!-- #body -->
+</div><!-- #terminal -->
 
-<!-- Profile panel -->
+<!-- PROFILE PANEL -->
 <div class="profile-panel" id="profilePanel">
   <div class="pp-header">
     <div class="pp-email" id="ppEmail">—</div>
-    <div class="pp-status" id="ppStatus">—</div>
   </div>
   <div class="pp-section">
     <div class="pp-section-title">Alert Notifications</div>
-    <div id="ppAlerts">
-      <div style="font-size:10px;color:var(--muted)">Loading...</div>
-    </div>
+    <div id="ppAlerts"><div style="font-size:10px;color:var(--muted)">Loading...</div></div>
     <div style="margin-top:10px">
       <div class="pp-alert-row">
         <span class="pp-alert-name" style="font-size:9px;color:var(--muted)">Analysis digest email</span>
@@ -1079,78 +569,86 @@
 
 <script>
 // ══════════════════════════════════════════════════════════════════════════════
-// STATE
+// CONSTANTS
 // ══════════════════════════════════════════════════════════════════════════════
-let accessToken = localStorage.getItem('cmdx_token') || '';
-let allData = {};
-let allArticles = {};
-let currentNewsFilter = 'All';
-let pricesData = {};
+const BULL_C = '#26a69a', BEAR_C = '#ef5350', WATCH_C = '#7b8fb5', AMBER = '#c8a84b';
 
 const COMMODITIES = ['Gold', 'Silver', 'Crude Oil', 'Copper', 'Natural Gas'];
 
-const COMMODITY_LABELS = {
-  'Gold': { short: 'GOLD', ticker: 'XAU/USD', exchange: 'COMEX', tag: 'gold' },
-  'Silver': { short: 'SILVER', ticker: 'XAG/USD', exchange: 'COMEX', tag: 'silver' },
-  'Crude Oil': { short: 'CRUDE', ticker: 'WTI/CL', exchange: 'NYMEX', tag: 'oil' },
-  'Copper': { short: 'COPPER', ticker: 'HG/LME', exchange: 'LME', tag: 'copper' },
-  'Natural Gas': { short: 'NAT GAS', ticker: 'NG/HH', exchange: 'NYMEX', tag: 'gas' },
+const META = {
+  'Gold':        { short: 'GOLD',    ticker: 'GC=F',  exchange: 'COMEX' },
+  'Silver':      { short: 'SILVER',  ticker: 'SI=F',  exchange: 'COMEX' },
+  'Crude Oil':   { short: 'CRUDE',   ticker: 'CL=F',  exchange: 'NYMEX' },
+  'Copper':      { short: 'COPPER',  ticker: 'HG=F',  exchange: 'COMEX' },
+  'Natural Gas': { short: 'NAT GAS', ticker: 'NG=F',  exchange: 'NYMEX' },
 };
 
-const CONF_PCT = { 'HIGH': 85, 'MEDIUM': 67, 'LOW': 44 };
+const CONF_PCT = { HIGH: 85, MEDIUM: 67, LOW: 44 };
+const SENT_SCORE = { STRONG_BULLISH: 2, BULLISH: 1, NEUTRAL: 0, BEARISH: -1, STRONG_BEARISH: -2 };
+const SENT_ORDER = { STRONG_BULLISH: 0, BULLISH: 1, STRONG_BEARISH: 2, BEARISH: 3, NEUTRAL: 4 };
 
-const SENTIMENT_ORDER = {
-  'STRONG_BULLISH': 0, 'BULLISH': 1,
-  'STRONG_BEARISH': 2, 'BEARISH': 3,
-  'NEUTRAL': 4
-};
+// ── State ──
+let accessToken = localStorage.getItem('cmdx_token') || '';
+let allData = {};
+let allArticles = {};
+let pricesData = {};
+let currentNewsFilter = 'All';
+let activeDetailName = null;
 
-function sentimentClass(s) {
+// ══════════════════════════════════════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════════════════════════════════════
+function sentClass(s) {
   if (!s) return 'neutral';
-  s = s.toUpperCase();
-  if (s.includes('BULLISH')) return 'bull';
-  if (s.includes('BEARISH')) return 'bear';
+  const u = s.toUpperCase();
+  if (u.includes('BULLISH')) return 'bull';
+  if (u.includes('BEARISH')) return 'bear';
   return 'neutral';
 }
-
-function sentimentLabel(s) {
+function sentColor(s) {
+  const c = sentClass(s);
+  return c === 'bull' ? BULL_C : c === 'bear' ? BEAR_C : WATCH_C;
+}
+function sentLabel(s) {
   if (!s) return '◎ WATCH';
-  s = s.toUpperCase();
-  if (s === 'STRONG_BULLISH') return '▲ STRONG BULL';
-  if (s === 'BULLISH') return '▲ BULLISH';
-  if (s === 'STRONG_BEARISH') return '▼ STRONG BEAR';
-  if (s === 'BEARISH') return '▼ BEARISH';
-  return '◎ WATCH';
+  switch (s.toUpperCase()) {
+    case 'STRONG_BULLISH': return '▲ STRONG BULL';
+    case 'BULLISH':        return '▲ BULLISH';
+    case 'STRONG_BEARISH': return '▼ STRONG BEAR';
+    case 'BEARISH':        return '▼ BEARISH';
+    default:               return '◎ WATCH';
+  }
 }
-
-function sentimentBadge(s) {
-  if (!s) return 'WATCH';
-  s = s.toUpperCase();
-  if (s === 'STRONG_BULLISH') return 'STRONG BULL';
-  if (s === 'BULLISH') return 'BULLISH';
-  if (s === 'STRONG_BEARISH') return 'STRONG BEAR';
-  if (s === 'BEARISH') return 'BEARISH';
-  return 'WATCH';
+function scanBadge(s) {
+  if (!s) return { text: '◎ WATCH', color: WATCH_C };
+  switch (s.toUpperCase()) {
+    case 'STRONG_BULLISH':
+    case 'BULLISH':        return { text: '→ BULLISH',  color: BULL_C };
+    case 'STRONG_BEARISH':
+    case 'BEARISH':        return { text: '✕ BEARISH',  color: BEAR_C };
+    default:               return { text: '◎ WATCH',    color: WATCH_C };
+  }
 }
-
+function riskFromConf(conf) {
+  if (conf === 'HIGH')   return { label: 'LOW',    color: BULL_C  };
+  if (conf === 'MEDIUM') return { label: 'MEDIUM', color: AMBER   };
+  return                        { label: 'HIGH',   color: BEAR_C  };
+}
 function fmtPrice(p) {
   if (p == null) return '—';
-  if (p > 1000) return '$' + p.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
-  if (p > 10) return '$' + p.toFixed(2);
+  if (p > 1000) return '$' + p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  if (p > 10)   return '$' + p.toFixed(2);
   return '$' + p.toFixed(3);
 }
-
 function fmtChg(c) {
-  if (c == null) return { text: '—', cls: 'flat' };
+  if (c == null) return { text: '—', cls: 'flat', sign: '' };
   const sign = c >= 0 ? '+' : '';
-  return { text: sign + c.toFixed(2) + '%', cls: c > 0 ? 'up' : c < 0 ? 'dn' : 'flat' };
+  return { text: sign + c.toFixed(2) + '%', cls: c > 0 ? 'up' : c < 0 ? 'dn' : 'flat', sign: c >= 0 ? '▲ ' : '▼ ' };
 }
-
-function timeAgo(isoStr) {
-  if (!isoStr) return '';
+function timeAgo(iso) {
+  if (!iso) return '';
   try {
-    const d = new Date(isoStr);
-    const diff = Math.floor((Date.now() - d.getTime()) / 60000);
+    const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
     if (diff < 1) return 'now';
     if (diff < 60) return diff + 'm ago';
     const h = Math.floor(diff / 60);
@@ -1158,11 +656,11 @@ function timeAgo(isoStr) {
     return Math.floor(h / 24) + 'd ago';
   } catch { return ''; }
 }
-
-function stripHtml(html) {
-  const tmp = document.createElement('div');
-  tmp.innerHTML = html;
-  return tmp.textContent || '';
+function stripHtml(h) {
+  const d = document.createElement('div'); d.innerHTML = h; return d.textContent || '';
+}
+function authH() {
+  return { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' };
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1171,83 +669,57 @@ function stripHtml(html) {
 function showForm(name) {
   document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
   document.getElementById(name + 'Form').classList.add('active');
-  const titles = { login: 'Sign in', register: 'Create account', forgot: 'Reset password', reset: 'New password' };
-  document.getElementById('authTitle').textContent = titles[name] || 'Sign in';
+  const t = { login: 'Sign in', register: 'Create account', forgot: 'Reset password', reset: 'New password' };
+  document.getElementById('authTitle').textContent = t[name] || 'Sign in';
 }
-
 function setMsg(id, text, type) {
   const el = document.getElementById(id);
   if (!el) return;
   el.textContent = text;
   el.className = 'auth-msg ' + (type || 'error');
 }
-
 async function doLogin(e) {
   e.preventDefault();
   const btn = document.getElementById('loginBtn');
   btn.disabled = true; btn.textContent = 'Signing in...';
   try {
-    const res = await fetch('/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: document.getElementById('loginEmail').value.trim(),
-        password: document.getElementById('loginPwd').value
-      })
-    });
+    const res = await fetch('/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: document.getElementById('loginEmail').value.trim(), password: document.getElementById('loginPwd').value }) });
     const data = await res.json();
     if (res.ok) {
       accessToken = data.access_token;
       localStorage.setItem('cmdx_token', accessToken);
       if (data.refresh_token) localStorage.setItem('cmdx_refresh', data.refresh_token);
       enterTerminal();
-    } else {
-      setMsg('loginMsg', data.error || 'Login failed.', 'error');
-    }
+    } else { setMsg('loginMsg', data.error || 'Login failed.', 'error'); }
   } catch { setMsg('loginMsg', 'Network error.', 'error'); }
   btn.disabled = false; btn.textContent = 'Sign in →';
 }
-
 async function doRegister(e) {
   e.preventDefault();
   const btn = document.getElementById('regBtn');
   btn.disabled = true; btn.textContent = 'Creating account...';
   try {
-    const res = await fetch('/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        email: document.getElementById('regEmail').value.trim(),
-        password: document.getElementById('regPwd').value
-      })
-    });
+    const res = await fetch('/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: document.getElementById('regEmail').value.trim(), password: document.getElementById('regPwd').value }) });
     const data = await res.json();
-    if (res.ok) {
-      setMsg('regMsg', data.message || 'Account created. Check your email.', 'success');
-      setTimeout(() => showForm('login'), 2500);
-    } else {
-      setMsg('regMsg', data.error || 'Registration failed.', 'error');
-    }
+    if (res.ok) { setMsg('regMsg', data.message || 'Account created.', 'success'); setTimeout(() => showForm('login'), 2500); }
+    else { setMsg('regMsg', data.error || 'Registration failed.', 'error'); }
   } catch { setMsg('regMsg', 'Network error.', 'error'); }
   btn.disabled = false; btn.textContent = 'Create account →';
 }
-
 async function doForgot(e) {
   e.preventDefault();
   const btn = document.getElementById('forgotBtn');
   btn.disabled = true; btn.textContent = 'Sending...';
   try {
-    const res = await fetch('/auth/forgot-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: document.getElementById('forgotEmail').value.trim() })
-    });
+    const res = await fetch('/auth/forgot-password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: document.getElementById('forgotEmail').value.trim() }) });
     const data = await res.json();
     setMsg('forgotMsg', data.message || 'Reset link sent.', 'success');
   } catch { setMsg('forgotMsg', 'Network error.', 'error'); }
   btn.disabled = false; btn.textContent = 'Send reset link →';
 }
-
 async function doReset(e) {
   e.preventDefault();
   const token = new URLSearchParams(window.location.search).get('reset_token');
@@ -1255,65 +727,39 @@ async function doReset(e) {
   const btn = document.getElementById('resetBtn');
   btn.disabled = true; btn.textContent = 'Resetting...';
   try {
-    const res = await fetch('/auth/reset-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, password: document.getElementById('resetPwd').value })
-    });
+    const res = await fetch('/auth/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, password: document.getElementById('resetPwd').value }) });
     const data = await res.json();
-    if (res.ok) {
-      setMsg('resetMsg', 'Password updated. Redirecting...', 'success');
-      setTimeout(() => { window.history.replaceState({}, '', '/app'); showForm('login'); }, 2000);
-    } else {
-      setMsg('resetMsg', data.error || 'Reset failed.', 'error');
-    }
+    if (res.ok) { setMsg('resetMsg', 'Password updated.', 'success'); setTimeout(() => { window.history.replaceState({}, '', '/app'); showForm('login'); }, 2000); }
+    else { setMsg('resetMsg', data.error || 'Reset failed.', 'error'); }
   } catch { setMsg('resetMsg', 'Network error.', 'error'); }
   btn.disabled = false; btn.textContent = 'Reset password →';
 }
-
 function doLogout() {
-  localStorage.removeItem('cmdx_token');
-  localStorage.removeItem('cmdx_refresh');
+  localStorage.removeItem('cmdx_token'); localStorage.removeItem('cmdx_refresh');
   accessToken = '';
   document.getElementById('terminal').classList.remove('visible');
   document.getElementById('authOverlay').style.display = 'flex';
   showForm('login');
 }
-
 function enterTerminal() {
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('terminal').classList.add('visible');
-  loadAll();
-  loadProfile();
-  startClock();
-  updateMarketBadges();
+  loadAll(); loadProfile(); startClock(); updateMarketBadges();
 }
-
 async function tryAutoLogin() {
   if (!accessToken) return false;
   try {
-    const res = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + accessToken } });
-    if (res.ok) {
-      const data = await res.json();
-      enterTerminal();
-      return true;
-    }
-    // Try refresh
+    const res = await fetch('/auth/me', { headers: authH() });
+    if (res.ok) { enterTerminal(); return true; }
     const rt = localStorage.getItem('cmdx_refresh');
     if (rt) {
-      const rres = await fetch('/auth/refresh', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + rt }
-      });
-      if (rres.ok) {
-        const rdata = await rres.json();
-        accessToken = rdata.access_token;
+      const rr = await fetch('/auth/refresh', { method: 'POST', headers: { 'Authorization': 'Bearer ' + rt } });
+      if (rr.ok) {
+        accessToken = (await rr.json()).access_token;
         localStorage.setItem('cmdx_token', accessToken);
-        const me = await fetch('/auth/me', { headers: { 'Authorization': 'Bearer ' + accessToken } });
-        if (me.ok) {
-          enterTerminal();
-          return true;
-        }
+        const me = await fetch('/auth/me', { headers: authH() });
+        if (me.ok) { enterTerminal(); return true; }
       }
     }
   } catch {}
@@ -1321,218 +767,67 @@ async function tryAutoLogin() {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// DETAIL VIEW
-// ══════════════════════════════════════════════════════════════════════════════
-function openDetail(name) {
-  const payload = allData[name] || {};
-  const analysis = payload.analysis || {};
-  const sentiment = analysis.sentiment || 'NEUTRAL';
-  const cls = sentimentClass(sentiment);
-  const confidence = analysis.confidence || 'LOW';
-  const confPct = CONF_PCT[confidence] || 44;
-  const drivers = analysis.drivers || { up: [], down: [] };
-  const takeaways = analysis.trader_takeaways || {};
-  const narrative = analysis.dominant_narrative || {};
-  const marketSummary = analysis.market_summary || '—';
-  const priceAct = analysis.price_action_context || '—';
-
-  const price = pricesData[name];
-  const priceTxt = price && price.price != null ? fmtPrice(price.price) : '—';
-  const chgData = price && price.change != null ? fmtChg(price.change) : { text: '—', cls: 'flat' };
-  const chgColor = chgData.cls === 'up' ? 'var(--bull)' : chgData.cls === 'dn' ? 'var(--bear)' : 'var(--muted)';
-
-  // Header
-  document.getElementById('detailTitle').textContent = name;
-  const badge = document.getElementById('detailBadge');
-  badge.textContent = sentimentBadge(sentiment);
-  badge.className = 'detail-badge ' + cls;
-  document.getElementById('detailPrice').innerHTML =
-    `<span style="color:${chgColor}">${priceTxt} <span style="font-size:10px">${chgData.text}</span></span>`;
-
-  // Body
-  const upItems = (drivers.up || []).map(d => `<li>${d}</li>`).join('') || '<li>—</li>';
-  const downItems = (drivers.down || []).map(d => `<li>${d}</li>`).join('') || '<li>—</li>';
-
-  const narStatus = narrative.status || '';
-  const narTheme = narrative.theme || '—';
-
-  const articles = (allArticles[name] || []).slice(0, 30);
-  const articlesHtml = articles.length ? articles.map(a => {
-    const url = (a.url || '#').replace(/'/g, "\\'");
-    const title = stripHtml(a.title);
-    const age = timeAgo(a.published);
-    return `<div class="detail-article-item" onclick="window.open('${url}','_blank')">
-      <div class="detail-article-title">${title}</div>
-      <div class="detail-article-meta"><span>${a.source || '—'}</span><span>${age}</span><span class="news-tag ${a.impact || 'LOW'}" style="margin-left:2px">${a.impact || 'LOW'}</span></div>
-    </div>`;
-  }).join('') : '<div style="font-size:10px;color:var(--muted);padding:10px 0">No articles</div>';
-
-  document.getElementById('detailBody').innerHTML = `
-    <div class="detail-block detail-full">
-      <div class="detail-block-title">Market Summary</div>
-      <p class="detail-summary">${marketSummary}</p>
-    </div>
-
-    <div class="detail-block">
-      <div class="detail-block-title">Confidence & Positioning</div>
-      <div class="detail-conf-row" style="margin-bottom:12px">
-        <div class="detail-conf-bar"><div class="detail-conf-fill ${cls}" style="width:${confPct}%"></div></div>
-        <span class="detail-conf-pct">${confPct}% · ${confidence}</span>
-      </div>
-      <div class="detail-block-title" style="margin-bottom:6px">Price Action</div>
-      <div style="font-size:10px;color:#9ca3af;line-height:1.5;font-family:'Inter',sans-serif">${priceAct}</div>
-      <div style="margin-top:12px">
-        <div class="detail-block-title" style="margin-bottom:6px">Dominant Narrative</div>
-        <div class="detail-narrative">
-          <span class="detail-narrative-theme">${narTheme}</span>
-          <span class="detail-narrative-status ${narStatus}">${narStatus || '—'}</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="detail-block">
-      <div class="detail-block-title">Drivers</div>
-      <div class="detail-drivers">
-        <div>
-          <div class="detail-driver-col-title bull">▲ BULLISH</div>
-          <ul class="detail-driver-list">${upItems}</ul>
-        </div>
-        <div>
-          <div class="detail-driver-col-title bear">▼ BEARISH</div>
-          <ul class="detail-driver-list">${downItems}</ul>
-        </div>
-      </div>
-    </div>
-
-    <div class="detail-block">
-      <div class="detail-block-title">Trader Takeaways</div>
-      <div class="detail-takeaway">
-        <div class="detail-takeaway-label">INTRADAY</div>
-        ${takeaways.intraday || '—'}
-      </div>
-      <div class="detail-takeaway">
-        <div class="detail-takeaway-label">NEXT FEW DAYS</div>
-        ${takeaways.next_few_days || '—'}
-      </div>
-      <div class="detail-takeaway">
-        <div class="detail-takeaway-label">NEXT FEW WEEKS</div>
-        ${takeaways.next_few_weeks || '—'}
-      </div>
-    </div>
-
-    <div class="detail-block detail-full">
-      <div class="detail-block-title">Recent News (${articles.length} articles)</div>
-      <div class="detail-articles-list">${articlesHtml}</div>
-    </div>
-  `;
-
-  // Show detail view, hide cards
-  document.getElementById('cardsScrollArea').style.display = 'none';
-  document.getElementById('cardsHeader') && (document.getElementById('cardsHeader').style.display = 'none');
-  document.getElementById('detailView').classList.add('active');
-
-  // Sync news sidebar filter
-  setNewsFilter(name, document.querySelector(`.news-tab[data-filter="${name}"]`));
-}
-
-function closeDetail() {
-  document.getElementById('detailView').classList.remove('active');
-  document.getElementById('cardsScrollArea').style.display = '';
-  document.getElementById('cardsHeader') && (document.getElementById('cardsHeader').style.display = '');
-  // Reset news filter to All
-  setNewsFilter('All', document.querySelector('.news-tab[data-filter="All"]'));
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// CLOCK & MARKET HOURS
+// CLOCK & MARKET BADGES
 // ══════════════════════════════════════════════════════════════════════════════
 function startClock() {
   function tick() {
-    const now = new Date();
-    const h = String(now.getUTCHours()).padStart(2,'0');
-    const m = String(now.getUTCMinutes()).padStart(2,'0');
-    const s = String(now.getUTCSeconds()).padStart(2,'0');
-    document.getElementById('tbClock').textContent = h + ':' + m + ':' + s + ' UTC';
+    const n = new Date();
+    document.getElementById('clock').textContent =
+      String(n.getUTCHours()).padStart(2,'0') + ':' +
+      String(n.getUTCMinutes()).padStart(2,'0') + ':' +
+      String(n.getUTCSeconds()).padStart(2,'0') + ' UTC';
   }
-  tick();
-  setInterval(tick, 1000);
+  tick(); setInterval(tick, 1000);
 }
-
 function updateMarketBadges() {
-  const now = new Date();
-  const h = now.getUTCHours(), m = now.getUTCMinutes();
-  const tod = h * 60 + m;
-  const day = now.getUTCDay(); // 0=Sun, 6=Sat
-
-  // NYMEX: Mon-Fri 00:00-21:00 UTC
-  const nymexOpen = day >= 1 && day <= 5 && tod >= 0 && tod < 21 * 60;
-  // ICE: Mon-Fri 01:00-23:00 UTC
-  const iceOpen = day >= 1 && day <= 5 && tod >= 60 && tod < 23 * 60;
-  // LME: Mon-Fri 01:00-19:00 UTC
-  const lmeOpen = day >= 1 && day <= 5 && tod >= 60 && tod < 19 * 60;
-
-  const setB = (id, open) => {
+  const n = new Date(), h = n.getUTCHours(), m = n.getUTCMinutes(), d = n.getUTCDay(), tod = h * 60 + m;
+  const wk = d >= 1 && d <= 5;
+  const set = (id, open) => {
     const el = document.getElementById(id);
     if (!el) return;
-    el.className = 'tb-badge ' + (open ? 'open' : 'closed');
+    el.className = 'market-badge ' + (open ? 'open' : 'closed');
   };
-  setB('badgeNYMEX', nymexOpen);
-  setB('badgeICE', iceOpen);
-  setB('badgeLME', lmeOpen);
+  set('badgeNYMEX', wk && tod >= 0    && tod < 21*60);
+  set('badgeICE',   wk && tod >= 60   && tod < 23*60);
+  set('badgeLME',   wk && tod >= 60   && tod < 19*60);
+  setTimeout(updateMarketBadges, 60000);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // DATA LOADING
 // ══════════════════════════════════════════════════════════════════════════════
-function authHeaders() {
-  return { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' };
-}
-
 async function loadAll() {
   await Promise.all([loadData(), loadPrices()]);
-  // Refresh every 5 minutes
   setTimeout(loadAll, 5 * 60 * 1000);
 }
-
 async function loadData() {
   try {
-    const res = await fetch('/data', { headers: authHeaders() });
+    const res = await fetch('/data', { headers: authH() });
     if (res.status === 401) { doLogout(); return; }
     if (!res.ok) return;
     allData = await res.json();
-
-    // Extract all articles for news feed
     allArticles = {};
-    for (const [commodity, payload] of Object.entries(allData)) {
-      allArticles[commodity] = (payload.articles || []);
-    }
-
-    renderScanbar();
-    renderCards();
-    renderNews();
-
-    // Update last-run display
+    for (const [c, p] of Object.entries(allData)) allArticles[c] = p.articles || [];
+    renderScanbar(); renderCards(); renderNews();
     const first = Object.values(allData)[0];
     if (first && first.timestamp) {
-      document.getElementById('lastUpdate').textContent = 'Updated ' + timeAgo(first.timestamp);
       document.getElementById('aiAge').textContent = timeAgo(first.timestamp);
     }
-  } catch (err) { console.error('loadData error', err); }
+  } catch (e) { console.error('loadData', e); }
 }
-
 async function loadPrices() {
   try {
-    const res = await fetch('/prices', { headers: authHeaders() });
+    const res = await fetch('/prices', { headers: authH() });
     if (!res.ok) return;
     pricesData = await res.json();
     renderWatchbar();
-    renderCards(); // re-render cards with prices
+    renderCards();
     document.getElementById('newsAge').textContent = timeAgo(new Date().toISOString());
   } catch {}
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// RENDER
+// RENDER — WATCHBAR
 // ══════════════════════════════════════════════════════════════════════════════
 function renderWatchbar() {
   for (const name of COMMODITIES) {
@@ -1541,318 +836,382 @@ function renderWatchbar() {
     const wc = document.getElementById('wc-' + name);
     if (!wp || !wc) continue;
     if (!p || p.price == null) {
-      wp.textContent = '—';
-      wc.textContent = '—';
-      wc.className = 'watch-chg flat';
+      wp.textContent = '—'; wc.textContent = '—'; wc.className = 'wl-change flat';
     } else {
       wp.textContent = fmtPrice(p.price);
       const chg = fmtChg(p.change);
-      wc.textContent = chg.text;
-      wc.className = 'watch-chg ' + chg.cls;
+      wc.textContent = (chg.cls === 'up' ? '▲ ' : chg.cls === 'dn' ? '▼ ' : '') + Math.abs(p.change || 0).toFixed(2) + '%';
+      wc.className = 'wl-change ' + chg.cls;
     }
   }
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// RENDER — SCAN BAR
+// ══════════════════════════════════════════════════════════════════════════════
 function renderScanbar() {
-  const container = document.getElementById('scanbarItems');
-  if (!container) return;
-
-  const NAMES = {
-    'Gold': 'GOLD', 'Silver': 'SILVER', 'Crude Oil': 'CRUDE',
-    'Copper': 'COPPER', 'Natural Gas': 'NAT GAS'
-  };
-
-  container.innerHTML = COMMODITIES.map(name => {
-    const payload = allData[name];
-    const sentiment = payload && payload.analysis ? payload.analysis.sentiment : null;
-    const cls = sentimentClass(sentiment);
-    const lbl = sentimentLabel(sentiment);
-    const clsName = cls === 'bull' ? 'sbull' : cls === 'bear' ? 'sbear' : 'sneutral';
-    return `<span class="scanbar-item">
-      <span class="sname">${NAMES[name]}</span>
-      <span class="${clsName}">${lbl}</span>
-    </span>`;
-  }).join('');
-}
-
-function sortCommodities(names) {
-  return [...names].sort((a, b) => {
-    const sa = (allData[a] && allData[a].analysis && allData[a].analysis.sentiment) || 'NEUTRAL';
-    const sb = (allData[b] && allData[b].analysis && allData[b].analysis.sentiment) || 'NEUTRAL';
-    return (SENTIMENT_ORDER[sa] || 4) - (SENTIMENT_ORDER[sb] || 4);
-  });
-}
-
-function renderCards(filter) {
-  const grid = document.getElementById('cardsGrid');
-  if (!grid) return;
-  if (Object.keys(allData).length === 0) return;
-
-  const query = (filter || document.getElementById('filterInput').value || '').toLowerCase();
-  let names = sortCommodities(COMMODITIES);
-
-  if (query) {
-    names = names.filter(n => n.toLowerCase().includes(query));
-  }
-
-  document.getElementById('cardsCount').textContent = names.length + ' commodit' + (names.length === 1 ? 'y' : 'ies');
-
-  if (names.length === 0) {
-    grid.innerHTML = '<div class="empty-state">No commodities match filter</div>';
-    return;
-  }
-
-  grid.innerHTML = names.map(name => buildCard(name)).join('');
-}
-
-function buildCard(name) {
-  const payload = allData[name] || {};
-  const analysis = payload.analysis || {};
-  const sentiment = analysis.sentiment || 'NEUTRAL';
-  const cls = sentimentClass(sentiment);
-  const confidence = analysis.confidence || 'LOW';
-  const confPct = CONF_PCT[confidence] || 44;
-  const drivers = analysis.drivers || { up: [], down: [] };
-  const takeaways = analysis.trader_takeaways || {};
-  const marketSummary = analysis.market_summary || '';
-  const isBreaking = !!payload.breaking;
-
-  const price = pricesData[name];
-  const priceTxt = price && price.price != null ? fmtPrice(price.price) : '—';
-  const chgData = price && price.change != null ? fmtChg(price.change) : { text: '—', cls: 'flat' };
-  const chgColor = chgData.cls === 'up' ? 'var(--bull)' : chgData.cls === 'dn' ? 'var(--bear)' : 'var(--muted)';
-
-  const meta = COMMODITY_LABELS[name] || { ticker: '—', exchange: '—', tag: '' };
-
-  // WHY bullets: mix up/down based on sentiment
-  let whyItems = [];
-  if (cls === 'bull') {
-    whyItems = [...(drivers.up || []).slice(0, 2), ...(drivers.down || []).slice(0, 1)];
-  } else if (cls === 'bear') {
-    whyItems = [...(drivers.down || []).slice(0, 2), ...(drivers.up || []).slice(0, 1)];
-  } else {
-    whyItems = [...(drivers.up || []).slice(0, 1), ...(drivers.down || []).slice(0, 1), ...(drivers.up || drivers.down || []).slice(2, 3)];
-  }
-  if (whyItems.length === 0) whyItems = ['No drivers identified'];
-
-  const whyHtml = whyItems.map(d => `<li>${d}</li>`).join('');
-
-  // SIGNAL lines
-  const sig1 = takeaways.intraday || '—';
-  const sig2 = takeaways.next_few_days || '—';
-
-  // Footer: first sentence of market_summary
-  const footerTxt = marketSummary ? marketSummary.split('.')[0] + '.' : '—';
-
-  const breakingBadge = isBreaking ? `<div class="dcard-badge breaking">BREAKING</div>` : '';
-
-  return `
-  <div class="dcard" style="cursor:pointer" onclick="openDetail('${name.replace(/'/g,"\\'")}')">
-    <div class="dcard-top-bar ${cls}"></div>
-    <div class="dcard-body">
-      <div class="dcard-hdr">
-        <div class="dcard-bias-lbl ${cls}">${sentimentLabel(sentiment)} · BIAS</div>
-        <div class="dcard-badges">
-          ${breakingBadge}
-          <div class="dcard-badge ${cls}">${sentimentBadge(sentiment)}</div>
-        </div>
-      </div>
-      <div class="dcard-conf-row">
-        <div class="dcard-conf-bar"><div class="dcard-conf-fill ${cls}" style="width:${confPct}%"></div></div>
-        <span class="dcard-conf-pct">${confPct}% · ${confidence}</span>
-      </div>
-      <div class="dcard-instrument">
-        <div class="dcard-name">${name}</div>
-        <div class="dcard-meta-row">
-          <div class="dcard-meta">${meta.ticker} · ${meta.exchange}</div>
-          <div class="dcard-price" style="color:${chgColor}">${priceTxt}<span class="chg">${chgData.text}</span></div>
-        </div>
-      </div>
-      <div class="dcard-why">
-        <div class="dcard-section-lbl">WHY</div>
-        <ul class="dcard-bullets">${whyHtml}</ul>
-      </div>
-      <div class="dcard-signal">
-        <div class="dcard-section-lbl">SIGNAL</div>
-        <div class="dcard-signal-line">${sig1}</div>
-        <div class="dcard-signal-line">${sig2}</div>
-      </div>
-      <div class="dcard-footer">${footerTxt}</div>
-    </div>
-  </div>`;
-}
-
-function filterCards(val) {
-  renderCards(val);
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
-// NEWS FEED
-// ══════════════════════════════════════════════════════════════════════════════
-function setNewsFilter(filter, btn) {
-  currentNewsFilter = filter;
-  document.querySelectorAll('.news-tab').forEach(t => t.classList.remove('active'));
-  if (btn) btn.classList.add('active');
-  renderNews();
-}
-
-function renderNews() {
-  const container = document.getElementById('newsList');
-  if (!container) return;
-
-  let items = [];
-
-  if (currentNewsFilter === 'All') {
-    for (const [commodity, arts] of Object.entries(allArticles)) {
-      for (const a of arts) {
-        items.push({ ...a, commodity });
-      }
-    }
-  } else {
-    items = (allArticles[currentNewsFilter] || []).map(a => ({ ...a, commodity: currentNewsFilter }));
-  }
-
-  // Sort by published desc
-  items.sort((a, b) => {
-    if (!a.published && !b.published) return 0;
-    if (!a.published) return 1;
-    if (!b.published) return -1;
-    return b.published.localeCompare(a.published);
-  });
-
-  // Deduplicate by title
-  const seen = new Set();
-  items = items.filter(a => {
-    if (seen.has(a.title)) return false;
-    seen.add(a.title);
-    return true;
-  });
-
-  items = items.slice(0, 80);
-
-  if (items.length === 0) {
-    container.innerHTML = '<div class="empty-state">No articles</div>';
-    return;
-  }
-
-  const meta = COMMODITY_LABELS;
-
-  container.innerHTML = items.map(a => {
-    const tagCls = (meta[a.commodity] || {}).tag || '';
-    const impactCls = a.impact || 'LOW';
-    const title = stripHtml(a.title);
-    const source = a.source || '—';
-    const age = timeAgo(a.published);
-    const url = a.url || '#';
-    return `<div class="news-item" onclick="window.open('${url.replace(/'/g,"\\'")}','_blank')">
-      <div class="news-item-top">
-        <span class="news-tag ${tagCls}">${(a.commodity || '').toUpperCase().substring(0, 6)}</span>
-        <span class="news-tag ${impactCls}">${impactCls}</span>
-      </div>
-      <div class="news-headline">${title}</div>
-      <div class="news-meta"><span>${source}</span><span>${age}</span></div>
+  const sorted = sortNames();
+  document.getElementById('scanbarItems').innerHTML = sorted.map(name => {
+    const payload = allData[name] || {};
+    const sent = (payload.analysis || {}).sentiment || 'NEUTRAL';
+    const conf = CONF_PCT[(payload.analysis || {}).confidence] || 44;
+    const badge = scanBadge(sent);
+    const cls = sentClass(sent);
+    const pctColor = cls === 'bull' ? BULL_C : cls === 'bear' ? BEAR_C : WATCH_C;
+    const pctSymbol = cls === 'bull' ? '▲' : cls === 'bear' ? '▼' : '◎';
+    const bg = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.12)`;
+    const bc = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.4)`;
+    const active = activeDetailName === name ? ' active-scan' : '';
+    return `<div class="scan-cell${active}" data-name="${name}" onclick="openDetail('${name}')">
+      <span class="s-name">${META[name].short}</span>
+      <span class="s-pct" style="color:${pctColor}">${pctSymbol} ${conf}%</span>
+      <span class="s-badge" style="color:${badge.color};background:${bg};border:1px solid ${bc}">${badge.text}</span>
     </div>`;
   }).join('');
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// PROFILE PANEL
+// RENDER — CARDS
 // ══════════════════════════════════════════════════════════════════════════════
-function toggleProfile() {
-  const panel = document.getElementById('profilePanel');
-  panel.classList.toggle('open');
+function sortNames() {
+  return [...COMMODITIES].sort((a, b) => {
+    const sa = (allData[a]?.analysis?.sentiment) || 'NEUTRAL';
+    const sb = (allData[b]?.analysis?.sentiment) || 'NEUTRAL';
+    return (SENT_ORDER[sa] ?? 4) - (SENT_ORDER[sb] ?? 4);
+  });
+}
+function renderCards(filter) {
+  const grid = document.getElementById('cardsGrid');
+  if (!grid || Object.keys(allData).length === 0) return;
+  const q = (filter ?? document.getElementById('filterInput').value ?? '').toLowerCase();
+  let names = sortNames().filter(n => !q || n.toLowerCase().includes(q));
+  document.getElementById('gridMeta').textContent = names.length + ' instrument' + (names.length === 1 ? '' : 's') + ' · click any card to expand';
+  grid.innerHTML = names.length ? names.map(buildCard).join('') : '<div style="padding:40px;font-size:10px;color:var(--muted);text-align:center">No results</div>';
+}
+function filterCards(v) { renderCards(v); }
+
+function buildCard(name) {
+  const payload = allData[name] || {};
+  const analysis = payload.analysis || {};
+  const sent = analysis.sentiment || 'NEUTRAL';
+  const cls = sentClass(sent);
+  const color = sentColor(sent);
+  const conf = analysis.confidence || 'LOW';
+  const confPct = CONF_PCT[conf] || 44;
+  const risk = riskFromConf(conf);
+  const drivers = analysis.drivers || { up: [], down: [] };
+  const takeaways = analysis.trader_takeaways || {};
+  const isBreaking = !!payload.breaking;
+  const meta = META[name] || {};
+  const price = pricesData[name];
+  const priceTxt = price?.price != null ? fmtPrice(price.price) : '—';
+  const chg = fmtChg(price?.change);
+  const chgColor = chg.cls === 'up' ? BULL_C : chg.cls === 'dn' ? BEAR_C : 'var(--muted)';
+
+  // WHY bullets
+  let whys = cls === 'bull' ? [...(drivers.up||[]).slice(0,2), ...(drivers.down||[]).slice(0,1)]
+           : cls === 'bear' ? [...(drivers.down||[]).slice(0,2), ...(drivers.up||[]).slice(0,1)]
+           : [...(drivers.up||[]).slice(0,1), ...(drivers.down||[]).slice(0,1), ...(drivers.up||drivers.down||[]).slice(2,3)];
+  if (!whys.length) whys = ['Insufficient data'];
+
+  const badge = scanBadge(sent);
+  const bg    = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.08)`;
+  const bdr   = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.25)`;
+  const sbg   = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.12)`;
+  const sbc   = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.4)`;
+  const sig1  = takeaways.intraday     || '—';
+  const sig2  = takeaways.next_few_days || '—';
+  const footer = (analysis.market_summary || '').split('.')[0] || '—';
+  const selCls = activeDetailName === name ? (cls === 'bear' ? ' selected-bear' : ' selected') : '';
+
+  return `
+  <div class="dcard${selCls}" data-name="${name}" onclick="openDetail('${name.replace(/'/g,"\\'")}')">
+    <div class="dcard-top" style="background:${color}"></div>
+    <div class="dcard-header" style="background:${bg};border-bottom-color:${bdr}">
+      <div class="dcard-bias-row">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="dcard-bias-lbl">FINAL BIAS</span>
+          <span class="dcard-bias-val" style="color:${color}">${sentLabel(sent)}</span>
+        </div>
+        ${isBreaking ? `<div class="new-badge"><div class="new-dot" style="background:${color}"></div><span class="new-txt" style="color:${color}">NEW</span></div>` : ''}
+      </div>
+      <div class="conf-row">
+        <div class="conf-bg"><div class="conf-fill" style="width:${confPct}%;background:${color}"></div></div>
+        <span class="conf-pct" style="color:${color}">${confPct}%</span>
+      </div>
+      <div class="risk-row">
+        <span class="risk-lbl">RISK</span>
+        <span class="risk-val" style="color:${risk.color}">${risk.label}</span>
+        <span class="mid-dot">·</span>
+        <span class="sig-badge" style="color:${badge.color};background:${sbg};border:1px solid ${sbc}">${badge.text}</span>
+      </div>
+    </div>
+    <div class="dcard-instrument">
+      <div>
+        <div class="inst-name">${name}</div>
+        <div class="inst-ticker-row"><span class="inst-tick">${meta.ticker||'—'}</span><span class="inst-exch">${meta.exchange||'—'}</span></div>
+      </div>
+      <div>
+        <div class="inst-price">${priceTxt}</div>
+        <div class="inst-chg" style="color:${chgColor}">${chg.sign}${chg.text === '—' ? '—' : Math.abs(price?.change||0).toFixed(2)+'%'}</div>
+      </div>
+    </div>
+    <div class="dcard-why">
+      <div class="section-lbl">WHY</div>
+      ${whys.map(w => `<div class="why-item"><span class="why-bul" style="color:${color}">›</span><span class="why-txt">${w}</span></div>`).join('')}
+    </div>
+    <div class="dcard-signal" style="background:${sbg};border-top-color:${sbc}">
+      <div class="section-lbl" style="color:${color}88">SIGNAL</div>
+      <div class="sig-item"><span class="sig-arrow" style="color:${color}">→</span><span class="sig-txt">${sig1}</span></div>
+      <div class="sig-item"><span class="sig-arrow" style="color:${color}">→</span><span class="sig-txt">${sig2}</span></div>
+    </div>
+    <div class="dcard-footer">
+      <span class="dcard-delta">${footer}</span>
+      <span class="dcard-expand">↗ expand</span>
+    </div>
+  </div>`;
 }
 
-document.addEventListener('click', function(e) {
-  const panel = document.getElementById('profilePanel');
-  const btn = document.getElementById('userBtn');
-  if (panel && panel.classList.contains('open') && !panel.contains(e.target) && e.target !== btn) {
-    panel.classList.remove('open');
+// ══════════════════════════════════════════════════════════════════════════════
+// RENDER — NEWS
+// ══════════════════════════════════════════════════════════════════════════════
+function setNewsFilter(filter, btn) {
+  currentNewsFilter = filter;
+  document.querySelectorAll('.news-filter').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderNews();
+}
+function renderNews() {
+  const container = document.getElementById('newsList');
+  if (!container) return;
+  let items = [];
+  if (currentNewsFilter === 'All') {
+    for (const [c, arts] of Object.entries(allArticles)) arts.forEach(a => items.push({...a, commodity: c}));
+  } else {
+    items = (allArticles[currentNewsFilter] || []).map(a => ({...a, commodity: currentNewsFilter}));
   }
-});
+  items.sort((a, b) => (b.published || '').localeCompare(a.published || ''));
+  const seen = new Set();
+  items = items.filter(a => { if (seen.has(a.title)) return false; seen.add(a.title); return true; }).slice(0, 80);
+  document.getElementById('newsCount').textContent = items.length;
+  if (!items.length) { container.innerHTML = '<div class="news-empty">No articles</div>'; return; }
+  container.innerHTML = items.map(a => {
+    const url = (a.url || '#').replace(/'/g, "\\'");
+    const imp = a.impact || 'LOW';
+    const isHigh = imp === 'HIGH';
+    return `<div class="news-item" onclick="window.open('${url}','_blank')">
+      <div class="news-item-top">
+        <div class="news-item-body">
+          <span class="news-tag ${imp}">${imp}</span>
+          <div class="news-headline">${stripHtml(a.title)}</div>
+          <div class="news-meta">
+            <span class="news-source">${a.commodity} · ${a.source||'—'}</span>
+            <span class="news-dot">·</span>
+            <span class="news-age">${timeAgo(a.published)}</span>
+          </div>
+        </div>
+        ${isHigh ? `<div class="news-unread" style="background:var(--bear)"></div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+}
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SPARKLINE
+// ══════════════════════════════════════════════════════════════════════════════
+function makeSpark(scores, color) {
+  const w = 348, h = 60, pad = 4;
+  if (!scores.length) return '';
+  const min = Math.min(...scores), max = Math.max(...scores);
+  const range = (max - min) || 1;
+  const pts = scores.map((p, i) => {
+    const x = pad + (i / Math.max(scores.length - 1, 1)) * (w - pad * 2);
+    const y = h - pad - ((p - min) / range) * (h - pad * 2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const line = pts.map((p, i) => (i === 0 ? 'M' : 'L') + p).join(' ');
+  const area = line + ` L${w - pad},${h} L${pad},${h} Z`;
+  return `<defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="${color}" stop-opacity="0.25"/>
+    <stop offset="100%" stop-color="${color}" stop-opacity="0"/>
+  </linearGradient></defs>
+  <path d="${area}" fill="url(#sg)" stroke="none"/>
+  <path d="${line}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/>`;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// DETAIL PANEL
+// ══════════════════════════════════════════════════════════════════════════════
+async function openDetail(name) {
+  activeDetailName = name;
+  const payload = allData[name] || {};
+  const analysis = payload.analysis || {};
+  const sent = analysis.sentiment || 'NEUTRAL';
+  const cls = sentClass(sent);
+  const color = sentColor(sent);
+  const conf = analysis.confidence || 'LOW';
+  const confPct = CONF_PCT[conf] || 44;
+  const risk = riskFromConf(conf);
+  const badge = scanBadge(sent);
+  const drivers = analysis.drivers || { up: [], down: [] };
+  const takeaways = analysis.trader_takeaways || {};
+  const meta = META[name] || {};
+  const price = pricesData[name];
+  const priceTxt = price?.price != null ? fmtPrice(price.price) : '—';
+  const chg = fmtChg(price?.change);
+  const chgColor = chg.cls === 'up' ? BULL_C : chg.cls === 'dn' ? BEAR_C : 'var(--muted)';
+
+  // Populate header
+  document.getElementById('dp-name').textContent = name;
+  const biasEl = document.getElementById('dp-bias');
+  biasEl.textContent = sentLabel(sent); biasEl.style.color = color;
+  document.getElementById('dp-price').textContent = priceTxt;
+  const chgEl = document.getElementById('dp-chg');
+  chgEl.textContent = (chg.cls === 'up' ? '▲ ' : chg.cls === 'dn' ? '▼ ' : '') + (chg.text === '—' ? '—' : Math.abs(price?.change||0).toFixed(2) + '%');
+  chgEl.style.color = chgColor;
+  const fill = document.getElementById('dp-conf-fill');
+  fill.style.width = confPct + '%'; fill.style.background = color;
+  const pctEl = document.getElementById('dp-conf-pct');
+  pctEl.textContent = confPct + '%'; pctEl.style.color = color;
+  document.getElementById('dp-risk').textContent = risk.label;
+  document.getElementById('dp-risk').style.color = risk.color;
+  document.getElementById('dp-signal').textContent = badge.text;
+  document.getElementById('dp-signal').style.color = badge.color;
+  document.getElementById('dp-ticker').textContent = meta.ticker || '—';
+  document.getElementById('dp-exch').textContent = meta.exchange || '—';
+
+  // WHY
+  const allWhys = [...(drivers.up || []), ...(drivers.down || [])];
+  document.getElementById('dp-why').innerHTML = allWhys.length ?
+    allWhys.map((w, i) => {
+      const wColor = i < (drivers.up||[]).length ? BULL_C : BEAR_C;
+      return `<div class="dp-why-item"><span class="dp-why-bul" style="color:${wColor}">›</span><span class="dp-why-txt">${w}</span></div>`;
+    }).join('') : '<div style="font-size:11px;color:var(--muted)">No drivers identified</div>';
+
+  // SIGNALS
+  const sigSec = document.getElementById('dp-signal-section');
+  sigSec.style.background = `${color}08`;
+  const sigs = [
+    { lbl: 'INTRADAY',       txt: takeaways.intraday       || '—' },
+    { lbl: 'NEXT FEW DAYS',  txt: takeaways.next_few_days  || '—' },
+    { lbl: 'NEXT FEW WEEKS', txt: takeaways.next_few_weeks || '—' },
+  ];
+  document.getElementById('dp-signal-items').innerHTML = sigs.map(s =>
+    `<div class="dp-sig-item">
+      <span class="dp-sig-arrow" style="color:${color}">→</span>
+      <span class="dp-sig-txt"><span style="font-size:8px;font-weight:800;letter-spacing:0.1em;color:${color};opacity:.7;margin-right:4px">${s.lbl}</span>${s.txt}</span>
+    </div>`
+  ).join('');
+
+  // DRIVERS with bars
+  const driverItems = [
+    ...(drivers.up   || []).map((d, i) => ({ name: d, val: Math.max(30, confPct - i * 8), color: BULL_C })),
+    ...(drivers.down || []).map((d, i) => ({ name: d, val: Math.max(25, confPct - 10 - i * 8), color: BEAR_C })),
+  ].slice(0, 6);
+  document.getElementById('dp-drivers-list').innerHTML = driverItems.length ?
+    driverItems.map(d =>
+      `<div class="dp-driver-row">
+        <span class="dp-driver-name">${d.name}</span>
+        <div class="dp-driver-bar-wrap"><div class="dp-driver-bar" style="width:${d.val}%;background:${d.color}"></div></div>
+        <span class="dp-driver-val" style="color:${d.color}">${d.val}%</span>
+      </div>`
+    ).join('') : '<div style="font-size:10px;color:var(--muted)">No driver data</div>';
+
+  // Sparkline from /history
+  document.getElementById('dp-spark').innerHTML = '';
+  try {
+    const hres = await fetch('/history/' + encodeURIComponent(name), { headers: authH() });
+    if (hres.ok) {
+      const hist = await hres.json();
+      const scores = hist.reverse().slice(-14).map(r => SENT_SCORE[r.sentiment] ?? 0);
+      document.getElementById('dp-spark').innerHTML = makeSpark(scores, color);
+    }
+  } catch {}
+
+  // Open panel + highlight card
+  document.getElementById('detail-panel').classList.add('open');
+  document.querySelectorAll('.dcard').forEach(c => c.classList.remove('selected', 'selected-bear'));
+  document.querySelectorAll('.scan-cell').forEach(c => c.classList.remove('active-scan'));
+  const card = document.querySelector(`.dcard[data-name="${name}"]`);
+  if (card) {
+    card.classList.add(cls === 'bear' ? 'selected-bear' : 'selected');
+    card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+  const sc = document.querySelector(`.scan-cell[data-name="${name}"]`);
+  if (sc) sc.classList.add('active-scan');
+
+  // Auto-filter news sidebar
+  const tab = document.querySelector(`.news-filter[onclick*="${name}"]`) ||
+              document.querySelector(`.news-filter[onclick*="'${name}'"]`);
+  if (tab) setNewsFilter(name, tab);
+}
+
+function closeDetail() {
+  document.getElementById('detail-panel').classList.remove('open');
+  document.querySelectorAll('.dcard').forEach(c => c.classList.remove('selected', 'selected-bear'));
+  document.querySelectorAll('.scan-cell').forEach(c => c.classList.remove('active-scan'));
+  activeDetailName = null;
+  // Reset news filter
+  setNewsFilter('All', document.querySelector('.news-filter'));
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PROFILE
+// ══════════════════════════════════════════════════════════════════════════════
+function toggleProfile() {
+  document.getElementById('profilePanel').classList.toggle('open');
+}
+document.addEventListener('click', e => {
+  const p = document.getElementById('profilePanel'), b = document.getElementById('userBtn');
+  if (p?.classList.contains('open') && !p.contains(e.target) && e.target !== b) p.classList.remove('open');
+});
 async function loadProfile() {
   try {
-    const res = await fetch('/auth/me', { headers: authHeaders() });
+    const res = await fetch('/auth/me', { headers: authH() });
     if (!res.ok) return;
     const user = await res.json();
     document.getElementById('ppEmail').textContent = user.email;
-    const statusEl = document.getElementById('ppStatus');
-    if (user.email_verified) {
-      statusEl.textContent = 'Email verified';
-      statusEl.className = 'pp-status';
-    } else {
-      statusEl.textContent = 'Email not verified';
-      statusEl.className = 'pp-status unverified';
-    }
     document.getElementById('userBtn').textContent = user.email.split('@')[0].toUpperCase().substring(0, 8);
   } catch {}
-
-  // Load alerts
   try {
-    const res = await fetch('/auth/alerts', { headers: authHeaders() });
+    const res = await fetch('/auth/alerts', { headers: authH() });
     if (!res.ok) return;
     const alerts = await res.json();
-    const container = document.getElementById('ppAlerts');
-    container.innerHTML = alerts.map(a => `
-      <div class="pp-alert-row">
+    document.getElementById('ppAlerts').innerHTML = alerts.map(a =>
+      `<div class="pp-alert-row">
         <span class="pp-alert-name">${a.commodity}</span>
-        <div class="toggle ${a.enabled ? 'on' : ''}" onclick="toggleAlert('${a.commodity}', this)"></div>
+        <div class="toggle ${a.enabled ? 'on' : ''}" onclick="toggleAlert('${a.commodity}',this)"></div>
       </div>`
     ).join('');
   } catch {}
-
-  // Load notify
   try {
-    const res = await fetch('/auth/notify', { headers: authHeaders() });
+    const res = await fetch('/auth/notify', { headers: authH() });
     if (!res.ok) return;
-    const data = await res.json();
+    const d = await res.json();
     const t = document.getElementById('notifyToggle');
-    if (data.enabled) t.classList.add('on'); else t.classList.remove('on');
+    if (d.enabled) t.classList.add('on'); else t.classList.remove('on');
   } catch {}
 }
-
 async function toggleAlert(commodity, el) {
-  const wasOn = el.classList.contains('on');
-  el.classList.toggle('on');
-  try {
-    await fetch('/auth/alerts', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ commodity, enabled: !wasOn })
-    });
-  } catch { el.classList.toggle('on'); }
+  const wasOn = el.classList.contains('on'); el.classList.toggle('on');
+  try { await fetch('/auth/alerts', { method: 'POST', headers: authH(), body: JSON.stringify({ commodity, enabled: !wasOn }) }); }
+  catch { el.classList.toggle('on'); }
 }
-
 async function toggleNotify(el) {
-  const wasOn = el.classList.contains('on');
-  el.classList.toggle('on');
-  try {
-    await fetch('/auth/notify', {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({ enabled: !wasOn })
-    });
-  } catch { el.classList.toggle('on'); }
+  const wasOn = el.classList.contains('on'); el.classList.toggle('on');
+  try { await fetch('/auth/notify', { method: 'POST', headers: authH(), body: JSON.stringify({ enabled: !wasOn }) }); }
+  catch { el.classList.toggle('on'); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════════════════════════════════════
-(async function init() {
-  // Check for reset token in URL
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('reset_token')) {
-    showForm('reset');
-    return;
-  }
-  if (params.get('verified') === '1') {
-    setMsg('loginMsg', 'Email verified. Please sign in.', 'success');
-  } else if (params.get('verified') === 'invalid') {
-    setMsg('loginMsg', 'Verification link invalid or expired.', 'error');
-  }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
 
-  // Auto-login if token stored
+(async function init() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('reset_token')) { showForm('reset'); return; }
+  if (params.get('verified') === '1') setMsg('loginMsg', 'Email verified. Please sign in.', 'success');
   await tryAutoLogin();
 })();
 </script>
