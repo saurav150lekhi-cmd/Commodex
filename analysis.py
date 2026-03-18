@@ -1097,8 +1097,17 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                         bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
                         ttf=None, entsog=None, lng_exports=None, gold_etf=None,
                         oil_prices=None, rig_count=None, tanker_rates=None, spr=None,
-                        silver_data=None):
+                        silver_data=None, live_prices=None):
     lines = []
+
+    # LIVE PRICE — always first so Claude sees today's move immediately
+    if live_prices and commodity_name in live_prices:
+        p = live_prices[commodity_name]
+        if p.get("price") and p.get("change") is not None:
+            direction = "UP" if p["change"] > 0 else "DOWN"
+            strength  = "STRONGLY" if abs(p["change"]) > 2 else "MODESTLY" if abs(p["change"]) > 0.5 else "FLAT"
+            lines.append(f"TODAY'S PRICE ACTION: {commodity_name} is {strength} {direction} {p['change']:+.2f}% "
+                         f"(price: {p['price']:.2f}) — your sentiment MUST be consistent with this move unless macro/news strongly contradicts it.")
 
     # FRED macro indicators — grouped by relevance
     if fred:
@@ -1651,7 +1660,7 @@ STEP 3 - RELEVANCE FILTERING: Score each event for relevance to """ + commodity_
 
 STEP 4 - DRIVER IDENTIFICATION: Identify exactly 5 bullish drivers (up) and 5 risk factors (down) across these categories: Macroeconomic, Supply, Demand, Geopolitical, Financial Positioning, Currency. Each point should be a distinct, specific insight — not generic filler.
 
-STEP 5 - PRICE ACTION CONTEXT: Determine if current price movement confirms, contradicts, or is unclear relative to the identified drivers. Never invent explanations if evidence is weak.
+STEP 5 - PRICE ACTION CONTEXT: The macro context above shows TODAY'S PRICE ACTION. Your sentiment output MUST be consistent with this. If the commodity is up 2%+ today, you should not output BEARISH or NEUTRAL unless there is overwhelming macro/fundamental evidence to the contrary — and you must explicitly explain the contradiction. A commodity up 4% on the day is almost never NEUTRAL.
 
 STEP 6 - MARKET SUMMARY: Write a 3-4 sentence institutional research commentary in the style of Goldman Sachs or JPMorgan. Lead with the single dominant price driver. Follow with supply/demand dynamics and current sentiment bias. Be precise and insight-driven — avoid generic statements. Sound authoritative, not descriptive.
 
@@ -1754,6 +1763,7 @@ def run_analysis():
         tanker_rates  = fetch_tanker_rates()
         spr           = fetch_spr_data()
         silver_data   = fetch_silver_data()
+        live_prices   = fetch_live_prices()
         log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, GoldETF=%d, LME copper=%s, BDI=%s",
                  len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog), len(gold_etf),
                  lme_copper["value"] if lme_copper else "unavailable",
@@ -1777,7 +1787,8 @@ def run_analysis():
                                                 ttf=ttf, entsog=entsog, lng_exports=lng_exports,
                                                 gold_etf=gold_etf, oil_prices=oil_prices,
                                                 rig_count=rig_count, tanker_rates=tanker_rates,
-                                                spr=spr, silver_data=silver_data)
+                                                spr=spr, silver_data=silver_data,
+                                                live_prices=live_prices)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
