@@ -145,7 +145,12 @@ NEWS_SOURCES = [
     "https://www.saudiaramco.com/en/news-media/news/rss",          # Saudi Aramco official news
     "https://oilprice.com/rss/category/crude-oil",                 # OilPrice crude-specific feed
     "https://www.worldoil.com/rss/news",                           # World Oil (upstream E&P)
-    # ── Tier 9 — Natural gas specialist ──────────────────────────────────────
+    # ── Tier 9 — Silver specialist ────────────────────────────────────────────
+    "https://silverinstitute.org/feed/",                           # Silver Institute (supply/demand data)
+    "https://www.silverdoctors.com/feed/",                         # Silver Doctors (precious metals)
+    "https://www.seia.org/news/rss",                               # SEIA solar (silver demand driver)
+    "https://pv-magazine-usa.com/feed/",                           # PV Magazine (solar/silver demand)
+    # ── Tier 10 — Natural gas specialist ─────────────────────────────────────
     "https://lngprime.com/feed/",                                  # LNG Prime (tankers, terminals, prices)
     "https://www.icis.com/explore/resources/news/rss/?feed=gas",   # ICIS gas news
     "https://www.rechargenews.com/feed",                           # Recharge News (LNG, renewables impact)
@@ -159,7 +164,7 @@ NEWS_SOURCES = [
 
 COMMODITIES = {
     "Gold":        ["gold price", "gold rate", "gold futures", "bullion", "xau", "xauusd", "gold rises", "gold falls", "gold hits", "gold climbs", "gold", "gld etf", "gold etf", "gold miners", "gdx", "central bank gold", "gold reserves", "gold demand", "gold supply", "gold output", "comex gold", "gold lbma", "real rates gold", "tips yield gold", "gold rally", "gold record", "gold all-time high", "gold safe haven", "gold inflation", "gold dollar"],
-    "Silver":      ["silver price", "silver rate", "silver futures", "xag", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion"],
+    "Silver":      ["silver price", "silver rate", "silver futures", "xag", "xagusd", "silver", "comex silver", "lme silver", "silver demand", "silver supply", "silver output", "silver mine", "silver rally", "silver falls", "silver rises", "precious metal", "silver etf", "silver bullion", "slv etf", "silver solar", "photovoltaic silver", "solar panel silver", "silver industrial", "silver semiconductor", "silver ev", "silver deficit", "silver surplus", "gold silver ratio", "silver institute", "silver miners", "sil etf", "pan american silver", "first majestic", "coeur mining", "fresnillo", "silver squeeze", "comex silver stocks", "silver inventory", "silver peru", "silver mexico"],
     "Crude Oil":   ["crude oil", "wti", "usoil", "us oil", "crudeoil", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil", "brent crude", "wti crude", "opec+", "opec production", "oil inventory", "oil supply", "oil demand", "oil rig", "rig count", "shale oil", "permian", "bakken", "saudi aramco", "aramco", "russia oil", "iran oil", "venezuela oil", "oil sanctions", "spr", "strategic petroleum reserve", "refinery", "crack spread", "gasoline demand", "distillate", "diesel", "jet fuel", "contango", "backwardation oil"],
     "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories", "china pmi", "manufacturing pmi", "china manufacturing", "freeport mcmoran", "bhp copper", "antofagasta", "codelco", "chile copper", "copper smelter", "copper concentrate", "copper scrap", "dr copper", "copper warehouse", "copper stocks lme", "comex copper stocks"],
     "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports", "lng tanker", "lng carrier", "lng terminal", "lng exports", "lng imports", "sabine pass", "freeport lng", "ttf price", "nbp gas", "european gas storage", "norway gas", "gazprom", "russia gas", "calcasieu pass", "corpus christi lng", "cove point lng", "heating degree days", "hdd", "gas feedgas", "lng utilization", "pipeline flow", "winter gas", "summer gas", "gas withdrawal", "gas injection"],
@@ -883,7 +888,91 @@ def fetch_spr_data():
     return None
 
 
-# ── 19. BLS — CPI and PPI (free public API, no key required) ───────────────────
+# ── 19. Silver-specific data — SLV ETF, miners, G/S ratio, COMEX stocks ──────
+def fetch_silver_data():
+    """Fetch silver ETF holdings, miner stocks, gold/silver ratio, COMEX stocks."""
+    result = {}
+
+    # Gold/Silver ratio — from live prices via Stooq
+    try:
+        gold_url   = "https://stooq.com/q/l/?s=gc.f&f=sd2t2ohlcv&h&e=csv"
+        silver_url = "https://stooq.com/q/l/?s=si.f&f=sd2t2ohlcv&h&e=csv"
+        def _close(url):
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            return float(lines[-1].split(",")[6]) if len(lines) >= 2 else None
+        gold_px   = _close(gold_url)
+        silver_px = _close(silver_url)
+        if gold_px and silver_px and silver_px > 0:
+            ratio = round(gold_px / silver_px, 2)
+            if ratio > 90:
+                signal = "SILVER HISTORICALLY CHEAP vs gold (ratio >90 = mean-reversion signal)"
+            elif ratio > 80:
+                signal = "SILVER UNDERVALUED vs gold (ratio 80-90)"
+            elif ratio < 60:
+                signal = "SILVER EXPENSIVE vs gold (ratio <60)"
+            else:
+                signal = "SILVER FAIRLY VALUED vs gold (ratio 60-80)"
+            result["gold_silver_ratio"] = {
+                "value":  ratio,
+                "gold":   gold_px,
+                "silver": silver_px,
+                "signal": signal,
+            }
+    except Exception as e:
+        log.debug("Gold/silver ratio fetch failed: %s", e)
+
+    # SLV — iShares Silver Trust ETF (price + proxy for institutional demand)
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/SLV?interval=1d&range=5d")
+        if data:
+            meta  = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+            result["SLV"] = {"label": "iShares Silver Trust ETF (SLV)", "price": price, "change": chg}
+    except Exception as e:
+        log.debug("SLV fetch failed: %s", e)
+
+    # SIL — Global X Silver Miners ETF
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/SIL?interval=1d&range=5d")
+        if data:
+            meta  = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+            result["SIL"] = {"label": "Global X Silver Miners ETF (SIL)", "price": price, "change": chg}
+    except Exception as e:
+        log.debug("SIL fetch failed: %s", e)
+
+    # COMEX silver warehouse stocks — CME website scrape
+    try:
+        req = urllib.request.Request(
+            "https://www.cmegroup.com/trading/metals/precious/silver.html",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        for pattern in [
+            r'[Ww]arehouse\s+[Ss]tocks?[^0-9]*([\d,]+)',
+            r'([\d,]+)\s*[Tt]roy\s*[Oo]z.*?[Ss]tocks?',
+            r'"silver_stocks"\s*:\s*"?([\d,]+)"?',
+        ]:
+            m = re.search(pattern, html)
+            if m:
+                val = int(m.group(1).replace(",", ""))
+                if val > 100000:  # sanity: COMEX silver stocks are in thousands of troy oz
+                    result["comex_silver_stocks"] = {"value": val, "unit": "troy oz", "label": "COMEX Silver Warehouse Stocks"}
+                    break
+    except Exception as e:
+        log.debug("COMEX silver stocks fetch failed: %s", e)
+
+    return result
+
+
+# ── 20. BLS — CPI and PPI (free public API, no key required) ───────────────────
 def fetch_bls_data():
     """Fetch US CPI and PPI from BLS public API v1 (no API key needed)."""
     result = {}
@@ -1005,7 +1094,8 @@ def fetch_treasury_yields():
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
                         bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
                         ttf=None, entsog=None, lng_exports=None, gold_etf=None,
-                        oil_prices=None, rig_count=None, tanker_rates=None, spr=None):
+                        oil_prices=None, rig_count=None, tanker_rates=None, spr=None,
+                        silver_data=None):
     lines = []
 
     # FRED macro indicators — grouped by relevance
@@ -1253,6 +1343,24 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
     if spr and commodity_name == "Crude Oil":
         chg = f" (change: {spr['change']:+.0f})" if spr.get("change") is not None else ""
         lines.append(f"US SPR STOCKS: {spr['latest']} {spr['unit']}{chg} ({spr['period']})")
+
+    # Silver-specific data
+    if silver_data and commodity_name == "Silver":
+        if "gold_silver_ratio" in silver_data:
+            d = silver_data["gold_silver_ratio"]
+            lines.append(f"GOLD/SILVER RATIO: {d['value']} (Gold ${d['gold']} / Silver ${d['silver']})")
+            lines.append(f"  Signal: {d['signal']}")
+        if "SLV" in silver_data:
+            d = silver_data["SLV"]
+            chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+            lines.append(f"SLV ETF (institutional silver demand): ${d['price']}{chg}")
+        if "SIL" in silver_data:
+            d = silver_data["SIL"]
+            chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+            lines.append(f"SIL Silver Miners ETF: ${d['price']}{chg} — miners lead silver price")
+        if "comex_silver_stocks" in silver_data:
+            d = silver_data["comex_silver_stocks"]
+            lines.append(f"COMEX SILVER WAREHOUSE STOCKS: {d['value']:,} {d['unit']}")
 
     # Gold ETF holdings + miner stocks — gold & silver
     if gold_etf and commodity_name in ("Gold", "Silver"):
@@ -1643,6 +1751,7 @@ def run_analysis():
         rig_count     = fetch_rig_count()
         tanker_rates  = fetch_tanker_rates()
         spr           = fetch_spr_data()
+        silver_data   = fetch_silver_data()
         log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, GoldETF=%d, LME copper=%s, BDI=%s",
                  len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog), len(gold_etf),
                  lme_copper["value"] if lme_copper else "unavailable",
@@ -1666,7 +1775,7 @@ def run_analysis():
                                                 ttf=ttf, entsog=entsog, lng_exports=lng_exports,
                                                 gold_etf=gold_etf, oil_prices=oil_prices,
                                                 rig_count=rig_count, tanker_rates=tanker_rates,
-                                                spr=spr)
+                                                spr=spr, silver_data=silver_data)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
