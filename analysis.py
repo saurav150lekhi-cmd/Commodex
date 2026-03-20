@@ -2039,15 +2039,14 @@ def run_analysis():
                     analysis = analyse_commodity(commodity, articles, macro_context)
                 else:
                     analysis = {
-                        "market_summary": "Not enough news to generate analysis.",
+                        "market_summary": "Analysis coming soon — data sources are being calibrated for this commodity.",
                         "sentiment": "NEUTRAL",
                         "drivers": {"up": [], "down": []},
-                        "price_action_context": "—",
-                        "trader_takeaways": {"intraday": "—", "next_few_days": "—", "next_few_weeks": "—"},
+                        "price_action_context": "Coming soon",
+                        "trader_takeaways": {"intraday": "Coming soon", "next_few_days": "Coming soon", "next_few_weeks": "Coming soon"},
                         "confidence": "LOW",
-                        "dominant_narrative": {"theme": "—", "status": "—"},
-                      
-                        "takeaway": {"bias": "Neutral", "strategy": "—", "short_term": "—", "medium_term": "—"}
+                        "dominant_narrative": {"theme": "Coming soon", "status": "—"},
+                        "takeaway": {"bias": "Neutral", "strategy": "Coming soon", "short_term": "Coming soon", "medium_term": "Coming soon"}
                     }
             except Exception as e:
                 log.error("Error analysing %s: %s", commodity, e)
