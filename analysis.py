@@ -2974,7 +2974,7 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
 
     pdf.ln(10)
     pdf.set_x(14)
-    pdf.set_font("Helvetica", "I", 6.5)
+    pdf.set_font("Helvetica", "I", 7)
     pdf.set_text_color(93, 100, 120)
     pdf.cell(0, 4, "For informational purposes only. Not financial advice. AI-generated - verify before trading.")
     _pdf_footer(pdf, 1, total_pages)
@@ -3024,7 +3024,7 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
         pdf.cell(48, 6, f"  {sent_lbl}  ", align="C", fill=True)
         if conf_str:
             pdf.set_x(66)
-            pdf.set_font("Helvetica", "", 7)
+            pdf.set_font("Helvetica", "", 8)
             pdf.set_text_color(93, 100, 120)
             pdf.cell(40, 6, conf_str, ln=False)
         pdf.set_xy(130, 38)
@@ -3035,7 +3035,7 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
             pdf.set_text_color(38,166,154) if change_val >= 0 else pdf.set_text_color(239,83,80)
         else:
             pdf.set_text_color(93,100,120)
-        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_font("Helvetica", "", 9)
         pdf.set_xy(172, 39)
         pdf.cell(24, 5, change_str, align="R")
 
@@ -3088,9 +3088,9 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
             pdf.set_fill_color(200, 168, 112)
             pdf.rect(14, pdf.get_y(), 2, 3.5, 'F')
             pdf.set_x(18)
-            pdf.set_font("Helvetica", "I", 8)
+            pdf.set_font("Helvetica", "I", 9)
             pdf.set_text_color(200, 168, 112)
-            pdf.multi_cell(178, 4.5, _pdf_safe(takeaway))
+            pdf.multi_cell(178, 4.8, _pdf_safe(takeaway))
             pdf.ln(4)
 
         # Signals — flowing paragraph
