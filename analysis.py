@@ -2825,10 +2825,18 @@ def get_prices():
 
 def _pdf_safe(text: str) -> str:
     """Replace non-latin characters that Helvetica can't render."""
-    return (text or "").replace("\u2014", "-").replace("\u2013", "-").replace("\u2019", "'") \
-                       .replace("\u2018", "'").replace("\u201c", '"').replace("\u201d", '"') \
-                       .replace("\u2022", "*").replace("\u25b2", "^").replace("\u25bc", "v") \
-                       .replace("\u2192", "->").replace("\u2190", "<-").replace("\u00b7", ".")
+    if not text:
+        return ""
+    text = (text
+        .replace("\u2014", "-").replace("\u2013", "-").replace("\u2019", "'").replace("\u2018", "'")
+        .replace("\u201c", '"').replace("\u201d", '"').replace("\u2022", "-").replace("\u00b7", ".")
+        .replace("\u25b2", "^").replace("\u25bc", "v").replace("\u2191", "^").replace("\u2193", "v")
+        .replace("\u2192", "->").replace("\u2190", "<-").replace("\u2026", "...").replace("\u00a0", " ")
+        .replace("\u00b1", "+/-").replace("\u00ae", "(R)").replace("\u00b0", "deg")
+        .replace("\u00e9", "e").replace("\u00e8", "e").replace("\u00ea", "e").replace("\u00e0", "a")
+    )
+    # Strip any remaining non-latin-1 characters safely
+    return text.encode("latin-1", errors="replace").decode("latin-1")
 
 
 def _pdf_page_bg(pdf):
@@ -2844,9 +2852,9 @@ def _pdf_footer(pdf, page_num, total):
     pdf.set_xy(14, 287)
     pdf.set_font("Helvetica", "", 6)
     pdf.set_text_color(93, 100, 120)
-    pdf.cell(91, 4, "commodex.io  ·  AI-Powered Commodity Research", ln=False)
+    pdf.cell(91, 4, "commodex.io - AI-Powered Commodity Research", ln=False)
     pdf.set_x(105)
-    pdf.cell(91, 4, f"Page {page_num} of {total}  ·  {datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')}", align="R")
+    pdf.cell(91, 4, f"Page {page_num} of {total} - {datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')}", align="R")
 
 
 def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
@@ -2877,7 +2885,7 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
     pdf.set_x(14)
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(93, 100, 120)
-    pdf.cell(0, 5, "WEEKLY INTELLIGENCE REPORT", ln=True)
+    pdf.cell(0, 5, "WEEKLY INTELLIGENCE REPORT - COMMODITY RESEARCH", ln=True)
     pdf.set_x(14)
     pdf.set_font("Helvetica", "", 8)
     pdf.set_text_color(160, 168, 188)
@@ -2943,7 +2951,7 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
     pdf.set_x(14)
     pdf.set_font("Helvetica", "I", 6.5)
     pdf.set_text_color(93, 100, 120)
-    pdf.cell(0, 4, "For informational purposes only. Not financial advice. AI-generated analysis - verify independently before trading.")
+    pdf.cell(0, 4, "For informational purposes only. Not financial advice. AI-generated - verify before trading.")
     _pdf_footer(pdf, 1, total_pages)
 
     # ── ONE PAGE PER COMMODITY ────────────────────────────────────────────────
@@ -3022,41 +3030,32 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
             pdf.multi_cell(182, 4.8, _pdf_safe(summary))
             pdf.ln(4)
 
-        # Drivers (bullish left, bearish right — full lists)
+        # Drivers — bullish then bearish, stacked
         drivers   = analysis.get("drivers", {})
         bull_list = drivers.get("up") or []
         bear_list = drivers.get("down") or []
-        if bull_list or bear_list:
-            col_w = 86
-            # Headers
-            if bull_list:
+        if bull_list:
+            pdf.set_x(14)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_text_color(38, 166, 154)
+            pdf.cell(0, 5, "^ BULLISH DRIVERS", ln=True)
+            for b in bull_list:
                 pdf.set_x(14)
-                pdf.set_font("Helvetica", "B", 7)
-                pdf.set_text_color(38, 166, 154)
-                pdf.cell(col_w, 5, "▲ BULLISH DRIVERS", ln=False)
-            if bear_list:
-                pdf.set_x(110)
-                pdf.set_font("Helvetica", "B", 7)
-                pdf.set_text_color(239, 83, 80)
-                pdf.cell(col_w, 5, "▼ BEARISH DRIVERS", ln=True)
-            else:
-                pdf.ln(5)
-            for i in range(max(len(bull_list), len(bear_list))):
-                b = bull_list[i] if i < len(bull_list) else ""
-                r = bear_list[i] if i < len(bear_list) else ""
-                if b:
-                    pdf.set_x(14)
-                    pdf.set_font("Helvetica", "", 8)
-                    pdf.set_text_color(160, 168, 188)
-                    pdf.multi_cell(col_w, 4, _pdf_safe(f"- {b}"), ln=False)
-                if r:
-                    pdf.set_x(110)
-                    pdf.set_font("Helvetica", "", 8)
-                    pdf.set_text_color(160, 168, 188)
-                    pdf.multi_cell(col_w, 4, _pdf_safe(f"- {r}"))
-                else:
-                    pdf.ln(0)
-            pdf.ln(5)
+                pdf.set_font("Helvetica", "", 8)
+                pdf.set_text_color(160, 168, 188)
+                pdf.multi_cell(182, 4, _pdf_safe(f"- {b}"))
+            pdf.ln(2)
+        if bear_list:
+            pdf.set_x(14)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_text_color(239, 83, 80)
+            pdf.cell(0, 5, "v BEARISH DRIVERS", ln=True)
+            for r in bear_list:
+                pdf.set_x(14)
+                pdf.set_font("Helvetica", "", 8)
+                pdf.set_text_color(160, 168, 188)
+                pdf.multi_cell(182, 4, _pdf_safe(f"- {r}"))
+            pdf.ln(2)
 
         # Dominant narrative / takeaway
         narrative = analysis.get("dominant_narrative", {})
