@@ -39,6 +39,16 @@
     0%, 100% { opacity: 1; transform: scale(1); }
     50%       { opacity: 0.4; transform: scale(0.75); }
   }
+  @keyframes badge-pulse-bull {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(38,166,154,0.5); }
+    50%       { box-shadow: 0 0 6px 3px rgba(38,166,154,0.15); }
+  }
+  @keyframes badge-pulse-bear {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.5); }
+    50%       { box-shadow: 0 0 6px 3px rgba(239,83,80,0.15); }
+  }
+  .badge-bull { animation: badge-pulse-bull 1.8s ease-in-out infinite; }
+  .badge-bear { animation: badge-pulse-bear 1.8s ease-in-out infinite; }
 
   /* ══ AUTH OVERLAY ══════════════════════════════════════════════════════════ */
   #authOverlay {
@@ -1132,7 +1142,7 @@ function renderScanbar() {
     return `<div class="scan-cell${active}" data-name="${name}" onclick="openDetail('${name}')">
       <span class="s-name">${META[name].short}</span>
       <span class="s-pct" style="color:${pctColor}">${pctSymbol} ${conf}%</span>
-      <span class="s-badge" style="color:${badge.color};background:${bg};border:1px solid ${bc}">${badge.text}</span>
+      <span class="s-badge${cls==='bull'?' badge-bull':cls==='bear'?' badge-bear':''}" style="color:${badge.color};background:${bg};border:1px solid ${bc}">${badge.text}</span>
     </div>`;
   }).join('');
 }
