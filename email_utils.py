@@ -47,7 +47,7 @@ def send_verification_email(to, token):
 
 
 def send_reset_email(to, token):
-    link = f"{APP_URL}/app#reset?token={token}"
+    link = f"{APP_URL}/app?reset_token={token}"
     html = f"""
     <div style="font-family:Arial,sans-serif;font-size:14px;color:#111;max-width:480px;margin:0 auto;padding:32px 24px">
       <p style="margin:0 0 4px 0;font-weight:600">Commodex</p>
