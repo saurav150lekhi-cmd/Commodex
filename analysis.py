@@ -2827,6 +2827,80 @@ def check_upcoming_alerts():
     if changed:
         _save_calendar(data)
 
+
+def send_daily_event_digest():
+    """Every morning at 07:00 UTC, email all notification-enabled users a one-sentence
+    summary of each High/Medium impact economic event happening today."""
+    now      = datetime.now(timezone.utc)
+    today    = now.date().isoformat()
+    data     = _load_calendar()
+
+    # Prevent double-send — store last digest date in calendar.json
+    if data.get("daily_digest_date") == today:
+        return
+    data["daily_digest_date"] = today
+
+    # Collect today's High + Medium events (sorted by time)
+    todays_events = [
+        ev for ev in data.get("upcoming", [])
+        if ev["dt_utc"][:10] == today and ev.get("impact") in ("High", "Medium")
+    ]
+    todays_events.sort(key=lambda e: e["dt_utc"])
+
+    if not todays_events:
+        _save_calendar(data)
+        return
+
+    # Build email rows
+    rows_html = ""
+    for ev in todays_events:
+        impact     = ev.get("impact", "Medium")
+        dot_color  = "#ef5350" if impact == "High" else "#c8a870"
+        comms      = ev.get("affected_commodities") or []
+        comm_str   = ", ".join(comms) if comms else "general macro"
+        ev_time    = ev.get("time", "") or ""
+        sentence   = (
+            f"{ev['event_name']} ({ev['country']}) is due today at {ev_time} UTC"
+            f" — a key catalyst for {comm_str}."
+        )
+        rows_html += f"""
+        <tr>
+          <td style="padding:14px 20px;border-bottom:1px solid #1a1814;vertical-align:top;width:8px">
+            <div style="width:6px;height:6px;border-radius:50%;background:{dot_color};margin-top:4px"></div>
+          </td>
+          <td style="padding:14px 20px 14px 8px;border-bottom:1px solid #1a1814">
+            <div style="font-size:12px;color:#d4c4a0;line-height:1.6">{sentence}</div>
+          </td>
+        </tr>"""
+
+    date_str  = now.strftime("%d %B %Y")
+    link      = f"{os.environ.get('APP_URL', 'https://commodex.io')}/app"
+    html = f"""
+    <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:560px;margin:0 auto">
+      <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
+      <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
+      <div style="font-size:11px;letter-spacing:2px;color:#c8a870;margin-bottom:4px">TODAY'S EVENTS</div>
+      <div style="font-size:9px;color:#6a5a40;letter-spacing:1px;margin-bottom:20px">{date_str.upper()}</div>
+      <table style="width:100%;border-collapse:collapse;border:1px solid #1e1c18;margin-bottom:24px">
+        {rows_html}
+      </table>
+      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px">OPEN TERMINAL</a>
+      <p style="margin-top:28px;color:#6a5a40;font-size:10px;line-height:1.6">
+        You're receiving this because you enabled notifications on Commodex.<br>
+        To unsubscribe, open the terminal and toggle off notifications in Settings.
+      </p>
+    </div>"""
+
+    from email_utils import send_email
+    users = User.query.filter_by(notify_on_analysis=True).all()
+    sent  = 0
+    for u in users:
+        if send_email(u.email, f"Commodex · Events Today — {date_str}", html):
+            sent += 1
+    log.info("Daily event digest sent to %d users (%d events today).", sent, len(todays_events))
+    _save_calendar(data)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SCHEDULER
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2839,9 +2913,10 @@ def scheduler_loop():
     schedule.every().day.at("06:30").do(run_analysis)
     schedule.every().day.at("12:30").do(run_analysis)
     schedule.every().day.at("18:30").do(run_analysis)
-    # Calendar: refresh every 6 hours, check alerts every 15 min
+    # Calendar: refresh every 6 hours, check alerts every 15 min, morning digest at 07:00 UTC
     schedule.every(6).hours.do(lambda: refresh_calendar() if not analysis_status["running"] else None)
     schedule.every(15).minutes.do(lambda: check_upcoming_alerts() if not analysis_status["running"] else None)
+    schedule.every().day.at("07:00").do(send_daily_event_digest)
     while True:
         schedule.run_pending()
         time.sleep(30)
