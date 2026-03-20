@@ -1,4 +1,5 @@
 import secrets
+import hashlib
 from datetime import datetime, timezone, timedelta
 from db import db
 
@@ -31,31 +32,49 @@ class MarketSignal(db.Model):
 class User(db.Model):
     __tablename__ = "users"
 
-    id                 = db.Column(db.Integer, primary_key=True)
-    email              = db.Column(db.String(255), unique=True, nullable=False)
-    password_hash      = db.Column(db.String(255), nullable=False)
-    is_active          = db.Column(db.Boolean, default=True)
-    is_admin           = db.Column(db.Boolean, default=False)
-    notify_on_analysis = db.Column(db.Boolean, default=False)
-    email_verified     = db.Column(db.Boolean, default=False)
-    verification_token = db.Column(db.String(64), nullable=True)
-    created_at         = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    id                  = db.Column(db.Integer, primary_key=True)
+    email               = db.Column(db.String(255), unique=True, nullable=False)
+    password_hash       = db.Column(db.String(255), nullable=False)
+    is_active           = db.Column(db.Boolean, default=True)
+    is_admin            = db.Column(db.Boolean, default=False)
+    notify_on_analysis  = db.Column(db.Boolean, default=False)
+    email_verified      = db.Column(db.Boolean, default=False)
+    verification_token  = db.Column(db.String(64), nullable=True)
+    # All JWTs issued before this timestamp are invalidated (set on password reset)
+    tokens_valid_after  = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at          = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
 
 
 class PasswordResetToken(db.Model):
     __tablename__ = "password_reset_tokens"
 
-    id         = db.Column(db.Integer, primary_key=True)
-    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
-    token      = db.Column(db.String(64), unique=True, nullable=False)
-    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
-    used       = db.Column(db.Boolean, default=False)
+    id             = db.Column(db.Integer, primary_key=True)
+    user_id        = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    # Plaintext token is NEVER stored — only a SHA-256 hash
+    token_hash     = db.Column(db.String(64), unique=True, nullable=True)   # hex SHA-256
+    token_prefix   = db.Column(db.String(8), nullable=True)                 # first 8 chars for fast lookup
+    # Legacy column kept nullable so existing rows aren't broken
+    token          = db.Column(db.String(64), nullable=True)
+    expires_at     = db.Column(db.DateTime(timezone=True), nullable=False)
+    used           = db.Column(db.Boolean, default=False)
+    created_by_ip  = db.Column(db.String(45), nullable=True)
+    used_by_ip     = db.Column(db.String(45), nullable=True)
 
     @staticmethod
-    def generate(user_id):
-        token = secrets.token_urlsafe(32)
-        expires = datetime.now(timezone.utc) + timedelta(hours=1)
-        return PasswordResetToken(user_id=user_id, token=token, expires_at=expires)
+    def create(user_id, created_by_ip=None):
+        """Generate a secure token. Returns (raw_token, model_instance).
+        raw_token is sent in the email. Only the hash is stored."""
+        raw     = secrets.token_urlsafe(32)
+        hashed  = hashlib.sha256(raw.encode()).hexdigest()
+        expires = datetime.now(timezone.utc) + timedelta(minutes=30)
+        instance = PasswordResetToken(
+            user_id       = user_id,
+            token_hash    = hashed,
+            token_prefix  = raw[:8],
+            expires_at    = expires,
+            created_by_ip = created_by_ip,
+        )
+        return raw, instance
 
     def is_valid(self):
         return not self.used and datetime.now(timezone.utc) < self.expires_at

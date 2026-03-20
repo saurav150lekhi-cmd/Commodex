@@ -57,9 +57,26 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"]       = timedelta(days=30)
 app.config["JWT_REFRESH_TOKEN_EXPIRES"]      = timedelta(days=90)
 
 db.init_app(app)
-JWTManager(app)
+jwt = JWTManager(app)
 app.register_blueprint(auth_bp)
 app.register_blueprint(admin_bp)
+
+@jwt.token_in_blocklist_loader
+def _check_token_revoked(jwt_header, jwt_payload):
+    """Revoke all tokens issued before the user's tokens_valid_after timestamp.
+    Called on every @jwt_required() request. Prevents old sessions surviving a password reset."""
+    try:
+        from models import User as _User
+        user_id = int(jwt_payload.get("sub", 0))
+        iat     = datetime.fromtimestamp(jwt_payload["iat"], tz=timezone.utc)
+        user    = _User.query.get(user_id)
+        if not user:
+            return True
+        if user.tokens_valid_after and iat < user.tokens_valid_after:
+            return True
+        return False
+    except Exception:
+        return False
 
 latest_results       = {}
 analysis_status      = {"running": False, "last_run": None, "last_error": None}
@@ -80,6 +97,14 @@ with app.app_context():
         "ALTER TABLE market_signals ADD COLUMN signal_strength INTEGER DEFAULT 0",
         "ALTER TABLE market_signals ADD COLUMN so_what TEXT",
         "ALTER TABLE market_signals ADD COLUMN triggered_analysis BOOLEAN DEFAULT 0",
+        # Security upgrade: hashed token storage + session invalidation
+        "ALTER TABLE password_reset_tokens ADD COLUMN token_hash VARCHAR(64)",
+        "ALTER TABLE password_reset_tokens ADD COLUMN token_prefix VARCHAR(8)",
+        "ALTER TABLE password_reset_tokens ADD COLUMN created_by_ip VARCHAR(45)",
+        "ALTER TABLE password_reset_tokens ADD COLUMN used_by_ip VARCHAR(45)",
+        "ALTER TABLE users ADD COLUMN tokens_valid_after TIMESTAMPTZ",
+        # Make legacy plaintext token column nullable (was NOT NULL)
+        "ALTER TABLE password_reset_tokens ALTER COLUMN token DROP NOT NULL",
     ]
     for _sql in _migrations:
         try:
@@ -3030,39 +3055,36 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
             pdf.multi_cell(182, 4.8, _pdf_safe(summary))
             pdf.ln(4)
 
-        # Drivers — bullish then bearish, stacked
+        # Drivers — combined flowing paragraph
         drivers   = analysis.get("drivers", {})
         bull_list = drivers.get("up") or []
         bear_list = drivers.get("down") or []
-        if bull_list:
+        if bull_list or bear_list:
+            parts = []
+            if bull_list:
+                if len(bull_list) == 1:
+                    parts.append(f"The primary bullish case rests on {bull_list[0].rstrip('.')}.")
+                else:
+                    joined = ", ".join(bull_list[:-1]) + f", and {bull_list[-1].rstrip('.')}"
+                    parts.append(f"The bullish case for {commodity} is supported by {joined}.")
+            if bear_list:
+                if len(bear_list) == 1:
+                    parts.append(f"On the downside, {bear_list[0].rstrip('.')} presents a notable headwind.")
+                else:
+                    joined = ", ".join(bear_list[:-1]) + f", and {bear_list[-1].rstrip('.')}"
+                    parts.append(f"Headwinds include {joined}.")
+            driver_para = " ".join(parts)
             pdf.set_x(14)
-            pdf.set_font("Helvetica", "B", 7)
-            pdf.set_text_color(38, 166, 154)
-            pdf.cell(0, 5, "^ BULLISH DRIVERS", ln=True)
-            for b in bull_list:
-                pdf.set_x(14)
-                pdf.set_font("Helvetica", "", 8)
-                pdf.set_text_color(160, 168, 188)
-                pdf.multi_cell(182, 4, _pdf_safe(f"- {b}"))
-            pdf.ln(2)
-        if bear_list:
-            pdf.set_x(14)
-            pdf.set_font("Helvetica", "B", 7)
-            pdf.set_text_color(239, 83, 80)
-            pdf.cell(0, 5, "v BEARISH DRIVERS", ln=True)
-            for r in bear_list:
-                pdf.set_x(14)
-                pdf.set_font("Helvetica", "", 8)
-                pdf.set_text_color(160, 168, 188)
-                pdf.multi_cell(182, 4, _pdf_safe(f"- {r}"))
-            pdf.ln(2)
+            pdf.set_font("Helvetica", "", 9)
+            pdf.set_text_color(160, 168, 188)
+            pdf.multi_cell(182, 4.8, _pdf_safe(driver_para))
+            pdf.ln(4)
 
         # Dominant narrative / takeaway
         narrative = analysis.get("dominant_narrative", {})
         takeaway  = (narrative.get("theme", "") if isinstance(narrative, dict) else "") or \
                     (analysis.get("takeaway", {}) or {}).get("strategy", "")
         if takeaway and takeaway not in ("-", "Coming soon"):
-            pdf.set_draw_color(200, 168, 112); pdf.set_line_width(0.3)
             pdf.set_fill_color(200, 168, 112)
             pdf.rect(14, pdf.get_y(), 2, 3.5, 'F')
             pdf.set_x(18)
@@ -3071,24 +3093,26 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
             pdf.multi_cell(178, 4.5, _pdf_safe(takeaway))
             pdf.ln(4)
 
-        # Signals
+        # Signals — flowing paragraph
         signals = analysis.get("signals") or []
         if signals:
-            pdf.set_draw_color(30, 35, 54); pdf.set_line_width(0.2)
-            pdf.line(14, pdf.get_y(), 196, pdf.get_y())
-            pdf.ln(3)
-            pdf.set_x(14)
-            pdf.set_font("Helvetica", "B", 7)
-            pdf.set_text_color(200, 168, 112)
-            pdf.cell(0, 4, "KEY SIGNALS", ln=True)
+            sig_texts = []
             for s in signals[:5]:
-                sig_text = s if isinstance(s, str) else (s.get("signal") or s.get("text") or str(s))
+                t = s if isinstance(s, str) else (s.get("signal") or s.get("text") or str(s))
+                sig_texts.append(t.strip().rstrip("."))
+            if sig_texts:
+                pdf.set_draw_color(30, 35, 54); pdf.set_line_width(0.2)
+                pdf.line(14, pdf.get_y(), 196, pdf.get_y())
+                pdf.ln(3)
                 pdf.set_x(14)
-                pdf.set_font("Helvetica", "", 8)
+                pdf.set_font("Helvetica", "B", 7)
+                pdf.set_text_color(200, 168, 112)
+                pdf.cell(0, 4, "KEY SIGNALS", ln=True)
+                pdf.set_x(14)
+                sig_para = "; ".join(sig_texts) + "."
+                pdf.set_font("Helvetica", "", 9)
                 pdf.set_text_color(160, 168, 188)
-                pdf.cell(4, 4, "->", ln=False)
-                pdf.set_x(20)
-                pdf.multi_cell(176, 4, _pdf_safe(sig_text))
+                pdf.multi_cell(182, 4.8, _pdf_safe(sig_para))
 
         _pdf_footer(pdf, page_idx, total_pages)
 

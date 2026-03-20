@@ -1,4 +1,5 @@
 import secrets
+import hashlib
 import bcrypt
 from flask import Blueprint, request, jsonify, redirect
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
@@ -112,18 +113,26 @@ def forgot_password():
     data  = request.get_json(silent=True) or {}
     email = (data.get("email") or "").strip().lower()
 
-    # Always return 200 to avoid user enumeration
-    user = User.query.filter_by(email=email, is_active=True).first()
-    if user:
-        # Invalidate previous tokens
-        PasswordResetToken.query.filter_by(user_id=user.id, used=False).delete()
-        db.session.commit()
-        reset_token = PasswordResetToken.generate(user.id)
-        db.session.add(reset_token)
-        db.session.commit()
-        send_reset_email(email, reset_token.token)
+    # Always return identical 200 — never reveal whether email exists
+    SAFE = jsonify({"message": "If that email is registered, a reset link has been sent."}), 200
 
-    return jsonify({"message": "If that email is registered, a reset link has been sent."}), 200
+    user = User.query.filter_by(email=email, is_active=True).first()
+    if not user:
+        return SAFE
+
+    # Invalidate all previous unused tokens for this user (prevent race)
+    PasswordResetToken.query.filter_by(user_id=user.id, used=False).delete()
+    db.session.flush()
+
+    # Generate token — raw goes in email, only SHA-256 hash stored in DB
+    raw_token, reset_instance = PasswordResetToken.create(
+        user.id, created_by_ip=request.remote_addr
+    )
+    db.session.add(reset_instance)
+    db.session.commit()
+    send_reset_email(email, raw_token)
+
+    return SAFE
 
 
 @auth_bp.route("/change-email", methods=["POST"])
@@ -153,26 +162,49 @@ def change_email():
 
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
-    data     = request.get_json(silent=True) or {}
-    token    = data.get("token") or ""
-    password = data.get("password") or ""
+    data        = request.get_json(silent=True) or {}
+    raw_token   = data.get("token") or ""
+    password    = data.get("password") or ""
 
     if len(password) < 8:
         return _error("Password must be at least 8 characters.", 400)
 
-    reset = PasswordResetToken.query.filter_by(token=token).first()
+    # Try new hashed-token lookup first
+    reset = None
+    if len(raw_token) >= 8:
+        token_hash   = hashlib.sha256(raw_token.encode()).hexdigest()
+        token_prefix = raw_token[:8]
+        reset = PasswordResetToken.query.filter_by(
+            token_prefix=token_prefix,
+            token_hash=token_hash,
+            used=False,
+        ).first()
+
+    # Fall back to legacy plaintext lookup (covers tokens created before this fix)
+    if not reset:
+        reset = PasswordResetToken.query.filter_by(token=raw_token, used=False).first()
+
     if not reset or not reset.is_valid():
         return _error("Invalid or expired reset link.", 400)
 
     user = User.query.get(reset.user_id)
     if not user:
-        return _error("User not found.", 404)
+        return _error("Invalid or expired reset link.", 400)
+
+    # Mark used BEFORE changing password (atomic-first pattern)
+    reset.used       = True
+    reset.used_by_ip = request.remote_addr
+    db.session.flush()
 
     user.password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    reset.used         = True
+
+    # Invalidate all existing sessions — any JWT issued before now is revoked
+    from datetime import datetime, timezone
+    user.tokens_valid_after = datetime.now(timezone.utc)
+
     db.session.commit()
 
-    return jsonify({"message": "Password updated successfully."}), 200
+    return jsonify({"message": "Password updated. Please sign in."}), 200
 
 
 # ── Email alerts ───────────────────────────────────────────────────────────────

@@ -371,23 +371,22 @@
   .kd-change { font-size:9px; letter-spacing:0.05em; }
   .kd-signal { font-size:8px; letter-spacing:0.1em; padding:2px 5px; border:1px solid currentColor; opacity:0.7; }
   /* Calendar */
-  .cal-section-hdr { font-size:8px; font-weight:800; letter-spacing:0.18em; color:var(--muted); margin:14px 0 6px; padding-bottom:5px; border-bottom:1px solid var(--border); text-transform:uppercase; }
-  .cal-group-hdr { font-size:8px; font-weight:800; letter-spacing:0.15em; color:var(--gold); margin:14px 0 6px; padding-bottom:5px; border-bottom:1px solid var(--border); }
-  .cal-event { display:flex; align-items:flex-start; gap:8px; padding:7px 0; border-bottom:1px solid rgba(30,35,54,0.5); }
-  .cal-event:last-child { border-bottom:none; }
-  .cal-event:hover { background:none; }
-  .cal-impact { width:6px; height:6px; border-radius:50%; flex-shrink:0; margin-top:3px; }
-  .cal-impact.High { background:#ef4444; }
-  .cal-impact.Medium { background:#fbbf24; }
-  .cal-impact.Low { background:rgba(93,100,120,0.4); }
-  .cal-name { font-size:10px; font-weight:700; color:var(--fg); letter-spacing:0.04em; margin-bottom:2px; line-height:1.3; }
-  .cal-meta { font-size:8px; color:var(--muted); letter-spacing:0.06em; }
-  .cal-countdown { font-size:8px; color:var(--gold); letter-spacing:0.06em; }
-  .cal-tags { display:flex; flex-wrap:wrap; gap:3px; margin-top:4px; }
+  .cal-section-hdr { font-size:7px; font-weight:800; letter-spacing:0.2em; color:var(--muted); margin:12px 0 6px; text-transform:uppercase; }
+  .cal-group-hdr { font-size:7px; font-weight:800; letter-spacing:0.2em; color:var(--gold); margin:12px 0 6px; text-transform:uppercase; }
+  .cal-event { background:var(--card); border:1px solid var(--border); margin-bottom:6px; overflow:hidden; }
+  .cal-event-inner { padding:8px 10px; }
+  .cal-impact-bar { height:2px; width:100%; }
+  .cal-impact-bar.High { background:#ef4444; }
+  .cal-impact-bar.Medium { background:#fbbf24; }
+  .cal-impact-bar.Low { background:rgba(93,100,120,0.4); }
+  .cal-name { font-size:9px; font-weight:800; color:var(--fg); letter-spacing:0.06em; margin-bottom:4px; line-height:1.3; text-transform:uppercase; }
+  .cal-meta { font-size:8px; color:var(--muted); letter-spacing:0.04em; }
+  .cal-countdown { font-size:8px; font-weight:700; color:var(--gold); letter-spacing:0.04em; margin-top:2px; }
+  .cal-tags { display:flex; flex-wrap:wrap; gap:3px; margin-top:5px; }
   .cal-tag { font-size:7px; letter-spacing:0.08em; padding:1px 5px; border:1px solid var(--border); color:var(--muted); }
-  .cal-summary { font-size:9px; color:var(--text-dim); line-height:1.5; margin-top:5px; padding:6px 8px; background:rgba(200,168,112,0.04); border-left:2px solid rgba(200,168,112,0.25); }
-  .cal-past-card { margin-bottom:0; padding:7px 0; border-bottom:1px solid rgba(30,35,54,0.5); }
-  .cal-past-card:last-child { border-bottom:none; }
+  .cal-summary { font-size:8px; color:var(--text-dim); line-height:1.5; margin-top:6px; padding:5px 7px; border-left:2px solid rgba(200,168,112,0.3); color:var(--muted); }
+  .cal-past-card { background:var(--card); border:1px solid var(--border); margin-bottom:6px; overflow:hidden; }
+  .cal-past-inner { padding:8px 10px; }
   .notif-item { padding:10px 14px; border-bottom:1px solid var(--border); font-size:10px; color:var(--text); letter-spacing:0.05em; cursor:pointer; }
   .notif-item:hover { background:rgba(200,168,112,0.04); }
   .notif-item.unread { border-left:2px solid #ef4444; }
@@ -408,12 +407,13 @@
   .sched-day-num { font-size:13px; font-weight:800; color:var(--fg); line-height:1; }
   .sched-day-name { font-size:7px; color:var(--muted); letter-spacing:0.08em; margin-top:1px; }
   .sched-events-col { flex:1; min-width:0; }
-  .sched-event { margin-bottom:4px; padding:5px 7px; border-left:2px solid var(--border); background:rgba(13,12,10,0.4); }
+  .sched-event { margin-bottom:4px; background:var(--card); border:1px solid var(--border); border-left:2px solid var(--border); overflow:hidden; }
   .sched-event:last-child { margin-bottom:0; }
   .sched-event.high { border-left-color:#ef4444; }
   .sched-event.medium { border-left-color:#fbbf24; }
   .sched-event.low { border-left-color:rgba(93,100,120,0.4); }
-  .sched-event-name { font-size:9px; color:var(--fg); letter-spacing:0.04em; margin-bottom:3px; line-height:1.3; }
+  .sched-event-inner { padding:5px 7px; }
+  .sched-event-name { font-size:8px; font-weight:800; color:var(--fg); letter-spacing:0.06em; margin-bottom:3px; line-height:1.3; text-transform:uppercase; }
   .sched-event-note { font-size:8px; color:var(--muted); letter-spacing:0.02em; margin-bottom:4px; line-height:1.4; display:none; }
   .sched-event:hover .sched-event-note { display:block; }
   .sched-comm-tags { display:flex; flex-wrap:wrap; gap:2px; }
@@ -702,7 +702,7 @@
           </div>
           <div class="filter-wrap">
             <span class="filter-icon">⌕</span>
-            <input class="grid-filter" id="filterInput" type="text" placeholder="Filter..." oninput="filterCards(this.value)">
+            <input class="grid-filter" id="filterInput" type="search" placeholder="Filter..." autocomplete="off" autocorrect="off" spellcheck="false" oninput="filterCards(this.value)">
           </div>
         </div>
       </div>
@@ -1101,6 +1101,8 @@ function doLogout() {
 function enterTerminal() {
   document.getElementById('authOverlay').style.display = 'none';
   document.getElementById('terminal').classList.add('visible');
+  const fi = document.getElementById('filterInput');
+  if (fi) fi.value = '';
   loadAll(); loadProfile(); startClock(); updateMarketBadges();
   loadCalendar();
 }
@@ -1703,10 +1705,10 @@ function renderUpcoming() {
       const countdown = getCountdown(ev.dt_utc);
       const briefing = ev.pre_event_briefing ? `<div class="cal-summary">${ev.pre_event_briefing}</div>` : '';
       html += `<div class="cal-event">
-        <div class="cal-impact ${ev.impact}"></div>
-        <div style="flex:1">
+        <div class="cal-impact-bar ${ev.impact}"></div>
+        <div class="cal-event-inner">
           <div class="cal-name">${ev.event_name}</div>
-          <div class="cal-meta">${ev.country} — ${ev.date} ${ev.time} UTC</div>
+          <div class="cal-meta">${ev.country} · ${ev.date} ${ev.time} UTC</div>
           <div class="cal-countdown">${countdown}${forecastStr}${prevStr}</div>
           <div class="cal-tags">${tags}</div>
           ${briefing}
@@ -1732,14 +1734,12 @@ function renderPast() {
       ? `<div class="cal-summary">${ev.ai_summary}</div>`
       : '';
     html += `<div class="cal-past-card">
-      <div style="display:flex;align-items:flex-start;gap:8px">
-        <div class="cal-impact ${ev.impact}" style="margin-top:3px"></div>
-        <div style="flex:1;min-width:0">
-          <div class="cal-name">${ev.event_name}</div>
-          <div class="cal-meta">${ev.country} — ${ev.date}${actualStr}${forecastStr}</div>
-          <div class="cal-tags" style="margin-top:4px">${tags}</div>
-          ${summaryHtml}
-        </div>
+      <div class="cal-impact-bar ${ev.impact}"></div>
+      <div class="cal-past-inner">
+        <div class="cal-name">${ev.event_name}</div>
+        <div class="cal-meta">${ev.country} · ${ev.date}${actualStr}${forecastStr}</div>
+        <div class="cal-tags" style="margin-top:4px">${tags}</div>
+        ${summaryHtml}
       </div>
     </div>`;
   });
@@ -1958,13 +1958,13 @@ function renderScheduledCalendar(events) {
           `<span class="sched-comm-tag ${COMM_TAG_CLASS[c] || ''}">${COMM_TAG_SHORT[c] || c}</span>`
         ).join('');
         html += `<div class="sched-event ${impCls}">
-          <div style="display:flex;align-items:flex-start;gap:8px">
-            <div style="flex:1">
-              <div class="sched-event-name">${ev.title}</div>
-              ${ev.note ? `<div class="sched-event-note">${ev.note}</div>` : ''}
-              <div class="sched-comm-tags">${tags}</div>
+          <div class="sched-event-inner">
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
+              <div class="sched-event-name" style="flex:1">${ev.title}</div>
+              <span class="sched-impact-badge ${impCls}">${ev.impact || 'LOW'}</span>
             </div>
-            <span class="sched-impact-badge ${impCls}">${ev.impact || 'LOW'}</span>
+            ${ev.note ? `<div class="sched-event-note">${ev.note}</div>` : ''}
+            <div class="sched-comm-tags" style="margin-top:4px">${tags}</div>
           </div>
         </div>`;
       });
