@@ -163,25 +163,23 @@ NEWS_SOURCES = [
     "https://www.fastmarkets.com/commodities/base-metals/copper/feed/", # Fastmarkets copper
     "https://www.cochilco.cl/blog/feed/",                          # Cochilco Chile copper stats
     # ── Tier 11 — Agriculture (grains, softs) ─────────────────────────────────
-    "https://www.world-grain.com/rss/",                            # World Grain — wheat, corn, soy supply
-    "https://www.agweb.com/rss/news",                              # AgWeb — US farm & crop markets
-    "https://brownfieldagnews.com/feed/",                          # Brownfield Ag News — grains, soy
-    "https://www.farmprogress.com/rss/news",                       # Farm Progress — US crop conditions
-    "https://www.agriculture.com/rss/news",                        # Successful Farming — markets
+    "https://www.agri-pulse.com/rss/articles",                     # Agri-Pulse — all ag commodities (VERIFIED)
+    "https://grains.org/feed/",                                    # US Grains Council — corn/soy exports (VERIFIED)
+    "https://www.nass.usda.gov/rss/reports.xml",                   # USDA NASS — crop progress & stats (VERIFIED)
     "https://www.farmpolicynews.illinois.edu/feed/",               # Farm Policy News — USDA, policy
     "https://www.fas.usda.gov/rss/",                               # USDA FAS — export data
-    "https://www.ers.usda.gov/rss/",                               # USDA ERS — supply/demand
-    "https://dailycoffeenews.com/feed/",                           # Daily Coffee News — ICE, Brazil
-    "https://perfectdailygrind.com/feed/",                         # Perfect Daily Grind — coffee trade
-    "https://www.worldcoffeeportal.com/feed",                      # World Coffee Portal — market data
-    "https://www.sugaronline.com/feed/",                           # Sugar Online — ICE #11
-    "https://www.icumsa.org/feed/",                                # ICUMSA — sugar standards & market
-    "https://www.profercy.com/feed/",                              # Profercy — fertilizer & sugar
-    "https://www.agi.it/economia/rss",                             # AGI Economia (Italy) — wheat/soft
-    "https://www.grains.org/feed/",                                # US Grains Council — corn/soy exports
-    "https://soyanews.info/feed/",                                  # SoyaNews — soybean market
-    "https://www.soybeansandcorn.com/rss.xml",                     # Soybeans & Corn — CBOT focus
-    "https://oilcrops.blogspot.com/feeds/posts/default",           # Oilcrops Blog — soy, palm, veg oils
+    "https://brownfieldagnews.com/feed/",                          # Brownfield Ag News — grains, soy
+    # ── Wheat ─────────────────────────────────────────────────────────────────
+    "https://www.uswheat.org/feed",                                # US Wheat Associates (VERIFIED)
+    "https://www.wheatworld.org/feed",                             # National Assoc of Wheat Growers (VERIFIED)
+    # ── Soybeans ──────────────────────────────────────────────────────────────
+    "https://www.soygrowers.com/feed",                             # American Soybean Association (VERIFIED)
+    # ── Coffee ────────────────────────────────────────────────────────────────
+    "https://dailycoffeenews.com/feed/",                           # Daily Coffee News — ICE, Brazil (VERIFIED)
+    "https://perfectdailygrind.com/feed/",                         # Perfect Daily Grind — coffee trade (VERIFIED)
+    "https://www.worldcoffeeportal.com/rss",                       # World Coffee Portal — market data (VERIFIED)
+    # ── Sugar ─────────────────────────────────────────────────────────────────
+    "https://www.sugaronline.com/feed",                            # Sugar Online — ICE #11 (VERIFIED)
 ]
 
 COMMODITIES = {
@@ -247,49 +245,49 @@ GOOGLE_SEARCHES = {
         "lng site:reuters.com",
     ],
     "Corn": [
-        "corn price site:bloomberg.com",
-        "corn futures site:ft.com",
-        "corn site:agweb.com",
-        "corn site:farmprogress.com",
-        "corn usda site:reuters.com",
-        "corn site:spglobal.com",
-        "maize site:argusmedia.com",
+        "corn futures CBOT price today",
+        "corn USDA WASDE report",
+        "corn crop progress condition",
+        "corn ethanol demand outlook",
+        "corn export sales weekly",
+        "maize supply demand global",
+        "corn harvest yield forecast",
     ],
     "Wheat": [
-        "wheat price site:bloomberg.com",
-        "wheat futures site:ft.com",
-        "wheat site:agweb.com",
-        "wheat site:world-grain.com",
-        "wheat usda site:reuters.com",
-        "wheat site:spglobal.com",
-        "wheat site:argusmedia.com",
+        "wheat futures CBOT price today",
+        "wheat USDA crop report",
+        "wheat black sea export shipment",
+        "wheat harvest yield forecast",
+        "wheat export sales weekly",
+        "global wheat supply demand",
+        "wheat Russia Ukraine production",
     ],
     "Soybeans": [
-        "soybean price site:bloomberg.com",
-        "soybean futures site:ft.com",
-        "soybeans site:agweb.com",
-        "soybean site:farmprogress.com",
-        "soybean usda site:reuters.com",
-        "soybean site:spglobal.com",
-        "soybean site:argusmedia.com",
+        "soybean futures CBOT price today",
+        "soybean USDA crush report",
+        "soybean Brazil harvest Argentina",
+        "soybean export sales weekly",
+        "soybean oil meal price",
+        "soybean supply demand outlook",
+        "soybeans China import demand",
     ],
     "Coffee": [
-        "coffee price site:bloomberg.com",
-        "coffee futures site:ft.com",
-        "arabica coffee site:reuters.com",
-        "coffee site:dailycoffeenews.com",
-        "coffee site:spglobal.com",
-        "coffee site:argusmedia.com",
-        "robusta coffee site:reuters.com",
+        "arabica coffee futures ICE price",
+        "robusta coffee price Vietnam",
+        "coffee Brazil crop harvest forecast",
+        "coffee supply deficit surplus",
+        "coffee export ICO report",
+        "arabica robusta spread",
+        "coffee weather frost Brazil",
     ],
     "Sugar": [
-        "sugar price site:bloomberg.com",
-        "sugar futures site:ft.com",
-        "sugar site:reuters.com",
-        "raw sugar site:spglobal.com",
-        "sugar site:argusmedia.com",
-        "sugar brazil site:reuters.com",
-        "sugar site:sugaronline.com",
+        "raw sugar futures ICE price today",
+        "sugar Brazil production ethanol",
+        "sugar supply deficit surplus",
+        "sugar India export production",
+        "sugar cane harvest Thailand",
+        "raw sugar ISO report",
+        "sugar price unica brazil",
     ],
 }
 
@@ -1979,6 +1977,7 @@ def run_analysis():
     log.info("Analysis cycle started.")
 
     try:
+        fetch_and_store_news()
         log.info("Fetching external data...")
         eia        = fetch_eia_data()
         cftc       = fetch_cftc_data()
@@ -3240,7 +3239,7 @@ def load_latest_from_db():
     global latest_results
     try:
         loaded = {}
-        for commodity in ["Gold", "Crude Oil", "Silver", "Copper", "Natural Gas"]:
+        for commodity in COMMODITIES.keys():
             row = (AnalysisRun.query
                    .filter_by(commodity=commodity)
                    .order_by(AnalysisRun.run_at.desc())
