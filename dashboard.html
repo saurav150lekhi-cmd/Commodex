@@ -757,10 +757,6 @@
                   <div class="dp-section-lbl">AI ANALYSIS</div>
                   <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.7;font-family:var(--sans)">—</div>
                 </div>
-                <div class="dp-section" id="dp-keydata-section">
-                  <div class="dp-section-lbl">KEY DATA</div>
-                  <div id="dp-keydata-rows"></div>
-                </div>
               </div>
               <!-- RIGHT COLUMN -->
               <div class="dp-col">
@@ -1382,7 +1378,7 @@ function buildCard(name) {
       </div>
     </div>
     <div class="dcard-why">
-      <div class="section-lbl">WHY</div>
+      <div class="section-lbl">REASONS</div>
       ${whys.map(w => `<div class="why-item"><span class="why-bul" style="color:${color}">›</span><span class="why-txt">${w}</span></div>`).join('')}
     </div>
     <div class="dcard-signal" style="background:${sbg};border-top-color:${sbc}">

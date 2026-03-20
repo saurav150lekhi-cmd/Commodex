@@ -532,6 +532,12 @@ def fetch_fred_data():
         "breakeven_10y":  ("T10YIE",           "10Y Breakeven Inflation Rate (%) — gold demand driver"),
         # Silver-specific
         "silver_lbma":    ("SLVPRUSD",         "Silver LBMA Price (USD/troy oz)"),
+        # Expanded macro coverage
+        "brazil_cpi":     ("BRACPIALLMINMEI",  "Brazil CPI (coffee/sugar exporter inflation)"),
+        "housing_starts": ("HOUST",            "US Housing Starts (000s) — copper demand driver"),
+        "india_cpi":      ("INDCPIALLMINMEI",  "India CPI — gold demand / inflationary pressure"),
+        "stress_index":   ("STLFSI2",          "St. Louis Financial Stress Index (0=normal, +ve=stress)"),
+        "unemployment":   ("UNRATE",           "US Unemployment Rate (%)"),
     }
     result = {}
     for key, (series_id, label) in series.items():
@@ -825,6 +831,18 @@ def fetch_gold_etf_holdings():
     except Exception as e:
         log.debug("GLD holdings fetch failed: %s", e)
 
+    # GLD — price + daily change via Yahoo Finance
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/GLD?interval=1d&range=5d")
+        if data:
+            meta  = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+            result["GLD_price"] = {"label": "SPDR GLD ETF Price", "price": price, "change": chg}
+    except Exception as e:
+        log.debug("GLD price fetch failed: %s", e)
+
     # GDX — VanEck Gold Miners ETF price (miner stocks lead gold price)
     try:
         data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/GDX?interval=1d&range=5d")
@@ -848,6 +866,30 @@ def fetch_gold_etf_holdings():
             result["GDXJ"] = {"label": "Junior Gold Miners ETF (GDXJ)", "price": price, "change": chg}
     except Exception as e:
         log.debug("GDXJ fetch failed: %s", e)
+
+    # USO — United States Oil Fund (retail oil sentiment proxy)
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/USO?interval=1d&range=5d")
+        if data:
+            meta  = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+            result["USO"] = {"label": "US Oil Fund ETF (USO)", "price": price, "change": chg}
+    except Exception as e:
+        log.debug("USO fetch failed: %s", e)
+
+    # UCO — 2x leveraged oil ETF (momentum signal)
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/UCO?interval=1d&range=5d")
+        if data:
+            meta  = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev else None
+            result["UCO"] = {"label": "2x Leveraged Oil ETF (UCO)", "price": price, "change": chg}
+    except Exception as e:
+        log.debug("UCO fetch failed: %s", e)
 
     return result
 
@@ -1124,11 +1166,16 @@ def fetch_bls_data():
 
 # ── 10. Open-Meteo — Weather / Heating Degree Days for Natural Gas ─────────────
 def fetch_weather_data():
-    """Fetch 7-day temperature forecast for key US hubs (free, no API key)."""
+    """Fetch 7-day temperature forecast for key global hubs (free, no API key)."""
     hubs = {
-        "New York":  (40.71, -74.01),   # NE heating demand
-        "Chicago":   (41.85, -87.65),   # Midwest demand
-        "Houston":   (29.76, -95.37),   # Gulf Coast LNG exports
+        "New York":    (40.71,  -74.01),  # NE US heating demand
+        "Chicago":     (41.85,  -87.65),  # Midwest gas + corn/wheat belt
+        "Houston":     (29.76,  -95.37),  # Gulf Coast LNG exports
+        "London":      (51.51,   -0.13),  # European TTF gas hub region
+        "Sao Paulo":   (-23.55, -46.63),  # Brazil coffee & sugar production
+        "Ho Chi Minh": (10.76,  106.66),  # Vietnam Robusta coffee
+        "Minneapolis": (44.98,  -93.27),  # US Northern Plains wheat & corn
+        "New Delhi":   (28.68,   77.22),  # India sugar, wheat & gold demand
     }
     result = {}
     for city, (lat, lon) in hubs.items():
@@ -1380,6 +1427,36 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
             chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
             lines.append(f"INDUSTRIAL PRODUCTION: {d['value']}{chg_str} ({d['date']})")
 
+        # Housing starts — key copper demand driver (pipes, wiring)
+        if commodity_name == "Copper" and "housing_starts" in fred:
+            d = fred["housing_starts"]
+            chg_str = f" (chg: {d['change']:+.1f})" if d.get("change") is not None else ""
+            lines.append(f"US HOUSING STARTS: {d['value']}k units{chg_str} ({d['date']}) — construction copper demand")
+
+        # Unemployment — broad demand proxy
+        if "unemployment" in fred:
+            d = fred["unemployment"]
+            chg_str = f" (chg: {d['change']:+.1f})" if d.get("change") is not None else ""
+            lines.append(f"US UNEMPLOYMENT: {d['value']}%{chg_str} ({d['date']})")
+
+        # Financial stress index — risk-off affects all commodities
+        if "stress_index" in fred:
+            d = fred["stress_index"]
+            regime = "STRESSED (risk-off)" if d["value"] > 1 else "NORMAL" if d["value"] > -1 else "LOOSE (risk-on)"
+            lines.append(f"FINANCIAL STRESS INDEX: {d['value']} — {regime} ({d['date']})")
+
+        # Brazil CPI — coffee, sugar, soybeans supply costs
+        if commodity_name in ("Coffee", "Sugar", "Soybeans") and "brazil_cpi" in fred:
+            d = fred["brazil_cpi"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            lines.append(f"BRAZIL CPI: {d['value']}{chg_str} ({d['date']}) — exporter inflation pressure")
+
+        # India CPI — gold demand, wheat/sugar consumption
+        if commodity_name in ("Gold", "Silver", "Wheat", "Sugar") and "india_cpi" in fred:
+            d = fred["india_cpi"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            lines.append(f"INDIA CPI: {d['value']}{chg_str} ({d['date']}) — demand pressure")
+
     # Baltic Dry Index
     if bdi:
         chg_str = f" ({bdi['change']:+.2f}%)" if bdi.get("change") is not None else ""
@@ -1484,11 +1561,23 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                 inv = "INVERTED (recession signal)" if spread < 0 else "normal"
                 lines.append(f"  10Y-2Y Spread: {spread:+.2f}% — {inv}")
 
-    # Weather / Heating Degree Days — natural gas
-    if weather and commodity_name == "Natural Gas":
-        lines.append("US WEATHER (7-DAY FORECAST):")
-        for city, w in weather.items():
-            lines.append(f"  {city}: avg {w['avg_temp_f']}°F | HDD: {w['hdd_7day']} | CDD: {w['cdd_7day']} → {w['demand_signal']}")
+    # Weather — relevant cities per commodity
+    WEATHER_SCOPE = {
+        "Natural Gas": ["New York", "Chicago", "Houston", "London"],
+        "Coffee":      ["Sao Paulo", "Ho Chi Minh"],
+        "Sugar":       ["Sao Paulo"],
+        "Corn":        ["Chicago", "Minneapolis"],
+        "Wheat":       ["Chicago", "Minneapolis"],
+        "Soybeans":    ["Sao Paulo", "Chicago"],
+        "Crude Oil":   ["Houston"],
+    }
+    if weather and commodity_name in WEATHER_SCOPE:
+        relevant = [c for c in WEATHER_SCOPE[commodity_name] if c in weather]
+        if relevant:
+            lines.append("WEATHER FORECAST (7-DAY):")
+            for city in relevant:
+                w = weather[city]
+                lines.append(f"  {city}: avg {w['avg_temp_f']}°F | HDD: {w['hdd_7day']} | CDD: {w['cdd_7day']} → {w['demand_signal']}")
 
     # TTF / NBP European gas prices — natural gas
     if ttf and commodity_name == "Natural Gas":
@@ -1532,6 +1621,14 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
             curve_str = " | ".join(f"{k}: {v}" for k, v in d["prices"].items())
             lines.append(f"WTI FUTURES CURVE: {curve_str}")
             lines.append(f"  Structure: {d['structure']} (M1-M6 spread: {d['m1_m6_spread']:+.2f})")
+
+    # Oil ETF flows — crude oil sentiment proxy
+    if gold_etf and commodity_name == "Crude Oil":
+        for ticker in ("USO", "UCO"):
+            if ticker in gold_etf:
+                d = gold_etf[ticker]
+                chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+                lines.append(f"{d['label']}: ${d['price']}{chg}")
 
     # Baker Hughes rig count — crude oil & natural gas
     if rig_count and commodity_name in ("Crude Oil", "Natural Gas"):
