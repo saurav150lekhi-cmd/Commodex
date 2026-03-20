@@ -2823,6 +2823,14 @@ def get_prices():
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
+def _pdf_safe(text: str) -> str:
+    """Replace non-latin characters that Helvetica can't render."""
+    return (text or "").replace("\u2014", "-").replace("\u2013", "-").replace("\u2019", "'") \
+                       .replace("\u2018", "'").replace("\u201c", '"').replace("\u201d", '"') \
+                       .replace("\u2022", "*").replace("\u25b2", "^").replace("\u25bc", "v") \
+                       .replace("\u2192", "->").replace("\u2190", "<-").replace("\u00b7", ".")
+
+
 def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
     from fpdf import FPDF
     COMMODITIES_ORDER = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas",
@@ -2901,7 +2909,7 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
             pdf.set_x(18)
             pdf.set_font("Helvetica", "", 8)
             pdf.set_text_color(160, 168, 188)
-            pdf.multi_cell(178, 4.2, summary[:480])
+            pdf.multi_cell(178, 4.2, _pdf_safe(summary[:480]))
             pdf.ln(2)
         drivers   = analysis.get("drivers", {})
         bull_list = (drivers.get("up") or [])[:3]
@@ -2924,19 +2932,19 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
                 r = bear_list[i] if i < len(bear_list) else ""
                 if b:
                     pdf.set_x(18); pdf.set_font("Helvetica","",7); pdf.set_text_color(160,168,188)
-                    pdf.cell(85, 3.8, f"· {b[:70]}", ln=False)
+                    pdf.cell(85, 3.8, _pdf_safe(f"- {b[:70]}"), ln=False)
                 if r:
                     pdf.set_x(107); pdf.set_font("Helvetica","",7); pdf.set_text_color(160,168,188)
-                    pdf.cell(85, 3.8, f"· {r[:70]}", ln=True)
+                    pdf.cell(85, 3.8, _pdf_safe(f"- {r[:70]}"), ln=True)
                 elif b:
                     pdf.ln(3.8)
             pdf.ln(2)
         narrative = analysis.get("dominant_narrative", {})
         takeaway  = (narrative.get("theme","") if isinstance(narrative,dict) else "") or \
                     (analysis.get("takeaway",{}) or {}).get("strategy","")
-        if takeaway and takeaway not in ("—","Coming soon"):
+        if takeaway and takeaway not in ("-", "Coming soon"):
             pdf.set_x(18); pdf.set_font("Helvetica","I",7); pdf.set_text_color(200,168,112)
-            pdf.multi_cell(178, 3.8, f"→ {takeaway[:200]}")
+            pdf.multi_cell(178, 3.8, _pdf_safe(f"-> {takeaway[:200]}"))
             pdf.ln(1)
         pdf.set_draw_color(25,30,48); pdf.set_line_width(0.2)
         pdf.line(14, pdf.get_y(), 196, pdf.get_y())
