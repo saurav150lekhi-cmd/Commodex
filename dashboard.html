@@ -206,6 +206,9 @@
   .grid-filter::placeholder { color: var(--muted); opacity: 0.6; }
   .filter-wrap { position: relative; }
   .filter-icon { position: absolute; left: 7px; top: 50%; transform: translateY(-50%); color: rgba(93,100,120,0.5); font-size: 10px; pointer-events: none; }
+  .sent-filter { font-size: 8px; font-weight: 800; letter-spacing: 0.1em; padding: 3px 10px; cursor: pointer; color: rgba(93,100,120,0.7); border: 1px solid var(--border); background: none; font-family: var(--mono); }
+  .sent-filter-active { background: rgba(93,100,120,0.15); color: var(--fg) !important; border-color: rgba(93,100,120,0.4) !important; }
+  .sent-filter:hover:not(.sent-filter-active) { color: var(--fg); }
 
   /* ── CONTENT ROW ── */
   #content-row { flex: 1; display: flex; overflow: hidden; }
@@ -222,15 +225,15 @@
   .dcard.selected { border-color: rgba(38,166,154,0.5); box-shadow: 0 0 24px rgba(38,166,154,0.15); }
   .dcard.selected-bear { border-color: rgba(239,83,80,0.5); box-shadow: 0 0 24px rgba(239,83,80,0.15); }
   @keyframes card-glow-bull {
-    0%,100% { border-color:rgba(38,166,154,0.25); box-shadow:0 0 0px 0px rgba(38,166,154,0); }
-    50%      { border-color:rgba(38,166,154,0.7);  box-shadow:0 0 18px 3px rgba(38,166,154,0.18); }
+    0%,100% { border-color:rgba(38,166,154,0.2); box-shadow:0 0 0px 0px rgba(38,166,154,0); background: var(--card); }
+    50%      { border-color:rgba(38,166,154,1);   box-shadow:0 0 28px 6px rgba(38,166,154,0.35), inset 0 0 20px rgba(38,166,154,0.08); background: rgba(38,166,154,0.05); }
   }
   @keyframes card-glow-bear {
-    0%,100% { border-color:rgba(239,83,80,0.25); box-shadow:0 0 0px 0px rgba(239,83,80,0); }
-    50%      { border-color:rgba(239,83,80,0.7);  box-shadow:0 0 18px 3px rgba(239,83,80,0.18); }
+    0%,100% { border-color:rgba(239,83,80,0.2); box-shadow:0 0 0px 0px rgba(239,83,80,0); background: var(--card); }
+    50%      { border-color:rgba(239,83,80,1);   box-shadow:0 0 28px 6px rgba(239,83,80,0.35), inset 0 0 20px rgba(239,83,80,0.08); background: rgba(239,83,80,0.05); }
   }
-  .dcard.card-bull { animation: card-glow-bull 1.8s ease-in-out infinite; }
-  .dcard.card-bear { animation: card-glow-bear 1.8s ease-in-out infinite; }
+  .dcard.card-bull { animation: card-glow-bull 1.2s ease-in-out infinite; transition: none !important; }
+  .dcard.card-bear { animation: card-glow-bear 1.2s ease-in-out infinite; transition: none !important; }
   .dcard-top { height: 2px; }
   .dcard-header { padding: 10px 14px; border-bottom-width: 1px; border-bottom-style: solid; }
   .dcard-bias-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
@@ -670,9 +673,16 @@
           <span class="grid-title">Decision Engine</span>
           <span class="grid-meta" id="gridMeta">5 instruments · click any card to expand</span>
         </div>
-        <div class="filter-wrap">
-          <span class="filter-icon">⌕</span>
-          <input class="grid-filter" id="filterInput" type="text" placeholder="Filter..." oninput="filterCards(this.value)">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div style="display:flex;gap:4px">
+            <button id="sentBtn-all" class="sent-filter sent-filter-active" onclick="setSentFilter('all',this)">ALL</button>
+            <button id="sentBtn-bull" class="sent-filter" onclick="setSentFilter('bull',this)" style="color:var(--bull);border-color:rgba(38,166,154,0.3)">▲ BULLISH</button>
+            <button id="sentBtn-bear" class="sent-filter" onclick="setSentFilter('bear',this)" style="color:var(--bear);border-color:rgba(239,83,80,0.3)">▼ BEARISH</button>
+          </div>
+          <div class="filter-wrap">
+            <span class="filter-icon">⌕</span>
+            <input class="grid-filter" id="filterInput" type="text" placeholder="Filter..." oninput="filterCards(this.value)">
+          </div>
         </div>
       </div>
 
@@ -1186,11 +1196,23 @@ function sortNames() {
     return (SENT_ORDER[sa] ?? 4) - (SENT_ORDER[sb] ?? 4);
   });
 }
+let activeSentFilter = 'all';
+function setSentFilter(mode, btn) {
+  activeSentFilter = mode;
+  document.querySelectorAll('.sent-filter').forEach(b => b.classList.remove('sent-filter-active'));
+  if (btn) btn.classList.add('sent-filter-active');
+  renderCards();
+}
 function renderCards(filter) {
   const grid = document.getElementById('cardsGrid');
   if (!grid || Object.keys(allData).length === 0) return;
   const q = (filter ?? document.getElementById('filterInput').value ?? '').toLowerCase();
   let names = sortNames().filter(n => !q || n.toLowerCase().includes(q));
+  if (activeSentFilter === 'bull') {
+    names = names.filter(n => { const s = (allData[n]?.analysis?.sentiment||'').toUpperCase(); return s.includes('BULLISH'); });
+  } else if (activeSentFilter === 'bear') {
+    names = names.filter(n => { const s = (allData[n]?.analysis?.sentiment||'').toUpperCase(); return s.includes('BEARISH'); });
+  }
   document.getElementById('gridMeta').textContent = names.length + ' instrument' + (names.length === 1 ? '' : 's') + ' · click any card to expand';
   grid.innerHTML = names.length ? names.map(buildCard).join('') : '<div style="padding:40px;font-size:10px;color:var(--muted);text-align:center">No results</div>';
 }
