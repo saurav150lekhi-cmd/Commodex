@@ -35,12 +35,12 @@ def send_email(to, subject, html_body):
 def send_verification_email(to, token):
     link = f"{APP_URL}/auth/verify/{token}"
     html = f"""
-    <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:520px;margin:0 auto">
-      <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
-      <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
-      <p style="margin-bottom:20px;line-height:1.7;color:#c4b490">Please verify your email address to activate your Commodex account.</p>
-      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px;border-radius:3px">VERIFY EMAIL</a>
-      <p style="margin-top:28px;color:#6a5a40;font-size:11px;line-height:1.6">This link expires in 24 hours.<br>If you didn't create a Commodex account, you can ignore this email.</p>
+    <div style="font-family:Arial,sans-serif;font-size:14px;color:#111;max-width:480px;margin:0 auto;padding:32px 24px">
+      <p style="margin:0 0 4px 0;font-weight:600">Commodex</p>
+      <p style="margin:0 0 24px 0;color:#888;font-size:12px">commodity research terminal</p>
+      <p style="margin:0 0 20px 0;line-height:1.6">Hi, please verify your email address to activate your Commodex account.</p>
+      <p style="margin:0 0 20px 0"><a href="{link}" style="color:#0066cc">Verify my email →</a></p>
+      <p style="margin:0;color:#999;font-size:12px">This link expires in 24 hours. If you didn't create a Commodex account, ignore this email.</p>
     </div>
     """
     return send_email(to, "Verify your Commodex account", html)
@@ -49,12 +49,12 @@ def send_verification_email(to, token):
 def send_reset_email(to, token):
     link = f"{APP_URL}/app#reset?token={token}"
     html = f"""
-    <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:520px;margin:0 auto">
-      <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
-      <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
-      <p style="margin-bottom:20px;line-height:1.7;color:#c4b490">We received a request to reset your password. Click the button below to set a new password.</p>
-      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px;border-radius:3px">RESET PASSWORD</a>
-      <p style="margin-top:28px;color:#6a5a40;font-size:11px;line-height:1.6">This link expires in 1 hour.<br>If you didn't request a password reset, you can safely ignore this email.</p>
+    <div style="font-family:Arial,sans-serif;font-size:14px;color:#111;max-width:480px;margin:0 auto;padding:32px 24px">
+      <p style="margin:0 0 4px 0;font-weight:600">Commodex</p>
+      <p style="margin:0 0 24px 0;color:#888;font-size:12px">commodity research terminal</p>
+      <p style="margin:0 0 20px 0;line-height:1.6">We received a request to reset your Commodex password.</p>
+      <p style="margin:0 0 20px 0"><a href="{link}" style="color:#0066cc">Reset my password →</a></p>
+      <p style="margin:0;color:#999;font-size:12px">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
     </div>
     """
     return send_email(to, "Reset your Commodex password", html)
