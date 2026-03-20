@@ -221,6 +221,16 @@
   .dcard:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
   .dcard.selected { border-color: rgba(38,166,154,0.5); box-shadow: 0 0 24px rgba(38,166,154,0.15); }
   .dcard.selected-bear { border-color: rgba(239,83,80,0.5); box-shadow: 0 0 24px rgba(239,83,80,0.15); }
+  @keyframes card-glow-bull {
+    0%,100% { border-color:rgba(38,166,154,0.25); box-shadow:0 0 0px 0px rgba(38,166,154,0); }
+    50%      { border-color:rgba(38,166,154,0.7);  box-shadow:0 0 18px 3px rgba(38,166,154,0.18); }
+  }
+  @keyframes card-glow-bear {
+    0%,100% { border-color:rgba(239,83,80,0.25); box-shadow:0 0 0px 0px rgba(239,83,80,0); }
+    50%      { border-color:rgba(239,83,80,0.7);  box-shadow:0 0 18px 3px rgba(239,83,80,0.18); }
+  }
+  .dcard.card-bull { animation: card-glow-bull 1.8s ease-in-out infinite; }
+  .dcard.card-bear { animation: card-glow-bear 1.8s ease-in-out infinite; }
   .dcard-top { height: 2px; }
   .dcard-header { padding: 10px 14px; border-bottom-width: 1px; border-bottom-style: solid; }
   .dcard-bias-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
@@ -1221,7 +1231,7 @@ function buildCard(name) {
   const selCls = activeDetailName === name ? (cls === 'bear' ? ' selected-bear' : ' selected') : '';
 
   return `
-  <div class="dcard${selCls}" data-name="${name}" onclick="openDetail('${name.replace(/'/g,"\\'")}')">
+  <div class="dcard${selCls}${cls==='bull'?' card-bull':cls==='bear'?' card-bear':''}" data-name="${name}" onclick="openDetail('${name.replace(/'/g,"\\'")}')">
     <div class="dcard-top" style="background:${color}"></div>
     <div class="dcard-header" style="background:${bg};border-bottom-color:${bdr}">
       <div class="dcard-bias-row">
