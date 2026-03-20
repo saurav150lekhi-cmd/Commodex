@@ -2916,7 +2916,7 @@ def scheduler_loop():
     # Calendar: refresh every 6 hours, check alerts every 15 min, morning digest at 07:00 UTC
     schedule.every(6).hours.do(lambda: refresh_calendar() if not analysis_status["running"] else None)
     schedule.every(15).minutes.do(lambda: check_upcoming_alerts() if not analysis_status["running"] else None)
-    schedule.every().day.at("07:00").do(send_daily_event_digest)
+    schedule.every().day.at("01:30").do(send_daily_event_digest)  # 07:00 IST
     while True:
         schedule.run_pending()
         time.sleep(30)
