@@ -2960,16 +2960,32 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
 @jwt_required()
 def download_newsletter():
     try:
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        filename = f"Commodex_Weekly_{date_str}.pdf"
+
+        # Serve pre-generated Sunday PDF if fresh (generated within last 7 days)
+        weekly_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "weekly_report.pdf")
+        if os.path.exists(weekly_path):
+            age_days = (datetime.now(timezone.utc).timestamp() - os.path.getmtime(weekly_path)) / 86400
+            if age_days < 7:
+                with open(weekly_path, "rb") as f:
+                    pdf_bytes = f.read()
+                return Response(pdf_bytes, mimetype="application/pdf",
+                                headers={"Content-Disposition": f'attachment; filename="{filename}"',
+                                         "Content-Length": str(len(pdf_bytes))})
+
+        # Fall back to on-demand generation
+        load_latest_from_db()
+        if not latest_results:
+            return jsonify({"error": "No analysis data available yet. Run analysis first."}), 404
         prices    = fetch_live_prices()
         pdf_bytes = generate_newsletter_pdf(latest_results, prices)
-        date_str  = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-        filename  = f"Commodex_Weekly_{date_str}.pdf"
         return Response(pdf_bytes, mimetype="application/pdf",
                         headers={"Content-Disposition": f'attachment; filename="{filename}"',
                                  "Content-Length": str(len(pdf_bytes))})
     except Exception as e:
-        log.error("Newsletter generation failed: %s", e)
-        return jsonify({"error": "Failed to generate newsletter."}), 500
+        log.error("Newsletter generation failed: %s", e, exc_info=True)
+        return jsonify({"error": f"Failed to generate newsletter: {str(e)}"}), 500
 
 
 @app.route("/run", methods=["POST"])
