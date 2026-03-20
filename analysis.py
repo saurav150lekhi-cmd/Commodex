@@ -2831,6 +2831,24 @@ def _pdf_safe(text: str) -> str:
                        .replace("\u2192", "->").replace("\u2190", "<-").replace("\u00b7", ".")
 
 
+def _pdf_page_bg(pdf):
+    """Fill page with dark background and gold top/bottom rules."""
+    pdf.set_fill_color(12, 14, 20)
+    pdf.rect(0, 0, 210, 297, 'F')
+    pdf.set_fill_color(200, 168, 112)
+    pdf.rect(0, 0, 210, 1.5, 'F')
+    pdf.rect(0, 295.5, 210, 1.5, 'F')
+
+
+def _pdf_footer(pdf, page_num, total):
+    pdf.set_xy(14, 287)
+    pdf.set_font("Helvetica", "", 6)
+    pdf.set_text_color(93, 100, 120)
+    pdf.cell(91, 4, "commodex.io  ·  AI-Powered Commodity Research", ln=False)
+    pdf.set_x(105)
+    pdf.cell(91, 4, f"Page {page_num} of {total}  ·  {datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')}", align="R")
+
+
 def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
     from fpdf import FPDF
     COMMODITIES_ORDER = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas",
@@ -2839,120 +2857,242 @@ def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
                          "NEUTRAL": "NEUTRAL", "BEARISH": "BEARISH", "STRONG_BEARISH": "STRONG BEARISH"}
     SENTIMENT_COLORS  = {"STRONG_BULLISH": (38,166,154), "BULLISH": (38,166,154),
                          "NEUTRAL": (160,168,188), "BEARISH": (239,83,80), "STRONG_BEARISH": (239,83,80)}
+    active = [c for c in COMMODITIES_ORDER if c in results]
+    total_pages = 1 + len(active)  # cover + one per commodity
+
     pdf = FPDF()
-    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.set_auto_page_break(auto=False)
+
+    # ── COVER PAGE ────────────────────────────────────────────────────────────
     pdf.add_page()
-    pdf.set_fill_color(12, 14, 20)
-    pdf.rect(0, 0, 210, 297, 'F')
-    pdf.set_fill_color(200, 168, 112)
-    pdf.rect(0, 0, 210, 2, 'F')
-    pdf.set_xy(14, 10)
-    pdf.set_font("Helvetica", "B", 18)
+    _pdf_page_bg(pdf)
+    now_str = datetime.now(timezone.utc).strftime("%d %B %Y")
+    week_start = (datetime.now(timezone.utc) - timedelta(days=datetime.now(timezone.utc).weekday())).strftime("%d %b")
+    week_end   = (datetime.now(timezone.utc) + timedelta(days=6 - datetime.now(timezone.utc).weekday())).strftime("%d %b %Y")
+
+    pdf.set_xy(14, 38)
+    pdf.set_font("Helvetica", "B", 32)
     pdf.set_text_color(200, 168, 112)
-    pdf.cell(0, 8, "COMMODEX", ln=False)
-    pdf.set_xy(14, 20)
-    pdf.set_font("Helvetica", "", 7)
+    pdf.cell(0, 14, "COMMODEX", ln=True)
+    pdf.set_x(14)
+    pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(93, 100, 120)
-    pdf.cell(0, 4, "WEEKLY INTELLIGENCE REPORT  ·  COMMODITY RESEARCH", ln=True)
-    now_str = datetime.now(timezone.utc).strftime("%d %B %Y  ·  %H:%M UTC")
+    pdf.cell(0, 5, "WEEKLY INTELLIGENCE REPORT", ln=True)
+    pdf.set_x(14)
     pdf.set_font("Helvetica", "", 8)
     pdf.set_text_color(160, 168, 188)
-    pdf.set_xy(14, 14)
-    pdf.cell(182, 5, now_str, align="R")
+    pdf.cell(0, 5, f"{week_start} - {week_end}", ln=True)
+
     pdf.set_draw_color(30, 35, 54)
-    pdf.set_line_width(0.3)
-    pdf.line(14, 30, 196, 30)
-    pdf.set_xy(14, 32)
-    pdf.set_font("Helvetica", "I", 6.5)
+    pdf.set_line_width(0.4)
+    pdf.line(14, pdf.get_y() + 6, 196, pdf.get_y() + 6)
+    pdf.ln(14)
+
+    # Summary table
+    pdf.set_x(14)
+    pdf.set_font("Helvetica", "B", 7)
     pdf.set_text_color(93, 100, 120)
-    pdf.cell(0, 4, "For informational purposes only. Not financial advice. AI-generated analysis — verify independently before trading.", ln=True)
-    pdf.ln(4)
-    for commodity in COMMODITIES_ORDER:
-        if commodity not in results:
-            continue
-        payload      = results[commodity]
-        analysis     = payload.get("analysis", {})
-        sent_raw     = analysis.get("sentiment", "NEUTRAL").upper()
-        sent_lbl     = SENTIMENT_LABELS.get(sent_raw, sent_raw)
-        sent_color   = SENTIMENT_COLORS.get(sent_raw, (160,168,188))
-        price_data   = prices.get(commodity, {})
-        price_val    = price_data.get("price")
-        change_val   = price_data.get("change")
-        price_str    = f"${price_val:,.2f}" if price_val is not None else "—"
-        change_str   = (f"+{change_val:.2f}%" if change_val >= 0 else f"{change_val:.2f}%") if change_val is not None else ""
+    pdf.cell(60, 5, "COMMODITY", ln=False)
+    pdf.cell(45, 5, "SENTIMENT", ln=False)
+    pdf.cell(40, 5, "PRICE", ln=False)
+    pdf.cell(33, 5, "CHANGE", align="R", ln=True)
+    pdf.set_draw_color(30, 35, 54); pdf.set_line_width(0.2)
+    pdf.line(14, pdf.get_y(), 196, pdf.get_y())
+    pdf.ln(2)
+
+    for commodity in active:
+        payload    = results[commodity]
+        analysis   = payload.get("analysis", {})
+        sent_raw   = analysis.get("sentiment", "NEUTRAL").upper()
+        sent_lbl   = SENTIMENT_LABELS.get(sent_raw, sent_raw)
+        sent_color = SENTIMENT_COLORS.get(sent_raw, (160,168,188))
+        price_data = prices.get(commodity, {})
+        price_val  = price_data.get("price")
+        change_val = price_data.get("change")
+        price_str  = f"${price_val:,.2f}" if price_val is not None else "-"
+        change_str = (f"+{change_val:.2f}%" if change_val >= 0 else f"{change_val:.2f}%") if change_val is not None else ""
+
         y = pdf.get_y()
         pdf.set_fill_color(200, 168, 112)
-        pdf.rect(14, y, 2, 5.5, 'F')
-        pdf.set_xy(18, y)
-        pdf.set_font("Helvetica", "B", 10)
+        pdf.rect(14, y + 1, 1.5, 5, 'F')
+        pdf.set_xy(17, y)
+        pdf.set_font("Helvetica", "B", 8)
         pdf.set_text_color(209, 212, 220)
-        pdf.cell(70, 5.5, commodity.upper(), ln=False)
-        pdf.set_xy(92, y + 0.5)
+        pdf.cell(57, 7, commodity.upper(), ln=False)
+        # Sentiment pill
         pdf.set_fill_color(*sent_color)
         pdf.set_text_color(10, 12, 18)
-        pdf.set_font("Helvetica", "B", 6.5)
-        pdf.cell(32, 4.5, f"  {sent_lbl}  ", align="C", fill=True)
-        pdf.set_xy(130, y)
-        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_font("Helvetica", "B", 6)
+        pdf.set_xy(77, y + 1.5)
+        pdf.cell(38, 4, f" {sent_lbl} ", align="C", fill=True)
+        pdf.set_xy(117, y)
+        pdf.set_font("Helvetica", "B", 8)
         pdf.set_text_color(209, 212, 220)
-        pdf.cell(40, 5.5, price_str, align="R", ln=False)
+        pdf.cell(38, 7, price_str, align="R", ln=False)
         if change_val is not None:
             pdf.set_text_color(38,166,154) if change_val >= 0 else pdf.set_text_color(239,83,80)
         else:
             pdf.set_text_color(93,100,120)
         pdf.set_font("Helvetica", "", 8)
-        pdf.set_xy(172, y + 0.5)
-        pdf.cell(24, 4.5, change_str, align="R")
-        pdf.ln(7)
+        pdf.set_xy(157, y)
+        pdf.cell(39, 7, change_str, align="R", ln=True)
+        pdf.set_draw_color(20, 24, 36); pdf.set_line_width(0.1)
+        pdf.line(14, pdf.get_y(), 196, pdf.get_y())
+
+    pdf.ln(10)
+    pdf.set_x(14)
+    pdf.set_font("Helvetica", "I", 6.5)
+    pdf.set_text_color(93, 100, 120)
+    pdf.cell(0, 4, "For informational purposes only. Not financial advice. AI-generated analysis - verify independently before trading.")
+    _pdf_footer(pdf, 1, total_pages)
+
+    # ── ONE PAGE PER COMMODITY ────────────────────────────────────────────────
+    for page_idx, commodity in enumerate(active, start=2):
+        pdf.add_page()
+        _pdf_page_bg(pdf)
+        payload    = results[commodity]
+        analysis   = payload.get("analysis", {})
+        sent_raw   = analysis.get("sentiment", "NEUTRAL").upper()
+        sent_lbl   = SENTIMENT_LABELS.get(sent_raw, sent_raw)
+        sent_color = SENTIMENT_COLORS.get(sent_raw, (160,168,188))
+        meta       = payload.get("meta", {})
+        price_data = prices.get(commodity, {})
+        price_val  = price_data.get("price")
+        change_val = price_data.get("change")
+        price_str  = f"${price_val:,.2f}" if price_val is not None else "-"
+        change_str = (f"+{change_val:.2f}%" if change_val >= 0 else f"{change_val:.2f}%") if change_val is not None else ""
+        conf       = analysis.get("confidence", "")
+        conf_str   = f"{conf}% confidence" if conf and str(conf).isdigit() else ""
+
+        # Header bar
+        pdf.set_fill_color(*sent_color)
+        pdf.rect(0, 0, 4, 297, 'F')
+
+        # Commodity name
+        pdf.set_xy(14, 14)
+        pdf.set_font("Helvetica", "B", 22)
+        pdf.set_text_color(209, 212, 220)
+        pdf.cell(0, 10, commodity.upper(), ln=True)
+
+        # Ticker / exchange row
+        ticker = meta.get("ticker", "") or payload.get("ticker", "")
+        exch   = meta.get("exchange", "") or payload.get("exchange", "")
+        if ticker:
+            pdf.set_x(14)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(93, 100, 120)
+            pdf.cell(0, 4, f"{ticker}  ·  {exch}  ·  {now_str}", ln=True)
+
+        # Sentiment + price row
+        pdf.set_xy(14, 38)
+        pdf.set_fill_color(*sent_color)
+        pdf.set_text_color(10, 12, 18)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.cell(48, 6, f"  {sent_lbl}  ", align="C", fill=True)
+        if conf_str:
+            pdf.set_x(66)
+            pdf.set_font("Helvetica", "", 7)
+            pdf.set_text_color(93, 100, 120)
+            pdf.cell(40, 6, conf_str, ln=False)
+        pdf.set_xy(130, 38)
+        pdf.set_font("Helvetica", "B", 14)
+        pdf.set_text_color(209, 212, 220)
+        pdf.cell(40, 6, price_str, align="R", ln=False)
+        if change_val is not None:
+            pdf.set_text_color(38,166,154) if change_val >= 0 else pdf.set_text_color(239,83,80)
+        else:
+            pdf.set_text_color(93,100,120)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_xy(172, 39)
+        pdf.cell(24, 5, change_str, align="R")
+
+        pdf.set_draw_color(30, 35, 54); pdf.set_line_width(0.3)
+        pdf.line(14, 48, 196, 48)
+        pdf.set_xy(14, 51)
+
+        # AI Analysis summary
         summary = analysis.get("market_summary", "")
         if summary and summary != "Coming soon.":
-            pdf.set_x(18)
-            pdf.set_font("Helvetica", "", 8)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_text_color(200, 168, 112)
+            pdf.cell(0, 4, "AI ANALYSIS", ln=True)
+            pdf.set_x(14)
+            pdf.set_font("Helvetica", "", 9)
             pdf.set_text_color(160, 168, 188)
-            pdf.multi_cell(178, 4.2, _pdf_safe(summary[:480]))
-            pdf.ln(2)
+            pdf.multi_cell(182, 4.8, _pdf_safe(summary))
+            pdf.ln(4)
+
+        # Drivers (bullish left, bearish right — full lists)
         drivers   = analysis.get("drivers", {})
-        bull_list = (drivers.get("up") or [])[:3]
-        bear_list = (drivers.get("down") or [])[:3]
+        bull_list = drivers.get("up") or []
+        bear_list = drivers.get("down") or []
         if bull_list or bear_list:
+            col_w = 86
+            # Headers
             if bull_list:
-                pdf.set_x(18)
-                pdf.set_font("Helvetica", "B", 6.5)
-                pdf.set_text_color(38,166,154)
-                pdf.cell(85, 4, "▲ BULLISH DRIVERS", ln=False)
+                pdf.set_x(14)
+                pdf.set_font("Helvetica", "B", 7)
+                pdf.set_text_color(38, 166, 154)
+                pdf.cell(col_w, 5, "▲ BULLISH DRIVERS", ln=False)
             if bear_list:
-                pdf.set_x(107)
-                pdf.set_font("Helvetica", "B", 6.5)
-                pdf.set_text_color(239,83,80)
-                pdf.cell(85, 4, "▼ BEARISH DRIVERS", ln=True)
+                pdf.set_x(110)
+                pdf.set_font("Helvetica", "B", 7)
+                pdf.set_text_color(239, 83, 80)
+                pdf.cell(col_w, 5, "▼ BEARISH DRIVERS", ln=True)
             else:
-                pdf.ln(4)
+                pdf.ln(5)
             for i in range(max(len(bull_list), len(bear_list))):
                 b = bull_list[i] if i < len(bull_list) else ""
                 r = bear_list[i] if i < len(bear_list) else ""
                 if b:
-                    pdf.set_x(18); pdf.set_font("Helvetica","",7); pdf.set_text_color(160,168,188)
-                    pdf.cell(85, 3.8, _pdf_safe(f"- {b[:70]}"), ln=False)
+                    pdf.set_x(14)
+                    pdf.set_font("Helvetica", "", 8)
+                    pdf.set_text_color(160, 168, 188)
+                    pdf.multi_cell(col_w, 4, _pdf_safe(f"- {b}"), ln=False)
                 if r:
-                    pdf.set_x(107); pdf.set_font("Helvetica","",7); pdf.set_text_color(160,168,188)
-                    pdf.cell(85, 3.8, _pdf_safe(f"- {r[:70]}"), ln=True)
-                elif b:
-                    pdf.ln(3.8)
-            pdf.ln(2)
+                    pdf.set_x(110)
+                    pdf.set_font("Helvetica", "", 8)
+                    pdf.set_text_color(160, 168, 188)
+                    pdf.multi_cell(col_w, 4, _pdf_safe(f"- {r}"))
+                else:
+                    pdf.ln(0)
+            pdf.ln(5)
+
+        # Dominant narrative / takeaway
         narrative = analysis.get("dominant_narrative", {})
-        takeaway  = (narrative.get("theme","") if isinstance(narrative,dict) else "") or \
-                    (analysis.get("takeaway",{}) or {}).get("strategy","")
+        takeaway  = (narrative.get("theme", "") if isinstance(narrative, dict) else "") or \
+                    (analysis.get("takeaway", {}) or {}).get("strategy", "")
         if takeaway and takeaway not in ("-", "Coming soon"):
-            pdf.set_x(18); pdf.set_font("Helvetica","I",7); pdf.set_text_color(200,168,112)
-            pdf.multi_cell(178, 3.8, _pdf_safe(f"-> {takeaway[:200]}"))
-            pdf.ln(1)
-        pdf.set_draw_color(25,30,48); pdf.set_line_width(0.2)
-        pdf.line(14, pdf.get_y(), 196, pdf.get_y())
-        pdf.ln(5)
-    pdf.set_fill_color(200,168,112); pdf.rect(0,293,210,2,'F')
-    pdf.set_xy(14,284); pdf.set_font("Helvetica","",6); pdf.set_text_color(93,100,120)
-    pdf.cell(91,4,"commodex.io  ·  AI-Powered Commodity Research",ln=False)
-    pdf.set_x(105); pdf.cell(91,4,f"Generated {datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')}",align="R")
+            pdf.set_draw_color(200, 168, 112); pdf.set_line_width(0.3)
+            pdf.set_fill_color(200, 168, 112)
+            pdf.rect(14, pdf.get_y(), 2, 3.5, 'F')
+            pdf.set_x(18)
+            pdf.set_font("Helvetica", "I", 8)
+            pdf.set_text_color(200, 168, 112)
+            pdf.multi_cell(178, 4.5, _pdf_safe(takeaway))
+            pdf.ln(4)
+
+        # Signals
+        signals = analysis.get("signals") or []
+        if signals:
+            pdf.set_draw_color(30, 35, 54); pdf.set_line_width(0.2)
+            pdf.line(14, pdf.get_y(), 196, pdf.get_y())
+            pdf.ln(3)
+            pdf.set_x(14)
+            pdf.set_font("Helvetica", "B", 7)
+            pdf.set_text_color(200, 168, 112)
+            pdf.cell(0, 4, "KEY SIGNALS", ln=True)
+            for s in signals[:5]:
+                sig_text = s if isinstance(s, str) else (s.get("signal") or s.get("text") or str(s))
+                pdf.set_x(14)
+                pdf.set_font("Helvetica", "", 8)
+                pdf.set_text_color(160, 168, 188)
+                pdf.cell(4, 4, "->", ln=False)
+                pdf.set_x(20)
+                pdf.multi_cell(176, 4, _pdf_safe(sig_text))
+
+        _pdf_footer(pdf, page_idx, total_pages)
+
     return bytes(pdf.output())
 
 
