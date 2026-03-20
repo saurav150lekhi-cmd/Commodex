@@ -166,8 +166,12 @@ NEWS_SOURCES = [
     "https://www.agri-pulse.com/rss/articles",                     # Agri-Pulse — all ag commodities (VERIFIED)
     "https://grains.org/feed/",                                    # US Grains Council — corn/soy exports (VERIFIED)
     "https://www.nass.usda.gov/rss/reports.xml",                   # USDA NASS — crop progress & stats (VERIFIED)
+    "https://www.nass.usda.gov/rss/asb.xml",                       # USDA NASS ASB — acreage, grain stocks (VERIFIED)
+    "https://farmdocdaily.illinois.edu/feed",                      # farmdoc daily — corn/soy research (VERIFIED)
+    "https://www.farmprogress.com/rss.xml",                        # Farm Progress — crop markets (VERIFIED)
+    "https://www.feedstuffs.com/rss.xml",                          # Feedstuffs — grain/feed industry (VERIFIED)
+    "https://www.graincentral.com/feed/",                          # Grain Central — global grain trade (VERIFIED)
     "https://www.farmpolicynews.illinois.edu/feed/",               # Farm Policy News — USDA, policy
-    "https://www.fas.usda.gov/rss/",                               # USDA FAS — export data
     "https://brownfieldagnews.com/feed/",                          # Brownfield Ag News — grains, soy
     # ── Wheat ─────────────────────────────────────────────────────────────────
     "https://www.uswheat.org/feed",                                # US Wheat Associates (VERIFIED)
@@ -178,8 +182,11 @@ NEWS_SOURCES = [
     "https://dailycoffeenews.com/feed/",                           # Daily Coffee News — ICE, Brazil (VERIFIED)
     "https://perfectdailygrind.com/feed/",                         # Perfect Daily Grind — coffee trade (VERIFIED)
     "https://www.worldcoffeeportal.com/rss",                       # World Coffee Portal — market data (VERIFIED)
+    "https://www.coffeebi.com/feed/",                              # CoffeeBI — arabica futures, Brazil crop (VERIFIED)
     # ── Sugar ─────────────────────────────────────────────────────────────────
     "https://www.sugaronline.com/feed",                            # Sugar Online — ICE #11 (VERIFIED)
+    # ── Cross-commodity shipping/trade ────────────────────────────────────────
+    "https://www.hellenicshippingnews.com/category/commodities/rss", # Hellenic Shipping — freight/trade (VERIFIED)
 ]
 
 COMMODITIES = {
@@ -2876,8 +2883,15 @@ def get_calendar():
             data = refresh_calendar()
         except Exception as e:
             log.warning("Inline calendar refresh failed: %s", e)
+    upcoming = data.get("upcoming", [])[:20]
+    # If ForexFactory returned nothing, fall back to next 7 days of scheduled events
+    if not upcoming:
+        scheduled = _generate_scheduled_events(months=1)
+        now = datetime.now(timezone.utc)
+        cutoff = now + timedelta(days=7)
+        upcoming = [e for e in scheduled if now.strftime("%Y-%m-%d") <= e.get("date","") <= cutoff.strftime("%Y-%m-%d")]
     return jsonify({
-        "upcoming_events": data.get("upcoming", [])[:20],
+        "upcoming_events": upcoming[:20],
         "past_events":     data.get("past", [])[:5],
         "last_updated":    data.get("last_updated"),
     })

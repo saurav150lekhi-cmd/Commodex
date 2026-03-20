@@ -635,7 +635,7 @@
 
       <!-- SCAN BAR -->
       <div id="scan-bar">
-        <div class="scan-label-cell">
+        <div class="scan-label-cell" onclick="calendarMode=false;document.getElementById('calendar-view').style.display='none';document.getElementById('detail-view') && (document.getElementById('detail-view').style.display='none')" style="cursor:pointer" title="Back to decision grid">
           <svg style="width:9px;height:9px;stroke:var(--muted);fill:none;stroke-width:2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
           <span style="font-size:8px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(93,100,120,0.9)">DECISIONS</span>
         </div>
@@ -1728,11 +1728,15 @@ async function loadScheduledCalendar() {
 
 const COMM_TAG_CLASS = {
   'Gold': 'gold', 'Silver': 'silver', 'Crude Oil': 'oil',
-  'Copper': 'copper', 'Natural Gas': 'gas'
+  'Copper': 'copper', 'Natural Gas': 'gas',
+  'Corn': 'gold', 'Wheat': 'gold', 'Soybeans': 'copper',
+  'Coffee': 'copper', 'Sugar': 'silver'
 };
 const COMM_TAG_SHORT = {
   'Gold': 'GOLD', 'Silver': 'SILVER', 'Crude Oil': 'OIL',
-  'Copper': 'COPPER', 'Natural Gas': 'GAS'
+  'Copper': 'COPPER', 'Natural Gas': 'GAS',
+  'Corn': 'CORN', 'Wheat': 'WHEAT', 'Soybeans': 'SOY',
+  'Coffee': 'COFFEE', 'Sugar': 'SUGAR'
 };
 const DAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
 const MONTH_NAMES = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
