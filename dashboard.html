@@ -40,15 +40,15 @@
     50%       { opacity: 0.4; transform: scale(0.75); }
   }
   @keyframes badge-pulse-bull {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(38,166,154,0.5); }
-    50%       { box-shadow: 0 0 6px 3px rgba(38,166,154,0.15); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(38,166,154,0.6); opacity:1; }
+    50%       { box-shadow: 0 0 8px 4px rgba(38,166,154,0.25); opacity:0.85; }
   }
   @keyframes badge-pulse-bear {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.5); }
-    50%       { box-shadow: 0 0 6px 3px rgba(239,83,80,0.15); }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.6); opacity:1; }
+    50%       { box-shadow: 0 0 8px 4px rgba(239,83,80,0.25); opacity:0.85; }
   }
-  .badge-bull { animation: badge-pulse-bull 1.8s ease-in-out infinite; }
-  .badge-bear { animation: badge-pulse-bear 1.8s ease-in-out infinite; }
+  .badge-bull { animation: badge-pulse-bull 1.4s ease-in-out infinite; }
+  .badge-bear { animation: badge-pulse-bear 1.4s ease-in-out infinite; }
 
   /* ══ AUTH OVERLAY ══════════════════════════════════════════════════════════ */
   #authOverlay {
@@ -550,6 +550,8 @@
       <div class="tb-sep"></div>
       <div class="tb-time" id="clock">00:00:00 UTC</div>
       <div class="tb-sep"></div>
+      <button class="tb-user" id="newsletterBtn" onclick="downloadNewsletter()" title="Download Weekly PDF Report" style="color:var(--accent);border-color:rgba(200,168,112,0.3)">↓ PDF</button>
+      <div class="tb-sep"></div>
       <button class="tb-user" id="userBtn" onclick="toggleProfile()">ACCOUNT</button>
       <a class="tb-exit" href="/">EXIT</a>
     </div>
@@ -909,6 +911,23 @@ function stripHtml(h) {
 }
 function authH() {
   return { 'Authorization': 'Bearer ' + accessToken, 'Content-Type': 'application/json' };
+}
+
+async function downloadNewsletter() {
+  const btn = document.getElementById('newsletterBtn');
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    const res = await fetch('/newsletter', { headers: { 'Authorization': 'Bearer ' + accessToken } });
+    if (!res.ok) { alert('Could not generate newsletter. Try again shortly.'); return; }
+    const blob = await res.blob();
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `Commodex_Weekly_${new Date().toISOString().slice(0,10)}.pdf`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  } catch(e) { alert('Download failed.'); }
+  finally { btn.disabled = false; btn.textContent = orig; }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

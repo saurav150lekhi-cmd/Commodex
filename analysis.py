@@ -12,7 +12,7 @@ import hashlib
 import urllib.request
 import urllib.parse
 from datetime import datetime, timezone, timedelta
-from flask import Flask, jsonify, send_from_directory, request
+from flask import Flask, jsonify, send_from_directory, request, Response
 from flask_jwt_extended import JWTManager, jwt_required
 from dotenv import load_dotenv
 from db import db
@@ -2822,6 +2822,147 @@ def get_prices():
     response = jsonify(prices)
     response.headers.add("Access-Control-Allow-Origin", "*")
     return response
+
+def generate_newsletter_pdf(results: dict, prices: dict) -> bytes:
+    from fpdf import FPDF
+    COMMODITIES_ORDER = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas",
+                         "Corn", "Wheat", "Soybeans", "Coffee", "Sugar"]
+    SENTIMENT_LABELS  = {"STRONG_BULLISH": "STRONG BULLISH", "BULLISH": "BULLISH",
+                         "NEUTRAL": "NEUTRAL", "BEARISH": "BEARISH", "STRONG_BEARISH": "STRONG BEARISH"}
+    SENTIMENT_COLORS  = {"STRONG_BULLISH": (38,166,154), "BULLISH": (38,166,154),
+                         "NEUTRAL": (160,168,188), "BEARISH": (239,83,80), "STRONG_BEARISH": (239,83,80)}
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=18)
+    pdf.add_page()
+    pdf.set_fill_color(12, 14, 20)
+    pdf.rect(0, 0, 210, 297, 'F')
+    pdf.set_fill_color(200, 168, 112)
+    pdf.rect(0, 0, 210, 2, 'F')
+    pdf.set_xy(14, 10)
+    pdf.set_font("Helvetica", "B", 18)
+    pdf.set_text_color(200, 168, 112)
+    pdf.cell(0, 8, "COMMODEX", ln=False)
+    pdf.set_xy(14, 20)
+    pdf.set_font("Helvetica", "", 7)
+    pdf.set_text_color(93, 100, 120)
+    pdf.cell(0, 4, "WEEKLY INTELLIGENCE REPORT  ·  COMMODITY RESEARCH", ln=True)
+    now_str = datetime.now(timezone.utc).strftime("%d %B %Y  ·  %H:%M UTC")
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(160, 168, 188)
+    pdf.set_xy(14, 14)
+    pdf.cell(182, 5, now_str, align="R")
+    pdf.set_draw_color(30, 35, 54)
+    pdf.set_line_width(0.3)
+    pdf.line(14, 30, 196, 30)
+    pdf.set_xy(14, 32)
+    pdf.set_font("Helvetica", "I", 6.5)
+    pdf.set_text_color(93, 100, 120)
+    pdf.cell(0, 4, "For informational purposes only. Not financial advice. AI-generated analysis — verify independently before trading.", ln=True)
+    pdf.ln(4)
+    for commodity in COMMODITIES_ORDER:
+        if commodity not in results:
+            continue
+        payload      = results[commodity]
+        analysis     = payload.get("analysis", {})
+        sent_raw     = analysis.get("sentiment", "NEUTRAL").upper()
+        sent_lbl     = SENTIMENT_LABELS.get(sent_raw, sent_raw)
+        sent_color   = SENTIMENT_COLORS.get(sent_raw, (160,168,188))
+        price_data   = prices.get(commodity, {})
+        price_val    = price_data.get("price")
+        change_val   = price_data.get("change")
+        price_str    = f"${price_val:,.2f}" if price_val is not None else "—"
+        change_str   = (f"+{change_val:.2f}%" if change_val >= 0 else f"{change_val:.2f}%") if change_val is not None else ""
+        y = pdf.get_y()
+        pdf.set_fill_color(200, 168, 112)
+        pdf.rect(14, y, 2, 5.5, 'F')
+        pdf.set_xy(18, y)
+        pdf.set_font("Helvetica", "B", 10)
+        pdf.set_text_color(209, 212, 220)
+        pdf.cell(70, 5.5, commodity.upper(), ln=False)
+        pdf.set_xy(92, y + 0.5)
+        pdf.set_fill_color(*sent_color)
+        pdf.set_text_color(10, 12, 18)
+        pdf.set_font("Helvetica", "B", 6.5)
+        pdf.cell(32, 4.5, f"  {sent_lbl}  ", align="C", fill=True)
+        pdf.set_xy(130, y)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(209, 212, 220)
+        pdf.cell(40, 5.5, price_str, align="R", ln=False)
+        if change_val is not None:
+            pdf.set_text_color(38,166,154) if change_val >= 0 else pdf.set_text_color(239,83,80)
+        else:
+            pdf.set_text_color(93,100,120)
+        pdf.set_font("Helvetica", "", 8)
+        pdf.set_xy(172, y + 0.5)
+        pdf.cell(24, 4.5, change_str, align="R")
+        pdf.ln(7)
+        summary = analysis.get("market_summary", "")
+        if summary and summary != "Coming soon.":
+            pdf.set_x(18)
+            pdf.set_font("Helvetica", "", 8)
+            pdf.set_text_color(160, 168, 188)
+            pdf.multi_cell(178, 4.2, summary[:480])
+            pdf.ln(2)
+        drivers   = analysis.get("drivers", {})
+        bull_list = (drivers.get("up") or [])[:3]
+        bear_list = (drivers.get("down") or [])[:3]
+        if bull_list or bear_list:
+            if bull_list:
+                pdf.set_x(18)
+                pdf.set_font("Helvetica", "B", 6.5)
+                pdf.set_text_color(38,166,154)
+                pdf.cell(85, 4, "▲ BULLISH DRIVERS", ln=False)
+            if bear_list:
+                pdf.set_x(107)
+                pdf.set_font("Helvetica", "B", 6.5)
+                pdf.set_text_color(239,83,80)
+                pdf.cell(85, 4, "▼ BEARISH DRIVERS", ln=True)
+            else:
+                pdf.ln(4)
+            for i in range(max(len(bull_list), len(bear_list))):
+                b = bull_list[i] if i < len(bull_list) else ""
+                r = bear_list[i] if i < len(bear_list) else ""
+                if b:
+                    pdf.set_x(18); pdf.set_font("Helvetica","",7); pdf.set_text_color(160,168,188)
+                    pdf.cell(85, 3.8, f"· {b[:70]}", ln=False)
+                if r:
+                    pdf.set_x(107); pdf.set_font("Helvetica","",7); pdf.set_text_color(160,168,188)
+                    pdf.cell(85, 3.8, f"· {r[:70]}", ln=True)
+                elif b:
+                    pdf.ln(3.8)
+            pdf.ln(2)
+        narrative = analysis.get("dominant_narrative", {})
+        takeaway  = (narrative.get("theme","") if isinstance(narrative,dict) else "") or \
+                    (analysis.get("takeaway",{}) or {}).get("strategy","")
+        if takeaway and takeaway not in ("—","Coming soon"):
+            pdf.set_x(18); pdf.set_font("Helvetica","I",7); pdf.set_text_color(200,168,112)
+            pdf.multi_cell(178, 3.8, f"→ {takeaway[:200]}")
+            pdf.ln(1)
+        pdf.set_draw_color(25,30,48); pdf.set_line_width(0.2)
+        pdf.line(14, pdf.get_y(), 196, pdf.get_y())
+        pdf.ln(5)
+    pdf.set_fill_color(200,168,112); pdf.rect(0,293,210,2,'F')
+    pdf.set_xy(14,284); pdf.set_font("Helvetica","",6); pdf.set_text_color(93,100,120)
+    pdf.cell(91,4,"commodex.io  ·  AI-Powered Commodity Research",ln=False)
+    pdf.set_x(105); pdf.cell(91,4,f"Generated {datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')}",align="R")
+    return bytes(pdf.output())
+
+
+@app.route("/newsletter")
+@jwt_required()
+def download_newsletter():
+    try:
+        prices    = fetch_live_prices()
+        pdf_bytes = generate_newsletter_pdf(latest_results, prices)
+        date_str  = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        filename  = f"Commodex_Weekly_{date_str}.pdf"
+        return Response(pdf_bytes, mimetype="application/pdf",
+                        headers={"Content-Disposition": f'attachment; filename="{filename}"',
+                                 "Content-Length": str(len(pdf_bytes))})
+    except Exception as e:
+        log.error("Newsletter generation failed: %s", e)
+        return jsonify({"error": "Failed to generate newsletter."}), 500
+
 
 @app.route("/run", methods=["POST"])
 @jwt_required()
