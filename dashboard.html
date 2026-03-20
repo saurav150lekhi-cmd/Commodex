@@ -576,6 +576,31 @@
       <span class="wl-price" id="wp-Natural Gas">—</span>
       <span class="wl-change flat" id="wc-Natural Gas">—</span>
     </div>
+    <div class="wl-item" onclick="openDetail('Corn')">
+      <span class="wl-name">CORN</span>
+      <span class="wl-price" id="wp-Corn">—</span>
+      <span class="wl-change flat" id="wc-Corn">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Wheat')">
+      <span class="wl-name">WHEAT</span>
+      <span class="wl-price" id="wp-Wheat">—</span>
+      <span class="wl-change flat" id="wc-Wheat">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Soybeans')">
+      <span class="wl-name">SOYBEANS</span>
+      <span class="wl-price" id="wp-Soybeans">—</span>
+      <span class="wl-change flat" id="wc-Soybeans">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Coffee')">
+      <span class="wl-name">COFFEE</span>
+      <span class="wl-price" id="wp-Coffee">—</span>
+      <span class="wl-change flat" id="wc-Coffee">—</span>
+    </div>
+    <div class="wl-item" onclick="openDetail('Sugar')">
+      <span class="wl-name">SUGAR</span>
+      <span class="wl-price" id="wp-Sugar">—</span>
+      <span class="wl-change flat" id="wc-Sugar">—</span>
+    </div>
   </div>
 
   <!-- BODY -->
@@ -594,6 +619,11 @@
         <button class="news-filter" onclick="setNewsFilter('Crude Oil',this)">Crude</button>
         <button class="news-filter" onclick="setNewsFilter('Copper',this)">Copper</button>
         <button class="news-filter" onclick="setNewsFilter('Natural Gas',this)">Gas</button>
+        <button class="news-filter" onclick="setNewsFilter('Corn',this)">Corn</button>
+        <button class="news-filter" onclick="setNewsFilter('Wheat',this)">Wheat</button>
+        <button class="news-filter" onclick="setNewsFilter('Soybeans',this)">Soy</button>
+        <button class="news-filter" onclick="setNewsFilter('Coffee',this)">Coffee</button>
+        <button class="news-filter" onclick="setNewsFilter('Sugar',this)">Sugar</button>
       </div>
       <div class="news-list" id="newsList">
         <div class="news-empty">Loading news...</div>
@@ -774,14 +804,19 @@
 // ══════════════════════════════════════════════════════════════════════════════
 const BULL_C = '#26a69a', BEAR_C = '#ef5350', WATCH_C = '#7b8fb5', AMBER = '#c8a84b';
 
-const COMMODITIES = ['Gold', 'Silver', 'Crude Oil', 'Copper', 'Natural Gas'];
+const COMMODITIES = ['Gold', 'Silver', 'Crude Oil', 'Copper', 'Natural Gas', 'Corn', 'Wheat', 'Soybeans', 'Coffee', 'Sugar'];
 
 const META = {
-  'Gold':        { short: 'GOLD',    ticker: 'GC=F',  exchange: 'COMEX' },
-  'Silver':      { short: 'SILVER',  ticker: 'SI=F',  exchange: 'COMEX' },
-  'Crude Oil':   { short: 'CRUDE',   ticker: 'CL=F',  exchange: 'NYMEX' },
-  'Copper':      { short: 'COPPER',  ticker: 'HG=F',  exchange: 'COMEX' },
-  'Natural Gas': { short: 'NAT GAS', ticker: 'NG=F',  exchange: 'NYMEX' },
+  'Gold':        { short: 'GOLD',     ticker: 'GC=F',  exchange: 'COMEX' },
+  'Silver':      { short: 'SILVER',   ticker: 'SI=F',  exchange: 'COMEX' },
+  'Crude Oil':   { short: 'CRUDE',    ticker: 'CL=F',  exchange: 'NYMEX' },
+  'Copper':      { short: 'COPPER',   ticker: 'HG=F',  exchange: 'COMEX' },
+  'Natural Gas': { short: 'NAT GAS',  ticker: 'NG=F',  exchange: 'NYMEX' },
+  'Corn':        { short: 'CORN',     ticker: 'ZC=F',  exchange: 'CBOT'  },
+  'Wheat':       { short: 'WHEAT',    ticker: 'ZW=F',  exchange: 'CBOT'  },
+  'Soybeans':    { short: 'SOYBEANS', ticker: 'ZS=F',  exchange: 'CBOT'  },
+  'Coffee':      { short: 'COFFEE',   ticker: 'KC=F',  exchange: 'ICE'   },
+  'Sugar':       { short: 'SUGAR',    ticker: 'SB=F',  exchange: 'ICE'   },
 };
 
 const CONF_PCT = { HIGH: 85, MEDIUM: 67, LOW: 44 };

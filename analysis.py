@@ -162,6 +162,26 @@ NEWS_SOURCES = [
     "https://www.mining.com/tag/copper/feed/",                     # Mining.com copper tag
     "https://www.fastmarkets.com/commodities/base-metals/copper/feed/", # Fastmarkets copper
     "https://www.cochilco.cl/blog/feed/",                          # Cochilco Chile copper stats
+    # ── Tier 11 — Agriculture (grains, softs) ─────────────────────────────────
+    "https://www.world-grain.com/rss/",                            # World Grain — wheat, corn, soy supply
+    "https://www.agweb.com/rss/news",                              # AgWeb — US farm & crop markets
+    "https://brownfieldagnews.com/feed/",                          # Brownfield Ag News — grains, soy
+    "https://www.farmprogress.com/rss/news",                       # Farm Progress — US crop conditions
+    "https://www.agriculture.com/rss/news",                        # Successful Farming — markets
+    "https://www.farmpolicynews.illinois.edu/feed/",               # Farm Policy News — USDA, policy
+    "https://www.fas.usda.gov/rss/",                               # USDA FAS — export data
+    "https://www.ers.usda.gov/rss/",                               # USDA ERS — supply/demand
+    "https://dailycoffeenews.com/feed/",                           # Daily Coffee News — ICE, Brazil
+    "https://perfectdailygrind.com/feed/",                         # Perfect Daily Grind — coffee trade
+    "https://www.worldcoffeeportal.com/feed",                      # World Coffee Portal — market data
+    "https://www.sugaronline.com/feed/",                           # Sugar Online — ICE #11
+    "https://www.icumsa.org/feed/",                                # ICUMSA — sugar standards & market
+    "https://www.profercy.com/feed/",                              # Profercy — fertilizer & sugar
+    "https://www.agi.it/economia/rss",                             # AGI Economia (Italy) — wheat/soft
+    "https://www.grains.org/feed/",                                # US Grains Council — corn/soy exports
+    "https://soyanews.info/feed/",                                  # SoyaNews — soybean market
+    "https://www.soybeansandcorn.com/rss.xml",                     # Soybeans & Corn — CBOT focus
+    "https://oilcrops.blogspot.com/feeds/posts/default",           # Oilcrops Blog — soy, palm, veg oils
 ]
 
 COMMODITIES = {
@@ -170,6 +190,11 @@ COMMODITIES = {
     "Crude Oil":   ["crude oil", "wti", "usoil", "us oil", "crudeoil", "brent", "west texas", "opec", "petroleum price", "oil price", "oil rises", "oil falls", "vlcc", "supertanker", "tanker", "cushing", "crude imports", "crude exports", "floating storage", "oil tanker", "strait of hormuz", "persian gulf oil", "brent crude", "wti crude", "opec+", "opec production", "oil inventory", "oil supply", "oil demand", "oil rig", "rig count", "shale oil", "permian", "bakken", "saudi aramco", "aramco", "russia oil", "iran oil", "venezuela oil", "oil sanctions", "spr", "strategic petroleum reserve", "refinery", "crack spread", "gasoline demand", "distillate", "diesel", "jet fuel", "contango", "backwardation oil"],
     "Copper":      ["copper price", "copper futures", "lme copper", "comex copper", "copper", "hg futures", "base metal", "industrial metal", "red metal", "copper demand", "copper supply", "copper output", "copper mine", "copper rally", "copper falls", "copper rises", "copper cathode", "copper inventories", "china pmi", "manufacturing pmi", "china manufacturing", "freeport mcmoran", "bhp copper", "antofagasta", "codelco", "chile copper", "copper smelter", "copper concentrate", "copper scrap", "dr copper", "copper warehouse", "copper stocks lme", "comex copper stocks"],
     "Natural Gas": ["natural gas", "natgas", "lng", "henry hub", "gas price", "natural gas price", "gas futures", "gas demand", "gas supply", "gas inventories", "gas storage", "nymex gas", "europe gas", "us gas", "gas rally", "gas falls", "ttf gas", "gas exports", "lng tanker", "lng carrier", "lng terminal", "lng exports", "lng imports", "sabine pass", "freeport lng", "ttf price", "nbp gas", "european gas storage", "norway gas", "gazprom", "russia gas", "calcasieu pass", "corpus christi lng", "cove point lng", "heating degree days", "hdd", "gas feedgas", "lng utilization", "pipeline flow", "winter gas", "summer gas", "gas withdrawal", "gas injection"],
+    "Corn":        ["corn price", "corn futures", "cbot corn", "zc futures", "corn rally", "corn falls", "corn rises", "corn", "maize", "maize price", "corn demand", "corn supply", "corn harvest", "corn crop", "corn output", "corn export", "corn import", "us corn", "iowa corn", "illinois corn", "brazil corn", "argentina corn", "china corn", "corn ethanol", "ethanol corn", "corn feed", "corn usda", "wasde corn", "crop progress corn", "corn planting", "corn yield", "corn acreage", "corn drought", "corn weather", "corn basis", "corn cob", "dent corn", "sweet corn market", "grain corn", "grains market", "usda corn", "feed grain", "corn flour", "cornmeal market"],
+    "Wheat":       ["wheat price", "wheat futures", "cbot wheat", "zw futures", "wheat rally", "wheat falls", "wheat rises", "wheat", "wheat demand", "wheat supply", "wheat harvest", "wheat crop", "wheat export", "wheat import", "us wheat", "russia wheat", "ukraine wheat", "australia wheat", "canada wheat", "eu wheat", "france wheat", "black sea wheat", "winter wheat", "spring wheat", "hard red wheat", "soft wheat", "durum wheat", "wheat flour", "bread wheat", "milling wheat", "wheat usda", "wasde wheat", "crop progress wheat", "wheat planting", "wheat yield", "wheat acreage", "wheat drought", "wheat weather", "wheat basis", "wheat stocks", "global wheat", "wheat shortage", "wheat surplus", "wheat geopolitics", "usda wheat"],
+    "Soybeans":    ["soybean price", "soybean futures", "cbot soybeans", "zs futures", "soy price", "soybeans rally", "soybeans fall", "soybeans", "soybean", "soy", "soybean demand", "soybean supply", "soybean harvest", "soybean crop", "soybean export", "soybean import", "us soybeans", "brazil soybeans", "argentina soybeans", "china soybeans", "soybean crush", "soy crush", "soymeal", "soy meal", "soybean oil", "soy oil", "vegetable oil", "palm oil soy", "soybean usda", "wasde soybeans", "crop progress soybeans", "soybean planting", "soybean yield", "soybean acreage", "soybean drought", "soybean weather", "soy basis", "soybean stocks", "global soy", "oilseed", "soy protein", "soybean fob", "paranagua soy", "santos soy", "soy meal export", "bdti soy"],
+    "Coffee":      ["coffee price", "coffee futures", "ice coffee", "kc futures", "arabica coffee", "robusta coffee", "coffee rally", "coffee falls", "coffee rises", "coffee", "coffee demand", "coffee supply", "coffee harvest", "coffee crop", "coffee export", "coffee import", "brazil coffee", "vietnam coffee", "colombia coffee", "ethiopia coffee", "indonesia coffee", "coffee weather", "coffee frost", "coffee drought", "coffee el nino", "coffee cherry", "green coffee", "roasted coffee", "coffee usda", "wasde coffee", "coffee production", "coffee consumption", "coffee stocks", "coffee deficit", "coffee surplus", "ice arabica", "liffe robusta", "coffee certified stocks", "coffee warehouse", "ny coffee", "london coffee", "coffee basis", "coffee differential", "coffee shipment"],
+    "Sugar":       ["sugar price", "sugar futures", "ice sugar", "sb futures", "raw sugar", "sugar rally", "sugar falls", "sugar rises", "sugar", "sugar demand", "sugar supply", "sugar harvest", "sugar crop", "sugar export", "sugar import", "brazil sugar", "india sugar", "thailand sugar", "eu sugar", "australia sugar", "sugar cane", "sugarcane", "beet sugar", "white sugar", "refined sugar", "sugar ethanol", "sugar production", "sugar consumption", "sugar stocks", "sugar deficit", "sugar surplus", "ice #11", "ice 11", "liffe sugar", "sugar certified stocks", "sugar warehouse", "ny sugar", "london sugar", "sugar basis", "sugar differential", "sugar shipment", "sugar unica", "unica report", "sugar usda", "wasde sugar", "sugar monsoon", "india monsoon sugar"],
 }
 
 GOOGLE_SEARCHES = {
@@ -220,6 +245,51 @@ GOOGLE_SEARCHES = {
         "natural gas site:hartenergy.com",
         "natural gas site:spglobal.com",
         "lng site:reuters.com",
+    ],
+    "Corn": [
+        "corn price site:bloomberg.com",
+        "corn futures site:ft.com",
+        "corn site:agweb.com",
+        "corn site:farmprogress.com",
+        "corn usda site:reuters.com",
+        "corn site:spglobal.com",
+        "maize site:argusmedia.com",
+    ],
+    "Wheat": [
+        "wheat price site:bloomberg.com",
+        "wheat futures site:ft.com",
+        "wheat site:agweb.com",
+        "wheat site:world-grain.com",
+        "wheat usda site:reuters.com",
+        "wheat site:spglobal.com",
+        "wheat site:argusmedia.com",
+    ],
+    "Soybeans": [
+        "soybean price site:bloomberg.com",
+        "soybean futures site:ft.com",
+        "soybeans site:agweb.com",
+        "soybean site:farmprogress.com",
+        "soybean usda site:reuters.com",
+        "soybean site:spglobal.com",
+        "soybean site:argusmedia.com",
+    ],
+    "Coffee": [
+        "coffee price site:bloomberg.com",
+        "coffee futures site:ft.com",
+        "arabica coffee site:reuters.com",
+        "coffee site:dailycoffeenews.com",
+        "coffee site:spglobal.com",
+        "coffee site:argusmedia.com",
+        "robusta coffee site:reuters.com",
+    ],
+    "Sugar": [
+        "sugar price site:bloomberg.com",
+        "sugar futures site:ft.com",
+        "sugar site:reuters.com",
+        "raw sugar site:spglobal.com",
+        "sugar site:argusmedia.com",
+        "sugar brazil site:reuters.com",
+        "sugar site:sugaronline.com",
     ],
 }
 
@@ -302,6 +372,11 @@ def fetch_cftc_data():
         "Crude Oil":   "067651",
         "Copper":      "085692",
         "Natural Gas": "023651",
+        "Corn":        "002602",  # CBOT Corn
+        "Wheat":       "001602",  # CBOT Wheat
+        "Soybeans":    "005602",  # CBOT Soybeans
+        "Coffee":      "083731",  # ICE Coffee C (Arabica)
+        "Sugar":       "080732",  # ICE Sugar No. 11
     }
     for commodity, code in commodity_codes.items():
         url = f"https://publicreporting.cftc.gov/resource/jun7-fc8e.json?cftc_contract_market_code={code}&$limit=1&$order=report_date_as_yyyy_mm_dd+DESC"
@@ -375,6 +450,11 @@ def fetch_live_prices():
         "Crude Oil":   "cl.f",
         "Copper":      "hg.f",
         "Natural Gas": "ng.f",
+        "Corn":        "zc.f",
+        "Wheat":       "zw.f",
+        "Soybeans":    "zs.f",
+        "Coffee":      "kc.f",
+        "Sugar":       "sb.f",
     }
     prices = {}
     for name, sym in symbols.items():
@@ -1092,12 +1172,100 @@ def fetch_treasury_yields():
     return result
 
 
+# ── USDA agricultural data (free, no key) ─────────────────────────────────────
+def fetch_usda_data():
+    """
+    Fetch USDA NASS QuickStats and FAS data for grain/soft commodities.
+    Uses public USDA APIs — no key required for basic stats.
+    Returns structured data for Corn, Wheat, Soybeans, Coffee, Sugar.
+    """
+    result = {}
+    # USDA NASS QuickStats public API (no key for aggregate stats)
+    NASS_BASE = "https://quickstats.nass.usda.gov/api/api_GET/?key=DEMO_KEY"
+
+    # Stooq-based nearby futures prices for ag commodities (backup price data)
+    ag_symbols = {
+        "Corn":     ("zc.f",  "USd/bu"),
+        "Wheat":    ("zw.f",  "USd/bu"),
+        "Soybeans": ("zs.f",  "USd/bu"),
+        "Coffee":   ("kc.f",  "USd/lb"),
+        "Sugar":    ("sb.f",  "USd/lb"),
+    }
+    for comm, (sym, unit) in ag_symbols.items():
+        try:
+            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                row   = lines[-1].split(",")
+                close = float(row[6])
+                open_ = float(row[3])
+                high  = float(row[4])
+                low   = float(row[5])
+                chg   = ((close - open_) / open_) * 100
+                result.setdefault(comm, {})["nearby_futures"] = {
+                    "price": close, "open": open_, "high": high, "low": low,
+                    "change_pct": round(chg, 2), "unit": unit
+                }
+        except Exception as e:
+            log.debug("USDA/Stooq price fetch failed for %s: %s", comm, e)
+
+    # USDA WASDE (monthly) crop summary — scrape FAS PSD online (no auth)
+    # Fetch latest corn, wheat, soy world production estimates from FAS
+    fas_commodities = {
+        "Corn":     "0440000",  # FAS commodity code
+        "Wheat":    "0410000",
+        "Soybeans": "2222000",
+    }
+    for comm, code in fas_commodities.items():
+        try:
+            url = (f"https://apps.fas.usda.gov/psdonline/api/psd/commodity/{code}"
+                   f"?commodityCode={code}&marketYear=2025&countryCode=00&reportId=1")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            if data:
+                world = next((d for d in data if d.get("countryCode") == "00"), None)
+                if world:
+                    result.setdefault(comm, {})["world_production"] = {
+                        "value": world.get("value"),
+                        "unit": "MMT",
+                        "market_year": "2025/26",
+                        "label": f"USDA World Production ({comm})"
+                    }
+        except Exception as e:
+            log.debug("USDA FAS fetch failed for %s: %s", comm, e)
+
+    # Brazil UNICA sugar/ethanol (free, no key) — for Sugar commodity
+    try:
+        url = "https://www.unica.com.br/feed/"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            text = r.read().decode("utf-8", errors="ignore")
+        result.setdefault("Sugar", {})["unica_available"] = "UNICA data feed active"
+    except:
+        pass
+
+    # ICO Coffee statistics (free public data)
+    try:
+        url = "https://icocoffee.org/feed/"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            text = r.read().decode("utf-8", errors="ignore")
+        result.setdefault("Coffee", {})["ico_feed"] = "ICO Coffee feed active"
+    except:
+        pass
+
+    return result
+
+
 # ── Build macro context string for Claude ─────────────────────────────────────
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
                         bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
                         ttf=None, entsog=None, lng_exports=None, gold_etf=None,
                         oil_prices=None, rig_count=None, tanker_rates=None, spr=None,
-                        silver_data=None, live_prices=None):
+                        silver_data=None, live_prices=None, usda_data=None):
     lines = []
 
     # LIVE PRICE — always first so Claude sees today's move immediately
@@ -1398,6 +1566,76 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
             lines.append(f"COMEX COPPER PRICE: {comex_copper['price']} {comex_copper['unit']}{chg}")
         elif comex_copper.get("value"):
             lines.append(f"COMEX COPPER WAREHOUSE STOCKS: {comex_copper['value']:,} {comex_copper['unit']}")
+
+    # ── AGRICULTURAL DATA ─────────────────────────────────────────────────────
+    AG_COMMS = ("Corn", "Wheat", "Soybeans", "Coffee", "Sugar")
+    if commodity_name in AG_COMMS and usda_data:
+        comm_data = usda_data.get(commodity_name, {})
+
+        # Nearby futures price from Stooq
+        if "nearby_futures" in comm_data:
+            f = comm_data["nearby_futures"]
+            direction = "UP" if f["change_pct"] > 0 else "DOWN"
+            lines.append(f"NEARBY FUTURES ({commodity_name}): {f['price']:.2f} {f['unit']} "
+                         f"| Open: {f['open']:.2f} | High: {f['high']:.2f} | Low: {f['low']:.2f} "
+                         f"| Change: {f['change_pct']:+.2f}% ({direction})")
+
+        # USDA World Production (grains)
+        if "world_production" in comm_data:
+            wp = comm_data["world_production"]
+            lines.append(f"USDA WORLD PRODUCTION: {wp['label']}: {wp['value']} {wp['unit']} ({wp['market_year']})")
+
+        # CFTC positioning for ag commodities
+        if cftc and commodity_name in cftc:
+            d = cftc[commodity_name]
+            lines.append(f"CFTC COT POSITIONING ({commodity_name}): Net {d['net_position']:+,} contracts — {d['positioning']}")
+
+        # PMI — demand signal for grains (China is world's largest buyer)
+        if pmi:
+            for key, d in pmi.items():
+                signal = "▲ EXPANSION" if d["signal"] == "EXPANSION" else "▼ CONTRACTION"
+                lines.append(f"  {d['label']}: {d['value']} — {signal} (China demand signal for agri)")
+
+        # Dollar index — agri commodities USD-denominated, inverse correlation
+        if fred and "dxy" in fred:
+            d = fred["dxy"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            lines.append(f"USD INDEX (DXY): {d['value']}{chg_str} — strong USD = headwind for agri commodity prices")
+
+        # Weather context (relevant for crop damage risk)
+        if weather:
+            for loc, w in weather.items():
+                if "forecast" in w:
+                    f7 = w["forecast"]
+                    lines.append(f"WEATHER ({loc}): Temp {f7.get('avg_temp_c', '?')}°C, "
+                                 f"precip {f7.get('total_precip_mm', '?')}mm/7d "
+                                 f"— crop weather context")
+
+        # Energy/fertilizer cost context for grains
+        if commodity_name in ("Corn", "Wheat", "Soybeans") and fred:
+            if "natgas_spot" in fred:
+                d = fred["natgas_spot"]
+                lines.append(f"NATURAL GAS (fertilizer cost driver): {d['value']} USD/mmBtu ({d['date']})")
+
+        # Brazil Real / USD (critical for coffee & sugar — Brazil is world #1 producer)
+        if commodity_name in ("Coffee", "Sugar") and fred:
+            if "cnyusd" in fred:
+                d = fred["cnyusd"]
+                lines.append(f"CNY/USD: {d['value']} — China coffee/sugar import demand indicator")
+
+        # Special coffee context
+        if commodity_name == "Coffee":
+            if comm_data.get("ico_feed"):
+                lines.append("ICO COFFEE DATA: Feed active — monitor certified stocks and differential")
+            lines.append("KEY COFFEE DRIVERS: Brazil crop size & frost risk, Vietnam robusta output, "
+                         "certified ICE stocks, USD/BRL exchange rate, global roaster demand")
+
+        # Special sugar context
+        if commodity_name == "Sugar":
+            if comm_data.get("unica_available"):
+                lines.append("UNICA BRAZIL: Data feed active — monitor crush pace, sugar/ethanol mix, cane availability")
+            lines.append("KEY SUGAR DRIVERS: Brazil crushing pace & ethanol parity, India output & export policy, "
+                         "Thailand production, crude oil price (ethanol competition), monsoon rains")
 
     return "\n".join(lines) if lines else "No external data available."
 
@@ -1764,6 +2002,7 @@ def run_analysis():
         spr           = fetch_spr_data()
         silver_data   = fetch_silver_data()
         live_prices   = fetch_live_prices()
+        usda_data     = fetch_usda_data()
         log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, GoldETF=%d, LME copper=%s, BDI=%s",
                  len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog), len(gold_etf),
                  lme_copper["value"] if lme_copper else "unavailable",
@@ -1788,7 +2027,7 @@ def run_analysis():
                                                 gold_etf=gold_etf, oil_prices=oil_prices,
                                                 rig_count=rig_count, tanker_rates=tanker_rates,
                                                 spr=spr, silver_data=silver_data,
-                                                live_prices=live_prices)
+                                                live_prices=live_prices, usda_data=usda_data)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
@@ -1833,7 +2072,8 @@ def run_analysis():
                 macro_snapshot[c] = build_macro_snapshot(
                     c, fred, cftc, eia, bdi, lme_copper,
                     gold_etf, silver_data, oil_prices, rig_count,
-                    tanker_rates, spr, pmi, ttf, weather, lng_exports)
+                    tanker_rates, spr, pmi, ttf, weather, lng_exports,
+                    usda_data=usda_data)
             save_macro_cache(macro_snapshot)
         except Exception as e:
             log.warning("Macro snapshot save failed: %s", e)
@@ -1912,7 +2152,8 @@ def _chg(val, decimals=2, suffix=""):
 
 def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
                          gold_etf, silver_data, oil_prices, rig_count,
-                         tanker_rates, spr, pmi, ttf, weather, lng_exports):
+                         tanker_rates, spr, pmi, ttf, weather, lng_exports,
+                         usda_data=None):
     """Build a structured key-data snapshot for the frontend Key Data Panel."""
     rows = []  # each row: {label, value, change, signal, signal_color}
     BULL = "#22c55e"; BEAR = "#ef4444"; NEUT = "#fbbf24"; MUTED = "#5d6478"
@@ -2065,6 +2306,73 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
         if rig_count and "us_total" in rig_count:
             row("Total US Rig Count", str(rig_count["us_total"]["value"]), None, "BAKER HUGHES")
 
+    # ── AGRICULTURAL COMMODITIES ──────────────────────────────────────────────
+    elif commodity in ("Corn", "Wheat", "Soybeans", "Coffee", "Sugar"):
+        comm_data = (usda_data or {}).get(commodity, {})
+
+        # Nearby futures price
+        if "nearby_futures" in comm_data:
+            f = comm_data["nearby_futures"]
+            chg_pct = f.get("change_pct")
+            sc = BULL if (chg_pct or 0) > 0 else BEAR
+            row("Nearby Futures", f"{f['price']:.2f} {f['unit']}",
+                f"{chg_pct:+.2f}%" if chg_pct is not None else None, None, sc)
+            row("Session Range", f"{f['low']:.2f} – {f['high']:.2f} {f['unit']}")
+
+        # USDA world production (grains)
+        if "world_production" in comm_data:
+            wp = comm_data["world_production"]
+            row("USDA World Output", f"{wp['value']} {wp['unit']}", None, wp["market_year"])
+
+        # CFTC positioning
+        if cftc and commodity in cftc:
+            d = cftc[commodity]
+            sc = BULL if d["net_position"] > 0 else BEAR
+            row("CFTC Net Position", f"{d['net_position']:+,}", None, d["positioning"], sc)
+
+        # DXY (dollar inverse signal for all ag)
+        if fred and "dxy" in fred:
+            d = fred["dxy"]
+            sc = BEAR if (d.get("change") or 0) > 0 else BULL
+            row("DXY (US Dollar)", _fmt(d["value"], 2), _chg(d.get("change"), 2), None, sc)
+
+        # VIX — risk-off hurts commodity demand
+        if fred and "vix" in fred:
+            d = fred["vix"]
+            sc = BEAR if d["value"] > 25 else NEUT if d["value"] > 18 else BULL
+            row("VIX Volatility", _fmt(d["value"], 1), _chg(d.get("change"), 2),
+                "FEAR" if d["value"] > 25 else "CALM", sc)
+
+        # PMI — China demand indicator (critical for grains)
+        if pmi and commodity in ("Corn", "Wheat", "Soybeans"):
+            for key, d in pmi.items():
+                sc = BULL if d["signal"] == "EXPANSION" else BEAR
+                row(d["label"][:22], _fmt(d["value"], 1), None, d["signal"], sc)
+
+        # Nat gas = fertilizer cost (grains)
+        if commodity in ("Corn", "Wheat", "Soybeans") and fred and "natgas_spot" in fred:
+            d = fred["natgas_spot"]
+            sc = BEAR if (d.get("change") or 0) > 0 else BULL
+            row("Nat Gas (Fert. Cost)", f"{d['value']}", _chg(d.get("change"), 3), None, sc)
+
+        # BDI — freight cost for crop exports
+        if bdi:
+            chg_str = f"{bdi['change']:+.2f}%" if bdi.get("change") is not None else None
+            row("Baltic Dry Index", str(bdi["value"]), chg_str, "FREIGHT COST")
+
+        # Special: Coffee certified stocks signal
+        if commodity == "Coffee":
+            row("Key Driver", "Brazil crop & frost risk", None, "WATCH")
+            row("Spread", "Arabica vs Robusta", None, "ICE/LIFFE")
+
+        # Special: Sugar ethanol parity
+        if commodity == "Sugar":
+            row("Key Driver", "Brazil crush & ethanol mix", None, "UNICA")
+            if fred and "wti_spot" in fred:
+                d = fred["wti_spot"]
+                sc = BULL if (d.get("change") or 0) > 0 else BEAR
+                row("WTI (Ethanol Parity)", f"${_fmt(d['value'], 2)}", _chg(d.get("change"), 2), None, sc)
+
     return rows
 
 
@@ -2109,6 +2417,17 @@ _CALENDAR_EVENT_FILTERS = [
     ("Inflation",          "EUR", "High",   ["Gold", "Silver"]),
     ("Trade Balance",      "CNY", "Medium", ["Copper", "Crude Oil"]),
     ("Industrial Production","USD","Medium",["Copper", "Crude Oil"]),
+    # Agricultural events
+    ("USDA",               "USD", "High",   ["Corn", "Wheat", "Soybeans", "Coffee", "Sugar"]),
+    ("Crop",               "USD", "Medium", ["Corn", "Wheat", "Soybeans"]),
+    ("Grain",              "USD", "Medium", ["Corn", "Wheat", "Soybeans"]),
+    ("Agricultural",       "USD", "Medium", ["Corn", "Wheat", "Soybeans", "Coffee", "Sugar"]),
+    ("WASDE",              "USD", "High",   ["Corn", "Wheat", "Soybeans"]),
+    ("Coffee",             "",    "Medium", ["Coffee"]),
+    ("Sugar",              "",    "Medium", ["Sugar"]),
+    ("Corn",               "USD", "Medium", ["Corn"]),
+    ("Wheat",              "USD", "Medium", ["Wheat"]),
+    ("Soybean",            "USD", "Medium", ["Soybeans"]),
 ]
 
 _IMPACT_ORDER = {"High": 3, "Medium": 2, "Low": 1, "Holiday": 0}

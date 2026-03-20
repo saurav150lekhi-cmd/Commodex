@@ -88,6 +88,11 @@ _COMMODITY_COLORS = {
     "Crude Oil":   "#b85c38",
     "Copper":      "#b87040",
     "Natural Gas": "#5a9e8f",
+    "Corn":        "#e8c84a",
+    "Wheat":       "#d4a843",
+    "Soybeans":    "#8db56e",
+    "Coffee":      "#8b5e3c",
+    "Sugar":       "#d4748a",
 }
 
 
