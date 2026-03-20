@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 72" fill="none">
+
+  <!-- ICON MARK (62x62, vertically centered) -->
+  <rect x="0" y="5" width="62" height="62" rx="10" fill="#131828"/>
+  <rect x="0" y="5" width="62" height="62" rx="10" stroke="#c8a870" stroke-width="1.2"/>
+  <!-- Gold top accent strip -->
+  <rect x="0" y="5" width="62" height="5" rx="2.5" fill="#c8a870"/>
+
+  <!-- Candle wicks (dark) -->
+  <line x1="17" y1="20" x2="17" y2="55" stroke="#2d3555" stroke-width="2.5"/>
+  <line x1="31" y1="17" x2="31" y2="51" stroke="#2d3555" stroke-width="2.5"/>
+  <line x1="45" y1="14" x2="45" y2="47" stroke="#2d3555" stroke-width="2.5"/>
+
+  <!-- Candle 1: bearish (red), lower position -->
+  <rect x="12" y="28" width="10" height="18" rx="1.5" fill="#ef5350"/>
+  <!-- Candle 2: bullish (teal), rising -->
+  <rect x="26" y="24" width="10" height="15" rx="1.5" fill="#26a69a"/>
+  <!-- Candle 3: bullish (teal), highest -->
+  <rect x="40" y="19" width="10" height="15" rx="1.5" fill="#26a69a"/>
+
+  <!-- Gold trend line through candle midpoints -->
+  <polyline points="17,37 31,31.5 45,26.5" stroke="#c8a870" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Trend dots -->
+  <circle cx="17" cy="37"   r="2.5" fill="#c8a870"/>
+  <circle cx="31" cy="31.5" r="2.5" fill="#c8a870"/>
+  <circle cx="45" cy="26.5" r="2.5" fill="#c8a870"/>
+
+  <!-- WORDMARK -->
+  <text x="78" y="41"
+        font-family="'Roboto', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="800" font-size="26" letter-spacing="4"
+        fill="#d1d4dc">COMMO<tspan fill="#c8a870">DEX</tspan></text>
+
+  <!-- Tagline -->
+  <text x="79" y="55"
+        font-family="'Roboto', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="400" font-size="8" letter-spacing="3"
+        fill="#5d6478">AI COMMODITY RESEARCH</text>
+
+</svg>

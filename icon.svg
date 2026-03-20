@@ -1,7 +1,43 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+
+  <!-- Background -->
   <rect width="512" height="512" fill="#0c0e14"/>
-  <rect x="40" y="40" width="432" height="432" fill="#131828"/>
-  <rect x="40" y="40" width="4" height="432" fill="#26a69a"/>
-  <text x="256" y="320" font-family="monospace" font-size="220" font-weight="900" fill="#26a69a" text-anchor="middle">C</text>
-  <text x="256" y="420" font-family="monospace" font-size="36" font-weight="700" fill="#5d6478" text-anchor="middle" letter-spacing="12">OMMDEX</text>
+
+  <!-- Card panel -->
+  <rect x="32" y="32" width="448" height="448" rx="32" fill="#131828"
+        stroke="#c8a870" stroke-width="4"/>
+
+  <!-- Gold top strip -->
+  <rect x="32" y="32" width="448" height="18" rx="9" fill="#c8a870"/>
+
+  <!-- Candle wicks -->
+  <line x1="152" y1="148" x2="152" y2="348" stroke="#2d3555" stroke-width="6"/>
+  <line x1="256" y1="120" x2="256" y2="316" stroke="#2d3555" stroke-width="6"/>
+  <line x1="360" y1="92"  x2="360" y2="284" stroke="#2d3555" stroke-width="6"/>
+
+  <!-- Candle 1: bearish (red) -->
+  <rect x="124" y="210" width="56" height="80" rx="5" fill="#ef5350"/>
+
+  <!-- Candle 2: bullish (teal) -->
+  <rect x="228" y="174" width="56" height="76" rx="5" fill="#26a69a"/>
+
+  <!-- Candle 3: bullish strong (teal) -->
+  <rect x="332" y="134" width="56" height="80" rx="5" fill="#26a69a"/>
+
+  <!-- Gold trend line through midpoints -->
+  <polyline points="152,250 256,212 360,174"
+            stroke="#c8a870" stroke-width="10"
+            stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Trend dots -->
+  <circle cx="152" cy="250" r="10" fill="#c8a870"/>
+  <circle cx="256" cy="212" r="10" fill="#c8a870"/>
+  <circle cx="360" cy="174" r="10" fill="#c8a870"/>
+
+  <!-- COMMODEX text at bottom -->
+  <text x="256" y="420"
+        font-family="'Roboto', 'Helvetica Neue', Arial, sans-serif"
+        font-weight="800" font-size="32" letter-spacing="12"
+        fill="#5d6478" text-anchor="middle">COMMODEX</text>
+
 </svg>
