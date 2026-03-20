@@ -1239,7 +1239,7 @@ function buildCard(name) {
         <span class="risk-lbl">RISK</span>
         <span class="risk-val" style="color:${risk.color}">${risk.label}</span>
         <span class="mid-dot">·</span>
-        <span class="sig-badge" style="color:${badge.color};background:${sbg};border:1px solid ${sbc}">${badge.text}</span>
+        <span class="sig-badge${cls==='bull'?' badge-bull':cls==='bear'?' badge-bear':''}" style="color:${badge.color};background:${sbg};border:1px solid ${sbc}">${badge.text}</span>
       </div>
     </div>
     <div class="dcard-instrument">
