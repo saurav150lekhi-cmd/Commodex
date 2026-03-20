@@ -514,6 +514,14 @@
       <button class="auth-btn" type="submit" id="resetBtn">Reset password →</button>
       <div id="resetMsg" class="auth-msg"></div>
     </form>
+
+    <form class="auth-form" id="verifyForm" onsubmit="doResendVerify(event)">
+      <p style="font-size:11px;color:var(--muted);line-height:1.6;margin:0 0 16px">Your email address hasn't been verified yet. Enter your email below and we'll send a new verification link.</p>
+      <div><label class="auth-label">Email</label><input class="auth-input" type="email" id="verifyEmail" placeholder="you@example.com" required></div>
+      <button class="auth-btn" type="submit" id="verifyBtn">Resend verification →</button>
+      <div id="verifyMsg" class="auth-msg"></div>
+      <div class="auth-switch"><a onclick="showForm('login')">← Back to sign in</a></div>
+    </form>
   </div>
 </div>
 
@@ -956,7 +964,7 @@ async function downloadNewsletter() {
 function showForm(name) {
   document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
   document.getElementById(name + 'Form').classList.add('active');
-  const t = { login: 'Sign in', register: 'Create account', forgot: 'Reset password', reset: 'New password' };
+  const t = { login: 'Sign in', register: 'Create account', forgot: 'Reset password', reset: 'New password', verify: 'Verify email' };
   document.getElementById('authTitle').textContent = t[name] || 'Sign in';
 }
 function setMsg(id, text, type) {
@@ -977,7 +985,14 @@ async function doLogin(e) {
       accessToken = data.access_token;
       localStorage.setItem('cmdx_token', accessToken);
       if (data.refresh_token) localStorage.setItem('cmdx_refresh', data.refresh_token);
-      enterTerminal();
+      if (data.email_verified === false) {
+        // Pre-fill email in verify form and redirect there
+        document.getElementById('verifyEmail').value = document.getElementById('loginEmail').value.trim();
+        showForm('verify');
+        setMsg('verifyMsg', 'Please verify your email before accessing the terminal.', 'error');
+      } else {
+        enterTerminal();
+      }
     } else { setMsg('loginMsg', data.error || 'Login failed.', 'error'); }
   } catch { setMsg('loginMsg', 'Network error.', 'error'); }
   btn.disabled = false; btn.textContent = 'Sign in →';
@@ -1006,6 +1021,18 @@ async function doForgot(e) {
     setMsg('forgotMsg', data.message || 'Reset link sent.', 'success');
   } catch { setMsg('forgotMsg', 'Network error.', 'error'); }
   btn.disabled = false; btn.textContent = 'Send reset link →';
+}
+async function doResendVerify(e) {
+  e.preventDefault();
+  const btn = document.getElementById('verifyBtn');
+  btn.disabled = true; btn.textContent = 'Sending...';
+  try {
+    const res = await fetch('/auth/resend-verification', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: document.getElementById('verifyEmail').value.trim() }) });
+    const data = await res.json();
+    setMsg('verifyMsg', data.message || 'Verification email sent.', 'success');
+  } catch { setMsg('verifyMsg', 'Network error.', 'error'); }
+  btn.disabled = false; btn.textContent = 'Resend verification →';
 }
 async function doReset(e) {
   e.preventDefault();

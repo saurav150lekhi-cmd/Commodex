@@ -53,19 +53,18 @@ def verify_email(token):
 
 
 @auth_bp.route("/resend-verification", methods=["POST"])
-@jwt_required()
 def resend_verification():
-    user_id = get_jwt_identity()
-    user    = User.query.get(int(user_id))
-    if not user:
-        return _error("User not found.", 404)
-    if user.email_verified:
-        return jsonify({"message": "Email already verified."}), 200
-    if not user.verification_token:
-        user.verification_token = secrets.token_urlsafe(32)
-        db.session.commit()
-    send_verification_email(user.email, user.verification_token)
-    return jsonify({"message": "Verification email sent."}), 200
+    """Public endpoint — takes email, resends verification if account exists and is unverified."""
+    data  = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    # Always return 200 to avoid enumeration
+    user = User.query.filter_by(email=email, is_active=True).first()
+    if user and not user.email_verified:
+        if not user.verification_token:
+            user.verification_token = secrets.token_urlsafe(32)
+            db.session.commit()
+        send_verification_email(user.email, user.verification_token)
+    return jsonify({"message": "If that email is registered and unverified, a new link has been sent."}), 200
 
 
 @auth_bp.route("/login", methods=["POST"])
