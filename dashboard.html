@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Commodex" />
+<meta name="theme-color" content="#0c0e14" />
 <title>Commodex — Terminal</title>
+<link rel="manifest" href="/manifest.json" />
+<link rel="apple-touch-icon" href="/icon.svg" />
+<link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800;900&family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet" />
@@ -355,6 +363,93 @@
   .notif-item:hover { background:rgba(200,168,112,0.04); }
   .notif-item.unread { border-left:2px solid #ef4444; }
   .notif-time { font-size:8px; color:var(--muted); margin-top:2px; }
+
+  /* ── 6-MONTH CALENDAR GRID ─────────────────────────────────────────────── */
+  .cal-tabs { display:flex; gap:0; margin-bottom:20px; border-bottom:1px solid var(--border); }
+  .cal-tab { font-size:9px; font-weight:800; letter-spacing:0.14em; padding:8px 16px; cursor:pointer; color:var(--muted); border-bottom:2px solid transparent; margin-bottom:-1px; transition:color 0.15s,border-color 0.15s; background:none; border-top:none; border-left:none; border-right:none; font-family:var(--mono); }
+  .cal-tab.active { color:var(--gold); border-bottom-color:var(--gold); }
+  .cal-tab-pane { display:none; }
+  .cal-tab-pane.active { display:block; }
+  .sched-month { margin-bottom:32px; }
+  .sched-month-hdr { font-size:13px; font-weight:800; letter-spacing:0.1em; color:var(--fg); margin-bottom:12px; padding-bottom:8px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .sched-month-hdr span { font-size:9px; color:var(--muted); font-weight:400; }
+  .sched-day { display:flex; align-items:flex-start; gap:14px; padding:8px 0; border-bottom:1px solid rgba(30,35,54,0.4); }
+  .sched-day:last-child { border-bottom:none; }
+  .sched-date-col { flex-shrink:0; width:44px; text-align:center; }
+  .sched-day-num { font-size:18px; font-weight:800; color:var(--fg); line-height:1; }
+  .sched-day-name { font-size:8px; color:var(--muted); letter-spacing:0.1em; margin-top:1px; }
+  .sched-events-col { flex:1; }
+  .sched-event { margin-bottom:6px; padding:7px 10px; border-left:2px solid var(--border); background:rgba(13,12,10,0.4); }
+  .sched-event:last-child { margin-bottom:0; }
+  .sched-event.high { border-left-color:#ef4444; }
+  .sched-event.medium { border-left-color:#fbbf24; }
+  .sched-event.low { border-left-color:rgba(93,100,120,0.4); }
+  .sched-event-name { font-size:10px; color:var(--fg); letter-spacing:0.05em; margin-bottom:4px; }
+  .sched-event-note { font-size:9px; color:var(--muted); letter-spacing:0.04em; margin-bottom:5px; line-height:1.5; display:none; }
+  .sched-event:hover .sched-event-note { display:block; }
+  .sched-comm-tags { display:flex; flex-wrap:wrap; gap:3px; }
+  .sched-comm-tag { font-size:7px; letter-spacing:0.1em; padding:1px 5px; border:1px solid; border-radius:1px; }
+  .sched-comm-tag.gold { color:#c8a870; border-color:rgba(200,168,112,0.3); }
+  .sched-comm-tag.silver { color:#8faabf; border-color:rgba(143,170,191,0.3); }
+  .sched-comm-tag.oil { color:#b85c38; border-color:rgba(184,92,56,0.3); }
+  .sched-comm-tag.copper { color:#b87040; border-color:rgba(184,112,64,0.3); }
+  .sched-comm-tag.gas { color:#5a9e8f; border-color:rgba(90,158,143,0.3); }
+  .sched-impact-badge { font-size:7px; font-weight:800; letter-spacing:0.1em; padding:1px 5px; border:1px solid; margin-left:auto; flex-shrink:0; align-self:flex-start; }
+  .sched-impact-badge.high { color:#ef4444; border-color:rgba(239,68,68,0.3); }
+  .sched-impact-badge.medium { color:#fbbf24; border-color:rgba(251,191,36,0.3); }
+  .sched-impact-badge.low { color:var(--muted); border-color:var(--border); }
+
+  /* ── PWA INSTALL PROMPT ─────────────────────────────────────────────────── */
+  #pwa-install-banner {
+    display:none; position:fixed; bottom:0; left:0; right:0; z-index:500;
+    background:#131828; border-top:1px solid var(--border);
+    padding:12px 16px; align-items:center; justify-content:space-between; gap:12px;
+  }
+  #pwa-install-banner.show { display:flex; }
+  .pwa-install-text { font-size:10px; color:var(--text-dim); letter-spacing:0.05em; }
+  .pwa-install-text strong { color:var(--gold); }
+  .pwa-install-actions { display:flex; gap:8px; flex-shrink:0; }
+  .pwa-btn { font-family:var(--mono); font-size:9px; font-weight:700; letter-spacing:0.1em; padding:6px 14px; cursor:pointer; border:none; }
+  .pwa-btn-primary { background:var(--bull); color:#000; }
+  .pwa-btn-dismiss { background:transparent; color:var(--muted); border:1px solid var(--border) !important; border:none; }
+
+  /* ── MOBILE RESPONSIVE ──────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    html, body { overflow: auto; }
+    body { font-size: 11px; }
+    #terminal { height: 100dvh; }
+    #topbar { padding: 0 10px; height: 40px; }
+    .tb-markets { display: none; }
+    #nextEventBlock { display: none; }
+    .tb-update-block { display: none; }
+    .tb-sep { display: none; }
+    .tb-name { font-size: 12px; }
+    #watchlist { padding: 0 8px; height: 28px; }
+    .wl-label { display: none; }
+    .wl-item { padding: 0 8px; }
+    #body { flex-direction: column; overflow: auto; }
+    #news-sidebar { display: none; }
+    #main { overflow-y: auto; }
+    #grid-header { padding: 8px 12px; }
+    #cards-area { grid-template-columns: 1fr; padding: 10px; gap: 8px; }
+    .dcard-why { padding: 8px 10px; }
+    .why-txt { font-size: 10px; }
+    #dp-body { grid-template-columns: 1fr; }
+    .dp-col-left { border-right: none; border-bottom: 1px solid var(--border); padding: 16px; }
+    .dp-col { padding: 16px; }
+    .dp-topbar { padding: 8px 12px; flex-wrap: wrap; gap: 8px; }
+    .dp-name { font-size: 16px; }
+    .dp-bias-val { font-size: 20px; }
+    .dp-price { font-size: 18px; }
+    #calendar-view { padding: 14px; }
+    .sched-month-hdr { font-size: 12px; }
+    .profile-panel { width: 100%; right: 0; left: 0; border-radius: 0; }
+    #pwa-install-banner { padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  }
+  @media (max-width: 480px) {
+    .auth-box { padding: 24px; }
+    .dp-topbar { flex-direction: column; align-items: flex-start; }
+  }
 </style>
 </head>
 <body>
@@ -598,7 +693,7 @@
 
       <!-- CALENDAR VIEW -->
       <div id="calendar-view" style="display:none;padding:24px;overflow-y:auto;flex:1">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
           <div>
             <div style="font-size:11px;font-weight:800;letter-spacing:0.15em;color:var(--gold)">ECONOMIC CALENDAR</div>
             <div style="font-size:9px;color:var(--muted);margin-top:4px;letter-spacing:0.1em">HIGH IMPACT EVENTS · COMMODITY RELEVANCE</div>
@@ -611,11 +706,26 @@
           <span id="cal-alert-text"></span>
         </div>
 
-        <div style="font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);margin-bottom:12px">UPCOMING EVENTS</div>
-        <div id="cal-upcoming"></div>
+        <!-- Calendar tabs -->
+        <div class="cal-tabs">
+          <button class="cal-tab active" onclick="switchCalTab('live', this)">LIVE EVENTS</button>
+          <button class="cal-tab" onclick="switchCalTab('scheduled', this)">6-MONTH CALENDAR</button>
+        </div>
 
-        <div style="font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);margin-top:28px;margin-bottom:12px">PAST EVENTS</div>
-        <div id="cal-past"></div>
+        <!-- Live Events Tab -->
+        <div id="cal-pane-live" class="cal-tab-pane active">
+          <div style="font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);margin-bottom:12px">UPCOMING EVENTS</div>
+          <div id="cal-upcoming"></div>
+          <div style="font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);margin-top:28px;margin-bottom:12px">PAST EVENTS</div>
+          <div id="cal-past"></div>
+        </div>
+
+        <!-- 6-Month Scheduled Calendar Tab -->
+        <div id="cal-pane-scheduled" class="cal-tab-pane">
+          <div id="cal-scheduled-container">
+            <div style="padding:24px;text-align:center;font-size:10px;color:var(--muted)">Loading scheduled events...</div>
+          </div>
+        </div>
       </div>
 
       <!-- NOTIFICATION DROPDOWN -->
@@ -630,6 +740,15 @@
     </div><!-- #main -->
   </div><!-- #body -->
 </div><!-- #terminal -->
+
+<!-- PWA INSTALL BANNER -->
+<div id="pwa-install-banner">
+  <div class="pwa-install-text"><strong>INSTALL APP</strong> · Add Commodex to your home screen for quick access</div>
+  <div class="pwa-install-actions">
+    <button class="pwa-btn pwa-btn-primary" onclick="pwaTriggerInstall()">INSTALL</button>
+    <button class="pwa-btn pwa-btn-dismiss" onclick="pwaDismiss()">DISMISS</button>
+  </div>
+</div>
 
 <!-- PROFILE PANEL -->
 <div class="profile-panel" id="profilePanel">
@@ -1255,8 +1374,10 @@ async function loadProfile() {
     const res = await fetch('/auth/me', { headers: authH() });
     if (!res.ok) return;
     const user = await res.json();
-    document.getElementById('ppEmail').textContent = user.email;
-    document.getElementById('userBtn').textContent = user.email.split('@')[0].toUpperCase().substring(0, 8);
+    const firstName = user.email.split('@')[0].split('.')[0].split('_')[0];
+    const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
+    document.getElementById('ppEmail').textContent = displayName;
+    document.getElementById('userBtn').textContent = displayName.toUpperCase().substring(0, 10);
   } catch {}
   try {
     const res = await fetch('/auth/alerts', { headers: authH() });
@@ -1543,6 +1664,154 @@ document.addEventListener('click', (e) => {
 
 // Init on load
 renderBell();
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CALENDAR TABS & 6-MONTH SCHEDULED CALENDAR
+// ══════════════════════════════════════════════════════════════════════════════
+function switchCalTab(tab, btn) {
+  document.querySelectorAll('.cal-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.cal-tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('cal-pane-' + tab).classList.add('active');
+  if (tab === 'scheduled') loadScheduledCalendar();
+}
+
+let scheduledLoaded = false;
+async function loadScheduledCalendar() {
+  if (scheduledLoaded) return;
+  const container = document.getElementById('cal-scheduled-container');
+  try {
+    const res = await fetch('/calendar/scheduled', { headers: authH() });
+    if (!res.ok) throw new Error('Failed');
+    const data = await res.json();
+    renderScheduledCalendar(data.events);
+    scheduledLoaded = true;
+  } catch {
+    container.innerHTML = '<div style="padding:20px;font-size:10px;color:var(--muted)">Could not load scheduled events. Please try again.</div>';
+  }
+}
+
+const COMM_TAG_CLASS = {
+  'Gold': 'gold', 'Silver': 'silver', 'Crude Oil': 'oil',
+  'Copper': 'copper', 'Natural Gas': 'gas'
+};
+const COMM_TAG_SHORT = {
+  'Gold': 'GOLD', 'Silver': 'SILVER', 'Crude Oil': 'OIL',
+  'Copper': 'COPPER', 'Natural Gas': 'GAS'
+};
+const DAY_NAMES = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MONTH_NAMES = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+
+function renderScheduledCalendar(events) {
+  const container = document.getElementById('cal-scheduled-container');
+  if (!events || !events.length) {
+    container.innerHTML = '<div style="padding:20px;font-size:10px;color:var(--muted)">No scheduled events found.</div>';
+    return;
+  }
+
+  // Group events by month
+  const byMonth = {};
+  events.forEach(e => {
+    const [y, m] = e.date.split('-').map(Number);
+    const key = `${y}-${String(m).padStart(2, '0')}`;
+    if (!byMonth[key]) byMonth[key] = { year: y, month: m, days: {} };
+    const day = parseInt(e.date.split('-')[2]);
+    if (!byMonth[key].days[day]) byMonth[key].days[day] = [];
+    byMonth[key].days[day].push(e);
+  });
+
+  let html = '';
+  Object.keys(byMonth).sort().forEach(monthKey => {
+    const { year, month, days } = byMonth[monthKey];
+    const eventCount = Object.values(days).reduce((s, arr) => s + arr.length, 0);
+    html += `<div class="sched-month">
+      <div class="sched-month-hdr">
+        ${MONTH_NAMES[month - 1]} ${year}
+        <span>${eventCount} EVENT${eventCount !== 1 ? 'S' : ''}</span>
+      </div>`;
+
+    Object.keys(days).sort((a, b) => a - b).forEach(dayNum => {
+      const date = new Date(year, month - 1, parseInt(dayNum));
+      const dayName = DAY_NAMES[date.getDay()];
+      const eventsForDay = days[dayNum];
+
+      html += `<div class="sched-day">
+        <div class="sched-date-col">
+          <div class="sched-day-num">${dayNum}</div>
+          <div class="sched-day-name">${dayName}</div>
+        </div>
+        <div class="sched-events-col">`;
+
+      eventsForDay.forEach(ev => {
+        const impCls = (ev.impact || 'LOW').toLowerCase();
+        const tags = (ev.commodities || []).map(c =>
+          `<span class="sched-comm-tag ${COMM_TAG_CLASS[c] || ''}">${COMM_TAG_SHORT[c] || c}</span>`
+        ).join('');
+        html += `<div class="sched-event ${impCls}">
+          <div style="display:flex;align-items:flex-start;gap:8px">
+            <div style="flex:1">
+              <div class="sched-event-name">${ev.title}</div>
+              ${ev.note ? `<div class="sched-event-note">${ev.note}</div>` : ''}
+              <div class="sched-comm-tags">${tags}</div>
+            </div>
+            <span class="sched-impact-badge ${impCls}">${ev.impact || 'LOW'}</span>
+          </div>
+        </div>`;
+      });
+
+      html += `</div></div>`;
+    });
+
+    html += `</div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+// PWA — Service Worker + Install Prompt
+// ══════════════════════════════════════════════════════════════════════════════
+let pwaInstallPrompt = null;
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  pwaInstallPrompt = e;
+  // Only show banner if not previously dismissed
+  if (!localStorage.getItem('pwa_dismissed')) {
+    const banner = document.getElementById('pwa-install-banner');
+    if (banner) banner.classList.add('show');
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  pwaInstallPrompt = null;
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) banner.classList.remove('show');
+});
+
+async function pwaTriggerInstall() {
+  const banner = document.getElementById('pwa-install-banner');
+  if (!pwaInstallPrompt) return;
+  pwaInstallPrompt.prompt();
+  const { outcome } = await pwaInstallPrompt.userChoice;
+  pwaInstallPrompt = null;
+  if (banner) banner.classList.remove('show');
+}
+
+function pwaDismiss() {
+  localStorage.setItem('pwa_dismissed', '1');
+  const banner = document.getElementById('pwa-install-banner');
+  if (banner) banner.classList.remove('show');
+}
+
+// Register service worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js', { scope: '/' })
+      .then(reg => console.log('[SW] Registered', reg.scope))
+      .catch(err => console.log('[SW] Failed', err));
+  });
+}
 
 (async function init() {
   const params = new URLSearchParams(window.location.search);

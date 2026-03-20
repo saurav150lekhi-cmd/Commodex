@@ -2704,6 +2704,214 @@ def index():
 def admin_panel():
     return send_from_directory(".", "admin.html")
 
+
+# ── PWA static files ──────────────────────────────────────────────────────────
+@app.route("/manifest.json")
+def pwa_manifest():
+    from flask import Response
+    return send_from_directory(".", "manifest.json", mimetype="application/manifest+json")
+
+
+@app.route("/sw.js")
+def pwa_sw():
+    from flask import Response
+    resp = send_from_directory(".", "sw.js", mimetype="application/javascript")
+    resp.headers["Service-Worker-Allowed"] = "/"
+    resp.headers["Cache-Control"] = "no-cache"
+    return resp
+
+
+@app.route("/offline")
+def pwa_offline():
+    return send_from_directory(".", "offline.html")
+
+
+@app.route("/icon.svg")
+def pwa_icon_svg():
+    return send_from_directory(".", "icon.svg", mimetype="image/svg+xml")
+
+
+@app.route("/icon-192.png")
+@app.route("/icon-512.png")
+def pwa_icon_png():
+    """Serve SVG as fallback for PNG icon requests."""
+    return send_from_directory(".", "icon.svg", mimetype="image/svg+xml")
+
+
+# ── 6-month scheduled economic calendar ──────────────────────────────────────
+def _generate_scheduled_events(months=6):
+    """
+    Generate known recurring economic events for the next 6 months.
+    Returns list of {date, title, impact, commodities, category}.
+    """
+    now = datetime.now(timezone.utc)
+    events = []
+
+    # FOMC 2026 meeting dates (Fed published schedule)
+    fomc_dates = [
+        "2026-01-29", "2026-03-19", "2026-05-07", "2026-06-18",
+        "2026-07-29", "2026-09-17", "2026-10-29", "2026-12-10",
+    ]
+    for d in fomc_dates:
+        dt = datetime.strptime(d, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        if now <= dt <= now + timedelta(days=months * 31):
+            events.append({
+                "date": d, "title": "FOMC Interest Rate Decision",
+                "impact": "HIGH", "category": "central_bank",
+                "commodities": ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"],
+                "note": "Fed rate decision — major USD & precious metals mover",
+            })
+
+    # Helper: find nth weekday in a month (0=Mon..6=Sun per calendar module)
+    def nth_weekday(year, month, weekday, n=1):
+        """Return date of nth weekday (1-based) in given month."""
+        first = datetime(year, month, 1, tzinfo=timezone.utc)
+        day_offset = (weekday - first.weekday()) % 7
+        result = first + timedelta(days=day_offset + (n - 1) * 7)
+        if result.month != month:
+            return None
+        return result
+
+    # Monthly: iterate over the next 6 months
+    start_year, start_month = now.year, now.month
+    for i in range(months + 1):
+        m = start_month + i
+        y = start_year + (m - 1) // 12
+        m = ((m - 1) % 12) + 1
+
+        # Non-Farm Payrolls — first Friday of month
+        nfp = nth_weekday(y, m, 4, 1)  # weekday 4 = Friday
+        if nfp and nfp >= now:
+            events.append({
+                "date": nfp.strftime("%Y-%m-%d"),
+                "title": "US Non-Farm Payrolls",
+                "impact": "HIGH", "category": "employment",
+                "commodities": ["Gold", "Silver", "Crude Oil"],
+                "note": "USD mover — strong jobs = Fed hawkish pressure on gold",
+            })
+
+        # US CPI — approx 2nd week, Wednesday (estimate; BLS publishes exact dates)
+        cpi = nth_weekday(y, m, 2, 2)  # 2nd Wednesday
+        if cpi and cpi >= now:
+            events.append({
+                "date": cpi.strftime("%Y-%m-%d"),
+                "title": "US CPI Inflation (est.)",
+                "impact": "HIGH", "category": "inflation",
+                "commodities": ["Gold", "Silver", "Crude Oil", "Copper"],
+                "note": "High CPI = bullish gold/silver; oil impact via demand",
+            })
+
+        # PCE Price Index — last Friday of month
+        last_day = calendar.monthrange(y, m)[1]
+        last_date = datetime(y, m, last_day, tzinfo=timezone.utc)
+        # Find last Friday
+        offset = (last_date.weekday() - 4) % 7
+        pce = last_date - timedelta(days=offset)
+        if pce >= now:
+            events.append({
+                "date": pce.strftime("%Y-%m-%d"),
+                "title": "US PCE Price Index (est.)",
+                "impact": "MEDIUM", "category": "inflation",
+                "commodities": ["Gold", "Silver"],
+                "note": "Fed's preferred inflation gauge",
+            })
+
+        # EIA Crude Inventories — every Wednesday (weekly, pick 3rd Wed as representative)
+        eia_crude = nth_weekday(y, m, 2, 3)  # 3rd Wednesday
+        if eia_crude and eia_crude >= now:
+            events.append({
+                "date": eia_crude.strftime("%Y-%m-%d"),
+                "title": "EIA Crude Oil Inventories",
+                "impact": "MEDIUM", "category": "energy",
+                "commodities": ["Crude Oil"],
+                "note": "Weekly draw/build vs expectations",
+            })
+
+        # EIA Natural Gas Storage — every Thursday (3rd Thursday)
+        eia_gas = nth_weekday(y, m, 3, 3)  # 3rd Thursday
+        if eia_gas and eia_gas >= now:
+            events.append({
+                "date": eia_gas.strftime("%Y-%m-%d"),
+                "title": "EIA Natural Gas Storage",
+                "impact": "MEDIUM", "category": "energy",
+                "commodities": ["Natural Gas"],
+                "note": "Weekly storage change vs expectations",
+            })
+
+        # OPEC Monthly Oil Market Report — approx 2nd week
+        opec_rep = nth_weekday(y, m, 3, 2)  # 2nd Thursday
+        if opec_rep and opec_rep >= now:
+            events.append({
+                "date": opec_rep.strftime("%Y-%m-%d"),
+                "title": "OPEC Monthly Oil Market Report",
+                "impact": "MEDIUM", "category": "opec",
+                "commodities": ["Crude Oil"],
+                "note": "Demand/supply outlook revision",
+            })
+
+        # Baker Hughes Rig Count — every Friday (3rd Friday)
+        rig = nth_weekday(y, m, 4, 3)  # 3rd Friday
+        if rig and rig >= now:
+            events.append({
+                "date": rig.strftime("%Y-%m-%d"),
+                "title": "Baker Hughes Rig Count",
+                "impact": "LOW", "category": "energy",
+                "commodities": ["Crude Oil", "Natural Gas"],
+                "note": "US drilling activity indicator",
+            })
+
+        # China PMI — 1st weekday of month (NBS releases around 31st/1st)
+        china_pmi = nth_weekday(y, m, 0, 1)  # 1st Monday
+        if china_pmi and china_pmi >= now:
+            events.append({
+                "date": china_pmi.strftime("%Y-%m-%d"),
+                "title": "China Manufacturing PMI",
+                "impact": "MEDIUM", "category": "pmi",
+                "commodities": ["Copper", "Crude Oil", "Natural Gas"],
+                "note": "World's largest commodity consumer",
+            })
+
+        # US ISM Manufacturing PMI — 1st business day of month
+        ism = nth_weekday(y, m, 0, 1)  # 1st Monday
+        if ism and ism >= now:
+            events.append({
+                "date": ism.strftime("%Y-%m-%d"),
+                "title": "US ISM Manufacturing PMI",
+                "impact": "MEDIUM", "category": "pmi",
+                "commodities": ["Copper", "Crude Oil"],
+                "note": "US industrial demand indicator",
+            })
+
+    # Known OPEC+ production meetings (estimated 2026)
+    opec_meetings = ["2026-06-01", "2026-12-01"]
+    for d in opec_meetings:
+        dt = datetime.strptime(d, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+        if now <= dt <= now + timedelta(days=months * 31):
+            events.append({
+                "date": d, "title": "OPEC+ Production Meeting",
+                "impact": "HIGH", "category": "opec",
+                "commodities": ["Crude Oil"],
+                "note": "Output quota decision",
+            })
+
+    # Sort by date and deduplicate
+    seen = set()
+    unique = []
+    for e in sorted(events, key=lambda x: x["date"]):
+        key = (e["date"], e["title"])
+        if key not in seen:
+            seen.add(key)
+            unique.append(e)
+    return unique
+
+
+@app.route("/calendar/scheduled")
+@jwt_required()
+def get_scheduled_calendar():
+    """Return 6-month forward-looking calendar of known economic events."""
+    events = _generate_scheduled_events(months=6)
+    return jsonify({"events": events, "generated_at": datetime.now(timezone.utc).isoformat()})
+
 # ══════════════════════════════════════════════════════════════════════════════
 # START
 # ══════════════════════════════════════════════════════════════════════════════

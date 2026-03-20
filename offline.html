@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Commodex — Offline</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #0c0e14; color: #d1d4dc; font-family: 'IBM Plex Mono', monospace; display: flex; align-items: center; justify-content: center; }
+  .container { text-align: center; padding: 40px 24px; max-width: 360px; }
+  .logo { width: 48px; height: 48px; background: #26a69a; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px; }
+  .logo span { font-weight: 900; font-size: 22px; color: #000; }
+  .brand { font-size: 9px; font-weight: 700; letter-spacing: 0.18em; color: #5d6478; margin-bottom: 32px; }
+  .title { font-size: 18px; font-weight: 700; color: #d1d4dc; letter-spacing: 0.04em; margin-bottom: 12px; }
+  .msg { font-size: 11px; color: #5d6478; line-height: 1.7; margin-bottom: 32px; letter-spacing: 0.03em; }
+  .btn { display: inline-block; background: #26a69a; color: #000; font-family: 'IBM Plex Mono', monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.1em; padding: 10px 24px; border: none; cursor: pointer; text-decoration: none; }
+  .btn:hover { background: #2bbbae; }
+  .status { margin-top: 24px; font-size: 9px; color: #2a2e3e; letter-spacing: 0.1em; }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="logo"><span>C</span></div>
+  <div class="brand">COMMODEX · RESEARCH TERMINAL</div>
+  <div class="title">NO CONNECTION</div>
+  <div class="msg">You're currently offline. The terminal requires a live connection to fetch market data and AI analysis. Please check your internet connection and try again.</div>
+  <button class="btn" onclick="window.location.reload()">RETRY CONNECTION</button>
+  <div class="status">◎ OFFLINE MODE</div>
+</div>
+</body>
+</html>
