@@ -126,6 +126,31 @@ def forgot_password():
     return jsonify({"message": "If that email is registered, a reset link has been sent."}), 200
 
 
+@auth_bp.route("/change-email", methods=["POST"])
+@jwt_required()
+def change_email():
+    user_id  = int(get_jwt_identity())
+    data     = request.get_json(silent=True) or {}
+    new_email = (data.get("email") or "").strip().lower()
+    password  = data.get("password") or ""
+    if not new_email or "@" not in new_email:
+        return _error("Valid email required.", 400)
+    user = User.query.get(user_id)
+    if not user:
+        return _error("User not found.", 404)
+    if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
+        return _error("Incorrect password.", 401)
+    if User.query.filter_by(email=new_email).first():
+        return _error("Email already in use.", 409)
+    token = secrets.token_urlsafe(32)
+    user.email              = new_email
+    user.email_verified     = False
+    user.verification_token = token
+    db.session.commit()
+    send_verification_email(new_email, token)
+    return jsonify({"message": "Email updated. Check your new inbox to verify."}), 200
+
+
 @auth_bp.route("/reset-password", methods=["POST"])
 def reset_password():
     data     = request.get_json(silent=True) or {}

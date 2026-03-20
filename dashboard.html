@@ -682,6 +682,12 @@
         <div id="scanbarItems" style="display:contents"></div>
       </div>
 
+      <!-- ANALYSIS RUNNING BANNER -->
+      <div id="analysis-banner" style="display:none;background:rgba(200,168,112,0.07);border-bottom:1px solid rgba(200,168,112,0.2);padding:6px 20px;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--gold);display:none;align-items:center;gap:8px">
+        <div style="width:6px;height:6px;border-radius:50%;background:var(--gold);animation:pulse-dot 0.9s ease-in-out infinite"></div>
+        AI ANALYSIS RUNNING — RESULTS WILL UPDATE AUTOMATICALLY
+      </div>
+
       <!-- GRID HEADER -->
       <div id="grid-header">
         <div style="display:flex;align-items:center;gap:10px">
@@ -840,6 +846,15 @@
         <span class="pp-alert-name" style="font-size:9px;color:var(--muted)">Analysis digest email</span>
         <div class="toggle" id="notifyToggle" onclick="toggleNotify(this)"></div>
       </div>
+    </div>
+  </div>
+  <div class="pp-section">
+    <div class="pp-section-title">Change Email</div>
+    <div id="changeEmailForm">
+      <input id="ceNewEmail" type="email" placeholder="New email address" style="width:100%;background:#080a10;border:1px solid var(--border);color:var(--fg);font-family:var(--mono);font-size:10px;padding:6px 8px;margin-bottom:6px;outline:none">
+      <input id="cePassword" type="password" placeholder="Current password" style="width:100%;background:#080a10;border:1px solid var(--border);color:var(--fg);font-family:var(--mono);font-size:10px;padding:6px 8px;margin-bottom:6px;outline:none">
+      <button onclick="doChangeEmail()" style="width:100%;background:var(--border);border:none;color:var(--fg);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.1em;padding:6px;cursor:pointer">UPDATE EMAIL →</button>
+      <div id="ceMsg" style="font-size:9px;margin-top:6px;color:var(--muted)"></div>
     </div>
   </div>
   <button class="pp-logout" onclick="doLogout()">Sign out</button>
@@ -1029,6 +1044,26 @@ async function doForgot(e) {
   } catch { setMsg('forgotMsg', 'Network error.', 'error'); }
   btn.disabled = false; btn.textContent = 'Send reset link →';
 }
+async function doChangeEmail() {
+  const btn = document.querySelector('#changeEmailForm button');
+  const msg = document.getElementById('ceMsg');
+  const email = document.getElementById('ceNewEmail').value.trim();
+  const pwd   = document.getElementById('cePassword').value;
+  if (!email || !pwd) { msg.style.color='var(--bear)'; msg.textContent='Fill in both fields.'; return; }
+  btn.disabled = true; btn.textContent = 'Updating...';
+  try {
+    const res = await fetch('/auth/change-email', { method:'POST', headers:{...authH(),'Content-Type':'application/json'},
+      body: JSON.stringify({ email, password: pwd }) });
+    const data = await res.json();
+    if (res.ok) {
+      msg.style.color = 'var(--bull)'; msg.textContent = data.message || 'Done. Check your new inbox.';
+      document.getElementById('ceNewEmail').value = '';
+      document.getElementById('cePassword').value = '';
+      document.getElementById('ppEmail').textContent = email;
+    } else { msg.style.color='var(--bear)'; msg.textContent = data.error || 'Failed.'; }
+  } catch { msg.style.color='var(--bear)'; msg.textContent='Network error.'; }
+  btn.disabled = false; btn.textContent = 'UPDATE EMAIL →';
+}
 async function doResendVerify(e) {
   e.preventDefault();
   const btn = document.getElementById('verifyBtn');
@@ -1152,28 +1187,51 @@ async function loadData() {
   try {
     const res = await fetch('/data', { headers: authH() });
     if (res.status === 401) { doLogout(); return; }
-    if (!res.ok) return;
+    if (!res.ok) { showDataError('Server error — retrying shortly.'); return; }
     allData = await res.json();
     allArticles = {};
     for (const [c, p] of Object.entries(allData)) allArticles[c] = p.articles || [];
+    if (Object.keys(allData).length === 0) {
+      checkAnalysisStatus(); return;
+    }
+    hideDataError();
     renderScanbar(); renderCards(); renderNews();
     const first = Object.values(allData)[0];
     if (first && first.timestamp) {
       aiLastTs = new Date(first.timestamp);
       document.getElementById('aiAge').textContent = timeAgo(first.timestamp);
     }
-  } catch (e) { console.error('loadData', e); }
+  } catch (e) { console.error('loadData', e); showDataError('Network error — retrying shortly.'); }
 }
+async function checkAnalysisStatus() {
+  try {
+    const res = await fetch('/health');
+    const data = await res.json();
+    if (data.analysis_running) {
+      showDataError('AI analysis in progress — data will appear in a few minutes.', 'info');
+    } else {
+      const last = data.last_run ? ` Last run: ${timeAgo(data.last_run)}.` : '';
+      showDataError(`No analysis data yet.${last} Next run scheduled automatically.`, 'info');
+    }
+  } catch { showDataError('Loading data...', 'info'); }
+}
+function showDataError(msg, type) {
+  const grid = document.getElementById('cardsGrid');
+  if (!grid) return;
+  const color = type === 'info' ? 'var(--gold)' : 'var(--bear)';
+  grid.innerHTML = `<div style="grid-column:1/-1;padding:40px 20px;font-size:10px;color:${color};letter-spacing:0.08em;line-height:1.8;font-family:var(--mono)">${msg}</div>`;
+}
+function hideDataError() { /* data loaded — renderCards() will replace grid content */ }
 async function loadPrices() {
   try {
     const res = await fetch('/prices', { headers: authH() });
-    if (!res.ok) return;
+    if (!res.ok) { setTimeout(loadPrices, 60000); return; }
     pricesData = await res.json();
     renderWatchbar();
     renderCards();
     newsLastTs = new Date();
     document.getElementById('newsAge').textContent = timeAgo(new Date().toISOString());
-  } catch {}
+  } catch { setTimeout(loadPrices, 60000); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1732,6 +1790,22 @@ setInterval(() => {
 
 // Refresh calendar data every 30 min
 setInterval(loadCalendar, 30 * 60 * 1000);
+
+// ── Analysis running banner ─────────────────────────────────────────────────
+let _prevRunning = false;
+async function pollAnalysisStatus() {
+  if (!accessToken) return;
+  try {
+    const data = await fetch('/health').then(r => r.json());
+    const banner = document.getElementById('analysis-banner');
+    if (banner) banner.style.display = data.analysis_running ? 'flex' : 'none';
+    // If just finished, reload data
+    if (_prevRunning && !data.analysis_running) loadAll();
+    _prevRunning = !!data.analysis_running;
+  } catch {}
+}
+setInterval(pollAnalysisStatus, 30000);
+pollAnalysisStatus();
 
 // ── Notification system ───────────────────────────────────────────────────────
 function addNotification(title, body, type) {
