@@ -41,15 +41,15 @@ def _run_analysis():
 # News poller: every 15 minutes
 schedule.every(15).minutes.do(_fetch_news)
 
-# AI analysis: 01:30, 06:30, 11:30, 16:30 UTC = 07:00, 12:00, 17:00, 22:00 IST
-schedule.every().day.at("01:30").do(_run_analysis)
+# AI analysis: 00:30, 06:30, 12:30, 18:30 UTC = 06:00, 12:00, 18:00, 00:00 IST
+schedule.every().day.at("00:30").do(_run_analysis)
 schedule.every().day.at("06:30").do(_run_analysis)
-schedule.every().day.at("11:30").do(_run_analysis)
-schedule.every().day.at("16:30").do(_run_analysis)
+schedule.every().day.at("12:30").do(_run_analysis)
+schedule.every().day.at("18:30").do(_run_analysis)
 
 print("Scheduler running.")
 print("  News fetch:  every 15 minutes")
-print("  AI analysis: 07:00, 12:00, 17:00, 22:00 IST")
+print("  AI analysis: 06:00, 12:00, 18:00, 00:00 IST")
 
 while True:
     schedule.run_pending()
