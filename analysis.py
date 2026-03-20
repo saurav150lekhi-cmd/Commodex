@@ -2039,7 +2039,7 @@ def run_analysis():
                     analysis = analyse_commodity(commodity, articles, macro_context)
                 else:
                     analysis = {
-                        "market_summary": "Analysis coming soon — data sources are being calibrated for this commodity.",
+                        "market_summary": "Coming soon.",
                         "sentiment": "NEUTRAL",
                         "drivers": {"up": [], "down": []},
                         "price_action_context": "Coming soon",

@@ -1355,7 +1355,12 @@ async function openDetail(name) {
   document.getElementById('dp-why').innerHTML = whyHtml || '<div style="font-size:11px;color:var(--muted)">No drivers identified</div>';
 
   // AI Summary
-  document.getElementById('dp-summary').textContent = analysis.market_summary || '—';
+  const summaryText = analysis.market_summary || '—';
+  if (summaryText === 'Coming soon.') {
+    document.getElementById('dp-summary').innerHTML = '<span style="color:var(--accent);letter-spacing:0.12em;font-size:11px;font-weight:600;opacity:0.7">COMING SOON</span>';
+  } else {
+    document.getElementById('dp-summary').textContent = summaryText;
+  }
 
   // Key Data Panel
   loadKeyData(name);
