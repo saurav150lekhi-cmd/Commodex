@@ -1,38 +1,30 @@
 import os
 import logging
-import urllib.request
-import urllib.error
-import json
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 log = logging.getLogger(__name__)
 
-RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
-FROM_EMAIL     = os.environ.get("FROM_EMAIL", "onboarding@resend.dev")
+GMAIL_USER     = os.environ.get("GMAIL_USER", "")
+GMAIL_APP_PASS = os.environ.get("GMAIL_APP_PASS", "")
+FROM_EMAIL     = os.environ.get("FROM_EMAIL", GMAIL_USER)
 APP_URL        = os.environ.get("APP_URL", "https://commodex.io")
 
 
 def send_email(to, subject, html_body):
-    if not RESEND_API_KEY:
-        log.warning("RESEND_API_KEY not set — skipping email to %s", to)
+    if not GMAIL_USER or not GMAIL_APP_PASS:
+        log.warning("GMAIL_USER or GMAIL_APP_PASS not set — skipping email to %s", to)
         return False
     try:
-        payload = json.dumps({
-            "from":    f"Commodex <{FROM_EMAIL}>",
-            "to":      [to],
-            "subject": subject,
-            "html":    html_body,
-        }).encode()
-        req = urllib.request.Request(
-            "https://api.resend.com/emails",
-            data=payload,
-            headers={
-                "Authorization": f"Bearer {RESEND_API_KEY}",
-                "Content-Type":  "application/json",
-            },
-            method="POST",
-        )
-        with urllib.request.urlopen(req, timeout=10) as r:
-            r.read()
+        msg = MIMEMultipart("alternative")
+        msg["Subject"] = subject
+        msg["From"]    = f"Commodex <{GMAIL_USER}>"
+        msg["To"]      = to
+        msg.attach(MIMEText(html_body, "html"))
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+            server.login(GMAIL_USER, GMAIL_APP_PASS)
+            server.sendmail(GMAIL_USER, to, msg.as_string())
         log.info("Email sent to %s: %s", to, subject)
         return True
     except Exception as e:
