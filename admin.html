@@ -652,11 +652,15 @@ async function toggleAdmin(id) {
 }
 
 async function resetPassword(id, email) {
-  if (!confirm(`Reset password for ${email}?\n\nA temporary password will be generated and emailed to them. All their existing sessions will be logged out.`)) return;
+  if (!confirm(`Reset password for ${email}?\n\nAll their existing sessions will be logged out.`)) return;
   const res = await apiFetch(`/admin/api/users/${id}/reset-password`, { method: "POST" });
   if (!res) return;
   const d = await res.json();
-  alert(res.ok ? `✓ ${d.message}` : `Error: ${d.error}`);
+  if (res.ok) {
+    prompt(`✓ Password reset for ${email}.\n\nCopy the temporary password below and deliver it personally:`, d.temp_password);
+  } else {
+    alert(`Error: ${d.error}`);
+  }
 }
 
 // ── Analysis history ──────────────────────────────────────────────────────────

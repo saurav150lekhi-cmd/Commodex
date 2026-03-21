@@ -157,10 +157,7 @@ def admin_reset_password(user_id):
     user.tokens_valid_after = datetime.now(timezone.utc)  # invalidate all existing sessions
     db.session.commit()
 
-    from email_utils import send_temp_password_email
-    send_temp_password_email(user.email, temp_password)
-
-    return jsonify({"message": f"Password reset and emailed to {user.email}."})
+    return jsonify({"message": f"Password reset for {user.email}.", "temp_password": temp_password})
 
 
 # ── Analysis history ──────────────────────────────────────────────────────────
