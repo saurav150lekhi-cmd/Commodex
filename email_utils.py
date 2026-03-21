@@ -124,6 +124,30 @@ def send_analysis_notification_email(to, summaries):
     return send_email(to, "Commodex · New analysis ready", html)
 
 
+def send_temp_password_email(to, temp_password):
+    link = f"{APP_URL}/app"
+    html = f"""
+    <div style="background:#0a0908;color:#d4c4a0;font-family:monospace;padding:40px;max-width:560px;margin:0 auto">
+      <div style="font-size:22px;color:#e8d8b0;font-weight:300;margin-bottom:4px">Commodex</div>
+      <div style="font-size:9px;color:#c8a870;letter-spacing:3px;margin-bottom:28px">RESEARCH TERMINAL</div>
+      <div style="font-size:11px;letter-spacing:2px;color:#c8a870;margin-bottom:16px">YOUR PASSWORD HAS BEEN RESET</div>
+      <p style="line-height:1.7;font-size:13px;margin-bottom:20px;color:#c4b490">
+        Your Commodex account password was reset by an administrator.
+        Use the temporary password below to sign in, then change it immediately from your profile settings.
+      </p>
+      <div style="background:#0d0c0a;border:1px solid #2a2820;border-left:3px solid #c8a870;padding:16px 20px;margin-bottom:24px">
+        <div style="font-size:9px;color:#6a5a40;letter-spacing:2px;margin-bottom:8px">TEMPORARY PASSWORD</div>
+        <div style="font-size:18px;color:#e8d8b0;letter-spacing:3px">{temp_password}</div>
+      </div>
+      <a href="{link}" style="display:inline-block;background:#c8a870;color:#0a0908;padding:11px 28px;text-decoration:none;font-size:11px;letter-spacing:2px">SIGN IN NOW</a>
+      <p style="margin-top:28px;color:#6a5a40;font-size:10px;line-height:1.6">
+        If you did not request this reset, please contact support immediately.
+      </p>
+    </div>
+    """
+    return send_email(to, "Commodex · Your temporary password", html)
+
+
 def send_alert_email(to, commodity, new_sentiment, old_sentiment, summary=""):
     comm_color    = _COMMODITY_COLORS.get(commodity, "#c8a870")
     new_label     = _SENTIMENT_LABELS.get(new_sentiment, new_sentiment)

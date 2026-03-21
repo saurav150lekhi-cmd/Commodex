@@ -623,6 +623,7 @@ function renderUsers(users) {
           ? `<button class="act-btn danger" onclick="deactivateUser(${u.id})">DEACTIVATE</button>`
           : `<button class="act-btn success" onclick="activateUser(${u.id})">ACTIVATE</button>`}
         <button class="act-btn" onclick="toggleAdmin(${u.id})">${u.is_admin ? "REMOVE ADMIN" : "MAKE ADMIN"}</button>
+        <button class="act-btn" style="border-color:#c8a87060;color:#c8a870" onclick="resetPassword(${u.id},'${u.email}')">RESET PWD</button>
       </td>
     </tr>
   `).join("");
@@ -648,6 +649,14 @@ async function toggleAdmin(id) {
   if (!confirm("Toggle admin status for this user?")) return;
   const res = await apiFetch(`/admin/api/users/${id}/toggle-admin`, { method: "POST" });
   if (res && res.ok) loadUsers();
+}
+
+async function resetPassword(id, email) {
+  if (!confirm(`Reset password for ${email}?\n\nA temporary password will be generated and emailed to them. All their existing sessions will be logged out.`)) return;
+  const res = await apiFetch(`/admin/api/users/${id}/reset-password`, { method: "POST" });
+  if (!res) return;
+  const d = await res.json();
+  alert(res.ok ? `✓ ${d.message}` : `Error: ${d.error}`);
 }
 
 // ── Analysis history ──────────────────────────────────────────────────────────

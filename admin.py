@@ -1,3 +1,6 @@
+import secrets
+import string
+import bcrypt
 from functools import wraps
 from datetime import datetime, timezone, timedelta
 from flask import Blueprint, jsonify, request
@@ -137,6 +140,27 @@ def toggle_admin(user_id):
     user.is_admin = not user.is_admin
     db.session.commit()
     return jsonify({"message": "Admin status updated.", "is_admin": user.is_admin})
+
+
+@admin_bp.route("/users/<int:user_id>/reset-password", methods=["POST"])
+@admin_required
+def admin_reset_password(user_id):
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "User not found."}), 404
+
+    # Generate a readable 12-char temp password (letters + digits, no ambiguous chars)
+    alphabet     = string.ascii_letters.replace("l","").replace("O","").replace("I","") + string.digits.replace("0","")
+    temp_password = "".join(secrets.choice(alphabet) for _ in range(12))
+
+    user.password_hash      = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
+    user.tokens_valid_after = datetime.now(timezone.utc)  # invalidate all existing sessions
+    db.session.commit()
+
+    from email_utils import send_temp_password_email
+    send_temp_password_email(user.email, temp_password)
+
+    return jsonify({"message": f"Password reset and emailed to {user.email}."})
 
 
 # ── Analysis history ──────────────────────────────────────────────────────────
