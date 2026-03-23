@@ -849,7 +849,7 @@
       <div class="aria-hdr-name">Aria</div>
       <div class="aria-hdr-sub">Commodity Intelligence Agent</div>
     </div>
-    <button class="aria-close" onclick="closeAria()">✕</button>
+    <button onclick="exportAriaChat()" title="Export chat" style="background:none;border:none;color:var(--text-secondary);cursor:pointer;font-size:13px;padding:4px 8px;line-height:1;font-family:var(--mono)">↓</button><button class="aria-close" onclick="closeAria()">✕</button>
   </div>
   <div class="aria-messages" id="ariaMessages">
     <div class="aria-welcome" id="ariaWelcome">
@@ -1983,6 +1983,21 @@ async function sendAria() {
   }
   sendBtn.disabled = false;
   input.focus();
+}
+
+function exportAriaChat() {
+  if (!ariaHistory.length) return;
+  const lines = ['ARIA — COMMODEX CHAT EXPORT', '='.repeat(40), `Exported: ${new Date().toUTCString()}`, ''];
+  for (const msg of ariaHistory) {
+    lines.push(msg.role === 'user' ? '> YOU' : '> ARIA');
+    lines.push(msg.content);
+    lines.push('');
+  }
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `aria-chat-${new Date().toISOString().slice(0,10)}.txt`;
+  a.click();
 }
 
 // Init on load

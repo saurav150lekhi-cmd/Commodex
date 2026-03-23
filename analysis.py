@@ -16,7 +16,7 @@ from flask import Flask, jsonify, send_from_directory, request, Response
 from flask_jwt_extended import JWTManager, jwt_required
 from dotenv import load_dotenv
 from db import db
-from models import User, AnalysisRun, UserAlert, NewsArticle, MarketSignal
+from models import User, AnalysisRun, UserAlert, NewsArticle, MarketSignal, PriceThresholdAlert, AriaMemory, AriaWatchlist
 from signal_engine import get_signal_candidates
 from agent import run_agent
 from auth import auth_bp
@@ -3359,12 +3359,12 @@ def _run_in_context():
 ARIA_TOOLS = [
     {
         "name": "trigger_analysis",
-        "description": "Trigger a fresh analysis run across all commodities. Use this when the user asks to run analysis, refresh data, or update the AI analysis.",
-        "input_schema": {"type": "object", "properties": {}, "required": []}
+        "description": "Trigger a full AI analysis run across all commodities. Admin only.",
+        "input_schema": {"type": "object", "properties": {}}
     },
     {
         "name": "set_alert",
-        "description": "Enable or disable a sentiment-change alert for a specific commodity for the current user.",
+        "description": "Enable or disable an email alert for a commodity's analysis updates.",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -3384,6 +3384,121 @@ ARIA_TOOLS = [
                 "days":      {"type": "integer", "description": "Days of history to fetch (default 7, max 30)"}
             },
             "required": ["commodity"]
+        }
+    },
+    {
+        "name": "get_price_alert_status",
+        "description": "Check which commodities the user currently has analysis alerts enabled for.",
+        "input_schema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "search_news",
+        "description": "Search recent news articles by keyword and/or commodity. Returns matching article titles and summaries.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "keyword":   {"type": "string", "description": "Keyword to search in article titles and summaries"},
+                "commodity": {"type": "string", "description": "Optional: filter by commodity name"},
+                "limit":     {"type": "integer", "description": "Max results to return (default 5, max 15)"}
+            }
+        }
+    },
+    {
+        "name": "get_analysis_summary",
+        "description": "Get the full AI analysis text and all drivers for a specific commodity from the latest run.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commodity": {"type": "string", "description": "Commodity name"}
+            },
+            "required": ["commodity"]
+        }
+    },
+    {
+        "name": "compare_commodities",
+        "description": "Side-by-side comparison of two commodities: sentiment, price change, bullish/bearish drivers.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commodity_a": {"type": "string", "description": "First commodity name"},
+                "commodity_b": {"type": "string", "description": "Second commodity name"}
+            },
+            "required": ["commodity_a", "commodity_b"]
+        }
+    },
+    {
+        "name": "get_macro_snapshot",
+        "description": "Get the latest macro data snapshot: DXY, 10Y yield, oil inventories, CFTC positioning, and other key indicators.",
+        "input_schema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "set_price_threshold_alert",
+        "description": "Set a price-level alert: notify when a commodity crosses a specific price threshold (above or below).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commodity": {"type": "string", "description": "Commodity name"},
+                "threshold": {"type": "number", "description": "Price threshold value"},
+                "direction": {"type": "string", "description": "'above' or 'below'"},
+                "remove":    {"type": "boolean", "description": "Set true to remove an existing threshold alert"}
+            },
+            "required": ["commodity", "direction"]
+        }
+    },
+    {
+        "name": "remember",
+        "description": "Save a piece of information about the user's preferences, trading style, or watchlist notes to Aria's memory for this user. Use this when the user says things like 'remember that I...', 'note that...', 'I prefer...'",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "key":   {"type": "string", "description": "Short label for this memory e.g. 'trading_style', 'risk_preference', 'favorite_commodity'"},
+                "value": {"type": "string", "description": "The information to remember"}
+            },
+            "required": ["key", "value"]
+        }
+    },
+    {
+        "name": "recall",
+        "description": "Recall all saved memories for this user. Use this at the start of conversations or when context about the user's preferences is needed.",
+        "input_schema": {"type": "object", "properties": {}}
+    },
+    {
+        "name": "forget",
+        "description": "Delete a specific memory by key.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "key": {"type": "string", "description": "The memory key to delete"}
+            },
+            "required": ["key"]
+        }
+    },
+    {
+        "name": "manage_watchlist",
+        "description": "Add or remove a commodity from the user's personal watchlist, or get the current watchlist.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "action":    {"type": "string", "description": "'add', 'remove', or 'get'"},
+                "commodity": {"type": "string", "description": "Commodity name (required for add/remove)"},
+                "note":      {"type": "string", "description": "Optional note to attach when adding (e.g. 'watching for breakout above $3100')"}
+            },
+            "required": ["action"]
+        }
+    },
+    {
+        "name": "draft_trade_journal",
+        "description": "Generate a structured trade journal entry based on the current analysis and conversation context. Returns a formatted entry ready to copy.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commodity": {"type": "string", "description": "Commodity to write the journal entry for"},
+                "direction": {"type": "string", "description": "'long' or 'short'"},
+                "entry":     {"type": "number", "description": "Entry price"},
+                "target":    {"type": "number", "description": "Target price"},
+                "stop":      {"type": "number", "description": "Stop loss price"}
+            },
+            "required": ["commodity", "direction"]
         }
     },
 ]
@@ -3430,6 +3545,225 @@ def _aria_execute_tool(tool_name, tool_input, user_id):
             return {"commodity": commodity, "history": [], "message": f"No analysis data for {commodity} in the last {days} days."}
         history = [{"date": r.run_at.strftime("%d %b %H:%M UTC"), "sentiment": r.sentiment} for r in rows]
         return {"commodity": commodity, "days": days, "history": history}
+
+    elif tool_name == "get_price_alert_status":
+        alerts = UserAlert.query.filter_by(user_id=user_id).all()
+        enabled = [a.commodity for a in alerts if a.enabled]
+        disabled = [a.commodity for a in alerts if not a.enabled]
+        # Also include price threshold alerts
+        thresholds = PriceThresholdAlert.query.filter_by(user_id=user_id, active=True).all()
+        thresh_list = [{"commodity": t.commodity, "direction": t.direction, "threshold": t.threshold} for t in thresholds]
+        return {
+            "analysis_alerts_enabled": enabled,
+            "analysis_alerts_disabled": disabled,
+            "price_threshold_alerts": thresh_list,
+            "message": f"You have analysis alerts enabled for: {', '.join(enabled) or 'none'}."
+        }
+
+    elif tool_name == "search_news":
+        keyword   = (tool_input.get("keyword") or "").strip().lower()
+        commodity = tool_input.get("commodity")
+        limit     = min(int(tool_input.get("limit", 5)), 15)
+        since     = datetime.now(timezone.utc) - timedelta(hours=48)
+        q = NewsArticle.query.filter(NewsArticle.fetched_at >= since)
+        if commodity:
+            q = q.filter_by(commodity=commodity)
+        articles = q.order_by(NewsArticle.fetched_at.desc()).limit(100).all()
+        if keyword:
+            articles = [a for a in articles if keyword in (a.title or "").lower() or keyword in (a.summary or "").lower()]
+        articles = articles[:limit]
+        if not articles:
+            return {"results": [], "message": "No matching articles found in the last 48 hours."}
+        results = [{"title": a.title, "commodity": a.commodity, "summary": (a.summary or "")[:200], "source": a.source, "published": a.published} for a in articles]
+        return {"results": results, "count": len(results)}
+
+    elif tool_name == "get_analysis_summary":
+        commodity = tool_input.get("commodity", "")
+        row = AnalysisRun.query.filter_by(commodity=commodity).order_by(AnalysisRun.run_at.desc()).first()
+        if not row:
+            return {"success": False, "message": f"No analysis data found for {commodity}."}
+        d  = row.data or {}
+        an = d.get("analysis", d)
+        return {
+            "commodity":      commodity,
+            "sentiment":      an.get("sentiment", row.sentiment),
+            "run_at":         row.run_at.strftime("%d %b %Y %H:%M UTC"),
+            "summary":        an.get("market_summary", ""),
+            "bullish_drivers": (an.get("drivers") or {}).get("up", []),
+            "bearish_drivers": (an.get("drivers") or {}).get("down", []),
+            "key_risks":      an.get("key_risks", []),
+            "article_count":  row.article_count or 0,
+        }
+
+    elif tool_name == "compare_commodities":
+        commodity_a = tool_input.get("commodity_a", "")
+        commodity_b = tool_input.get("commodity_b", "")
+        prices      = fetch_live_prices()
+        result      = {}
+        for c in [commodity_a, commodity_b]:
+            row = AnalysisRun.query.filter_by(commodity=c).order_by(AnalysisRun.run_at.desc()).first()
+            px  = prices.get(c, {})
+            if row:
+                d  = row.data or {}
+                an = d.get("analysis", d)
+                result[c] = {
+                    "sentiment":      an.get("sentiment", row.sentiment),
+                    "price":          px.get("price"),
+                    "change_pct":     px.get("change"),
+                    "bullish_drivers": (an.get("drivers") or {}).get("up", [])[:3],
+                    "bearish_drivers": (an.get("drivers") or {}).get("down", [])[:2],
+                    "summary":        (an.get("market_summary", ""))[:300],
+                }
+            else:
+                result[c] = {"sentiment": "N/A", "price": px.get("price"), "change_pct": px.get("change"), "message": "No analysis data."}
+        return {"comparison": result}
+
+    elif tool_name == "get_macro_snapshot":
+        try:
+            with open(MACRO_CACHE_FILE, "r") as f:
+                cache = json.load(f)
+            last_updated = cache.get("last_updated", "unknown")
+            # Extract key cross-commodity macro indicators from first available commodity
+            snapshot = {"last_updated": last_updated}
+            for c, data in cache.items():
+                if c == "last_updated":
+                    continue
+                if isinstance(data, dict):
+                    for key in ["dxy", "us_10y_yield", "fed_rate", "cpi_yoy", "us_pmi", "china_pmi", "global_pmi"]:
+                        if key in data and key not in snapshot:
+                            snapshot[key] = data[key]
+                break  # just need shared macro fields from any commodity
+            return {"macro": snapshot, "message": f"Macro data last updated: {last_updated}"}
+        except Exception:
+            return {"success": False, "message": "Macro snapshot not available. Run analysis first."}
+
+    elif tool_name == "set_price_threshold_alert":
+        commodity = tool_input.get("commodity", "")
+        direction = tool_input.get("direction", "").lower()
+        threshold = tool_input.get("threshold")
+        remove    = bool(tool_input.get("remove", False))
+        if commodity not in VALID_ALERT_COMMODITIES:
+            return {"success": False, "message": f"'{commodity}' is not a valid commodity."}
+        if direction not in ("above", "below"):
+            return {"success": False, "message": "Direction must be 'above' or 'below'."}
+        existing = PriceThresholdAlert.query.filter_by(user_id=user_id, commodity=commodity, direction=direction).first()
+        if remove:
+            if existing:
+                db.session.delete(existing)
+                db.session.commit()
+                return {"success": True, "message": f"Removed price alert for {commodity} {direction} ${threshold}."}
+            return {"success": False, "message": "No such alert found to remove."}
+        if threshold is None:
+            return {"success": False, "message": "Threshold price is required."}
+        if existing:
+            existing.threshold = float(threshold)
+            existing.active    = True
+        else:
+            db.session.add(PriceThresholdAlert(user_id=user_id, commodity=commodity, threshold=float(threshold), direction=direction))
+        db.session.commit()
+        return {"success": True, "message": f"Price alert set: notify when {commodity} goes {direction} ${threshold:.2f}."}
+
+    elif tool_name == "remember":
+        key   = (tool_input.get("key") or "").strip().lower().replace(" ", "_")[:100]
+        value = (tool_input.get("value") or "").strip()
+        if not key or not value:
+            return {"success": False, "message": "Both key and value are required."}
+        existing = AriaMemory.query.filter_by(user_id=user_id, key=key).first()
+        if existing:
+            existing.value      = value
+            existing.updated_at = datetime.now(timezone.utc)
+        else:
+            db.session.add(AriaMemory(user_id=user_id, key=key, value=value))
+        db.session.commit()
+        return {"success": True, "message": f"Got it — I'll remember: {key} = {value}"}
+
+    elif tool_name == "recall":
+        memories = AriaMemory.query.filter_by(user_id=user_id).all()
+        if not memories:
+            return {"memories": {}, "message": "No saved memories yet."}
+        mem_dict = {m.key: m.value for m in memories}
+        return {"memories": mem_dict}
+
+    elif tool_name == "forget":
+        key = (tool_input.get("key") or "").strip().lower().replace(" ", "_")
+        mem = AriaMemory.query.filter_by(user_id=user_id, key=key).first()
+        if mem:
+            db.session.delete(mem)
+            db.session.commit()
+            return {"success": True, "message": f"Deleted memory: {key}"}
+        return {"success": False, "message": f"No memory found with key '{key}'."}
+
+    elif tool_name == "manage_watchlist":
+        action    = (tool_input.get("action") or "get").lower()
+        commodity = tool_input.get("commodity", "")
+        note      = tool_input.get("note")
+        if action == "get":
+            items = AriaWatchlist.query.filter_by(user_id=user_id).order_by(AriaWatchlist.added_at.desc()).all()
+            if not items:
+                return {"watchlist": [], "message": "Your watchlist is empty. Ask me to add commodities to it."}
+            # Enrich with current sentiment
+            wl = []
+            for item in items:
+                row = AnalysisRun.query.filter_by(commodity=item.commodity).order_by(AnalysisRun.run_at.desc()).first()
+                sent = row.sentiment if row else "N/A"
+                wl.append({"commodity": item.commodity, "sentiment": sent, "note": item.note, "added": item.added_at.strftime("%d %b")})
+            return {"watchlist": wl}
+        elif action == "add":
+            if commodity not in VALID_ALERT_COMMODITIES:
+                return {"success": False, "message": f"'{commodity}' is not a valid commodity."}
+            existing = AriaWatchlist.query.filter_by(user_id=user_id, commodity=commodity).first()
+            if existing:
+                if note:
+                    existing.note = note
+                    db.session.commit()
+                return {"success": True, "message": f"{commodity} is already on your watchlist."}
+            db.session.add(AriaWatchlist(user_id=user_id, commodity=commodity, note=note))
+            db.session.commit()
+            return {"success": True, "message": f"Added {commodity} to your watchlist."}
+        elif action == "remove":
+            item = AriaWatchlist.query.filter_by(user_id=user_id, commodity=commodity).first()
+            if item:
+                db.session.delete(item)
+                db.session.commit()
+                return {"success": True, "message": f"Removed {commodity} from your watchlist."}
+            return {"success": False, "message": f"{commodity} is not on your watchlist."}
+        return {"success": False, "message": f"Unknown action '{action}'. Use 'add', 'remove', or 'get'."}
+
+    elif tool_name == "draft_trade_journal":
+        commodity = tool_input.get("commodity", "")
+        direction = tool_input.get("direction", "long")
+        entry     = tool_input.get("entry")
+        target    = tool_input.get("target")
+        stop      = tool_input.get("stop")
+        row = AnalysisRun.query.filter_by(commodity=commodity).order_by(AnalysisRun.run_at.desc()).first()
+        px  = fetch_live_prices().get(commodity, {})
+        context_str = ""
+        if row:
+            d  = row.data or {}
+            an = d.get("analysis", d)
+            context_str = f"Sentiment: {an.get('sentiment', row.sentiment)}\nSummary: {(an.get('market_summary',''))[:300]}"
+        journal = f"""--- TRADE JOURNAL ENTRY ---
+Date: {datetime.now(timezone.utc).strftime('%d %b %Y %H:%M UTC')}
+Instrument: {commodity}
+Direction: {direction.upper()}
+Current Price: ${px.get('price', 'N/A')}
+Entry: {'$' + str(entry) if entry else 'TBD'}
+Target: {'$' + str(target) if target else 'TBD'}
+Stop Loss: {'$' + str(stop) if stop else 'TBD'}
+R/R Ratio: {f'{abs((target - entry) / (entry - stop)):.2f}:1' if entry and target and stop and entry != stop else 'N/A'}
+
+AI Context:
+{context_str}
+
+Thesis:
+[Fill in your trade thesis here]
+
+Key Risks:
+[Fill in key risks here]
+
+Not financial advice.
+--------------------------"""
+        return {"success": True, "journal_entry": journal}
 
     return {"success": False, "message": f"Unknown tool: {tool_name}"}
 
@@ -3493,7 +3827,8 @@ Guidelines:
 - When generating trade ideas, be specific: direction, entry, target, stop, thesis, key risk
 - Always briefly note "not financial advice" when giving trade ideas
 - Cite specific prices and drivers from the data above
-- You can perform actions using your tools: trigger analysis runs, set/remove alerts, check sentiment history
+- You can perform actions using your tools: trigger analysis runs, set/remove price alerts, set price threshold alerts, search news, get full analysis summaries, compare commodities, get macro data, manage the user's watchlist, remember user preferences, and draft trade journal entries
+- Proactively use 'recall' at the start of a conversation to check if you have any saved preferences for this user
 - Format responses cleanly with bullet points or numbered lists when appropriate"""
 
     client   = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)

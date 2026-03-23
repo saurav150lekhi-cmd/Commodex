@@ -125,3 +125,47 @@ class NewsArticle(db.Model):
     __table_args__ = (
         db.UniqueConstraint("url_hash", "commodity", name="uq_article_commodity"),
     )
+
+
+class PriceThresholdAlert(db.Model):
+    __tablename__ = "price_threshold_alerts"
+
+    id        = db.Column(db.Integer, primary_key=True)
+    user_id   = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)
+    threshold = db.Column(db.Float, nullable=False)
+    direction = db.Column(db.String(5), nullable=False)  # "above" or "below"
+    active    = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "commodity", "direction", name="uq_price_threshold"),
+    )
+
+
+class AriaMemory(db.Model):
+    __tablename__ = "aria_memory"
+
+    id         = db.Column(db.Integer, primary_key=True)
+    user_id    = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    key        = db.Column(db.String(100), nullable=False)
+    value      = db.Column(db.Text, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "key", name="uq_aria_memory"),
+    )
+
+
+class AriaWatchlist(db.Model):
+    __tablename__ = "aria_watchlist"
+
+    id        = db.Column(db.Integer, primary_key=True)
+    user_id   = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    commodity = db.Column(db.String(50), nullable=False)
+    note      = db.Column(db.Text, nullable=True)
+    added_at  = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "commodity", name="uq_aria_watchlist"),
+    )
