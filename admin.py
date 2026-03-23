@@ -149,9 +149,10 @@ def admin_reset_password(user_id):
     if not user:
         return jsonify({"error": "User not found."}), 404
 
-    # Generate a readable 12-char temp password (letters + digits, no ambiguous chars)
-    alphabet     = string.ascii_letters.replace("l","").replace("O","").replace("I","") + string.digits.replace("0","")
-    temp_password = "".join(secrets.choice(alphabet) for _ in range(12))
+    # Generate a readable temp password: XXXX-XXXX-XXXX (uppercase + digits, no ambiguous chars)
+    chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    groups = ["".join(secrets.choice(chars) for _ in range(4)) for _ in range(3)]
+    temp_password = "-".join(groups)
 
     user.password_hash      = bcrypt.hashpw(temp_password.encode(), bcrypt.gensalt()).decode()
     user.tokens_valid_after = datetime.now(timezone.utc)  # invalidate all existing sessions
