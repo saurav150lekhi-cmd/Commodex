@@ -134,8 +134,6 @@
   .tb-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.07); }
   .tb-user { font-size: 11px; font-weight: 500; letter-spacing: 0.01em; border: 1px solid rgba(255,255,255,0.1); padding: 5px 14px; border-radius: 6px; color: rgba(200,210,220,0.65); cursor: pointer; background: rgba(255,255,255,0.04); font-family: var(--sans); transition: all 0.15s; }
   .tb-user:hover { color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
-  .tb-exit { font-size: 11px; font-weight: 500; letter-spacing: 0.01em; border: 1px solid rgba(255,255,255,0.1); padding: 5px 14px; border-radius: 6px; color: rgba(200,210,220,0.5); cursor: pointer; text-decoration: none; font-family: var(--sans); transition: all 0.15s; background: none; }
-  .tb-exit:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
 
   /* ── WATCHLIST BAR ── */
   #watchlist {
@@ -180,11 +178,11 @@
   .news-tag.HIGH { background: rgba(239,83,80,0.15); color: var(--bear); }
   .news-tag.MEDIUM { background: rgba(245,158,11,0.15); color: #f59e0b; }
   .news-tag.LOW { background: rgba(93,100,120,0.15); color: var(--muted); }
-  .news-headline { font-size: 11px; color: var(--fg); line-height: 1.45; margin-bottom: 6px; font-family: var(--sans); }
+  .news-headline { font-size: 11px; color: #e8eaf0; line-height: 1.45; margin-bottom: 6px; font-family: var(--sans); }
   .news-meta { display: flex; align-items: center; gap: 6px; }
-  .news-source { font-size: 8px; color: rgba(93,100,120,0.7); }
-  .news-dot { font-size: 8px; color: rgba(93,100,120,0.4); }
-  .news-age { font-size: 8px; color: rgba(93,100,120,0.6); }
+  .news-source { font-size: 8px; color: rgba(160,168,190,0.85); }
+  .news-dot { font-size: 8px; color: rgba(160,168,190,0.4); }
+  .news-age { font-size: 8px; color: rgba(160,168,190,0.7); }
   .news-unread { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
   .news-empty { padding: 20px 12px; font-size: 10px; color: var(--muted); text-align: center; }
 
@@ -326,10 +324,10 @@
 
   .dp-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
   .dp-meta-cell { background: rgba(8,10,16,0.6); border: 1px solid var(--border); padding: 10px 14px; }
-  .dp-meta-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.65); margin-bottom: 4px; }
+  .dp-meta-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(160,168,190,0.75); margin-bottom: 4px; }
   .dp-meta-val { font-size: 16px; font-weight: 800; }
   .dp-section { margin-bottom: 20px; }
-  .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 12px; }
+  .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(180,188,210,0.8); margin-bottom: 12px; }
 
   .dp-sig-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
   .dp-sig-arrow { font-size: 13px; font-weight: 700; flex-shrink: 0; }
@@ -338,7 +336,7 @@
   .dp-drivers { margin-bottom: 20px; }
   .dp-driver-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid rgba(30,35,54,0.5); }
   .dp-driver-row:last-child { border-bottom: none; }
-  .dp-driver-name { font-size: 12px; color: rgba(209,212,220,0.8); flex: 1; font-family: var(--sans); }
+  .dp-driver-name { font-size: 12px; color: rgba(225,228,238,0.92); flex: 1; font-family: var(--sans); }
   .dp-driver-bar-wrap { flex: 1; margin-left: 14px; height: 4px; background: rgba(0,0,0,0.4); }
   .dp-driver-bar { height: 100%; transition: width 0.5s; }
   .dp-footer { padding: 10px 24px; border-top: 1px solid var(--border); background: rgba(8,10,16,0.7); flex-shrink: 0; }
@@ -621,7 +619,6 @@
       <a id="adminBtn" href="/admin" style="display:none;font-size:11px;font-weight:500;letter-spacing:0.01em;border:1px solid rgba(200,168,112,0.25);padding:5px 14px;border-radius:6px;color:var(--accent);cursor:pointer;background:rgba(200,168,112,0.08);font-family:var(--sans);text-decoration:none;transition:all 0.15s">Admin</a>
       <div id="adminBtnSep" style="display:none" class="tb-sep"></div>
       <button class="tb-user" id="userBtn" onclick="toggleProfile()">Account</button>
-      <a class="tb-exit" href="/">Exit</a>
     </div>
   </div>
 
@@ -789,7 +786,7 @@
               <div class="dp-col dp-col-left">
                 <div class="dp-section" id="dp-summary-section">
                   <div class="dp-section-lbl">AI ANALYSIS</div>
-                  <div id="dp-summary" style="font-size:15px;color:rgba(209,212,220,0.88);line-height:1.75;font-family:var(--sans)">—</div>
+                  <div id="dp-summary" style="font-size:15px;color:rgba(235,238,245,0.95);line-height:1.75;font-family:var(--sans)">—</div>
                 </div>
                 <div class="dp-section">
                   <div class="dp-section-lbl">KEY DATA</div>
@@ -881,23 +878,8 @@
   <div class="pp-section">
     <div class="pp-section-title">Alert Notifications</div>
     <div id="ppAlerts"><div style="font-size:10px;color:var(--muted)">Loading...</div></div>
-    <div style="margin-top:10px">
-      <div class="pp-alert-row">
-        <span class="pp-alert-name" style="font-size:9px;color:var(--muted)">Analysis digest email</span>
-        <div class="toggle" id="notifyToggle" onclick="toggleNotify(this)"></div>
-      </div>
-    </div>
   </div>
-  <div class="pp-section">
-    <div class="pp-section-title">Change Email</div>
-    <div id="changeEmailForm">
-      <input id="ceNewEmail" type="email" placeholder="New email address" style="width:100%;background:#0a0a0a;border:1px solid var(--border);color:var(--fg);font-family:var(--mono);font-size:10px;padding:6px 8px;margin-bottom:6px;outline:none">
-      <input id="cePassword" type="password" placeholder="Current password" style="width:100%;background:#0a0a0a;border:1px solid var(--border);color:var(--fg);font-family:var(--mono);font-size:10px;padding:6px 8px;margin-bottom:6px;outline:none">
-      <button onclick="doChangeEmail()" style="width:100%;background:var(--border);border:none;color:var(--fg);font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:0.1em;padding:6px;cursor:pointer">UPDATE EMAIL →</button>
-      <div id="ceMsg" style="font-size:9px;margin-top:6px;color:var(--muted)"></div>
-    </div>
-  </div>
-  <button class="pp-logout" onclick="doLogout()">Sign out</button>
+  <button class="pp-logout" onclick="doLogout()">Log out</button>
 </div>
 
 <script>
