@@ -573,6 +573,8 @@
       <div class="tb-sep"></div>
       <button class="tb-user" id="newsletterBtn" onclick="downloadNewsletter()" title="Download Weekly PDF Report" style="color:var(--accent);border-color:rgba(200,168,112,0.3)">↓ WEEKLY PDF</button>
       <div class="tb-sep"></div>
+      <a id="adminBtn" href="/admin" style="display:none;font-size:9px;font-weight:700;letter-spacing:0.14em;border:1px solid rgba(200,168,112,0.35);padding:4px 12px;color:var(--accent);cursor:pointer;background:none;font-family:var(--mono);text-decoration:none">ADMIN</a>
+      <div id="adminBtnSep" style="display:none" class="tb-sep"></div>
       <button class="tb-user" id="userBtn" onclick="toggleProfile()">ACCOUNT</button>
       <a class="tb-exit" href="/">EXIT</a>
     </div>
@@ -1575,6 +1577,10 @@ async function loadProfile() {
     const displayName = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase();
     document.getElementById('ppEmail').textContent = displayName;
     document.getElementById('userBtn').textContent = displayName.toUpperCase().substring(0, 10);
+    if (user.is_admin) {
+      document.getElementById('adminBtn').style.display = 'inline-block';
+      document.getElementById('adminBtnSep').style.display = 'block';
+    }
   } catch {}
   try {
     const res = await fetch('/auth/alerts', { headers: authH() });
