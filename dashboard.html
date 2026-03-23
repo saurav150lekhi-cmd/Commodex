@@ -1946,7 +1946,8 @@ async function sendAria() {
   ariaShowTyping();
 
   try {
-    const res = await fetchT('/ai/chat', {
+    const res = await fetch('/ai/chat', {
+      signal: AbortSignal.timeout(60000),
       method: 'POST',
       headers: { ...authH(), 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: ariaHistory })
