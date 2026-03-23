@@ -473,7 +473,31 @@ def fetch_worldbank_data():
     return result
 
 # ── 5. Live prices via Yahoo Finance (server-side) ────────────────────────────
+_prices_cache = {"data": {}, "ts": 0}
+_PRICES_TTL = 60  # seconds
+
+def _fetch_one_price(name_sym):
+    name, sym = name_sym
+    try:
+        url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            lines = r.read().decode().strip().split("\n")
+        if len(lines) >= 2:
+            row   = lines[-1].split(",")
+            close = float(row[6])
+            open_ = float(row[3])
+            return name, {"price": close, "change": ((close - open_) / open_) * 100}
+    except:
+        pass
+    return name, {"price": None, "change": None}
+
 def fetch_live_prices():
+    global _prices_cache
+    if time.time() - _prices_cache["ts"] < _PRICES_TTL:
+        return _prices_cache["data"]
+
+    from concurrent.futures import ThreadPoolExecutor
     symbols = {
         "Gold":        "gc.f",
         "Silver":      "si.f",
@@ -487,24 +511,11 @@ def fetch_live_prices():
         "Sugar":       "sb.f",
     }
     prices = {}
-    for name, sym in symbols.items():
-        try:
-            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=8) as r:
-                lines = r.read().decode().strip().split("\n")
-            if len(lines) >= 2:
-                row   = lines[-1].split(",")
-                close = float(row[6])
-                open_ = float(row[3])
-                prices[name] = {
-                    "price":  close,
-                    "change": ((close - open_) / open_) * 100,
-                }
-            else:
-                prices[name] = {"price": None, "change": None}
-        except:
-            prices[name] = {"price": None, "change": None}
+    with ThreadPoolExecutor(max_workers=10) as ex:
+        for name, result in ex.map(_fetch_one_price, symbols.items()):
+            prices[name] = result
+
+    _prices_cache = {"data": prices, "ts": time.time()}
     return prices
 
 
