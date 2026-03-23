@@ -395,10 +395,10 @@
   .cal-summary { font-size:10px; line-height:1.55; margin-top:7px; padding:6px 9px; border-left:2px solid rgba(200,168,112,0.3); color:rgba(160,170,190,0.6); font-family:var(--sans); }
   .cal-past-card { background:rgba(255,255,255,0.02); border:1px solid rgba(255,255,255,0.05); border-radius:8px; margin-bottom:6px; overflow:hidden; opacity:0.7; }
   .cal-past-inner { padding:10px 12px; }
-  .notif-item { padding:10px 14px; border-bottom:1px solid var(--border); font-size:10px; color:var(--text); letter-spacing:0.05em; cursor:pointer; }
-  .notif-item:hover { background:rgba(200,168,112,0.04); }
-  .notif-item.unread { border-left:2px solid #ef4444; }
-  .notif-time { font-size:8px; color:var(--muted); margin-top:2px; }
+  .notif-item { padding:13px 18px; border-bottom:1px solid rgba(255,255,255,0.05); font-size:11px; color:var(--text); letter-spacing:0.03em; cursor:pointer; transition:background 0.12s; }
+  .notif-item:hover { background:rgba(200,168,112,0.05); }
+  .notif-item.unread { border-left:3px solid #ef4444; padding-left:15px; }
+  .notif-time { font-size:9px; color:var(--muted); margin-top:4px; }
 
   /* ── 6-MONTH CALENDAR ─────────────────────────────────────────────────── */
   .sched-month { margin-bottom:24px; }
@@ -600,12 +600,13 @@
         <span class="tb-update-sep">·</span>
         <span id="aiNext" class="tb-update-next">—</span>
       </div>
+      <div class="tb-sep"></div>
+      <button onclick="openAria()" id="ariaBtn" style="font-size:12px;font-weight:600;padding:7px 22px;border-radius:8px;border:none;background:#c8a870;color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:8px;letter-spacing:0.01em">✦ Ask Aria</button>
     </div>
     <div class="tb-right">
-      <button onclick="openAria()" id="ariaBtn" style="font-size:12px;font-weight:600;padding:7px 22px;border-radius:8px;border:none;background:#c8a870;color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:8px;letter-spacing:0.01em">✦ Ask Aria</button>
-      <div style="position:relative;cursor:pointer" onclick="toggleNotifications()">
-        <span id="bellIcon" style="font-size:15px;color:rgba(180,190,210,0.45);padding:5px 8px;display:block;line-height:1">🔔</span>
-        <span id="bellDot" style="display:none;position:absolute;top:4px;right:5px;width:6px;height:6px;background:#ef4444;border-radius:50%"></span>
+      <div style="position:relative;cursor:pointer;padding:0 4px" onclick="toggleNotifications()">
+        <span id="bellIcon" style="font-size:17px;color:rgba(180,190,210,0.55);padding:6px 10px;display:block;line-height:1">🔔</span>
+        <span id="bellDot" style="display:none;position:absolute;top:4px;right:7px;width:7px;height:7px;background:#ef4444;border-radius:50%"></span>
       </div>
       <div class="tb-sep"></div>
       <div class="tb-time" id="clock">00:00:00 UTC</div>
@@ -829,12 +830,12 @@
       </div><!-- #content-row -->
 
       <!-- NOTIFICATION DROPDOWN -->
-      <div id="notif-dropdown" style="display:none;position:fixed;top:48px;right:16px;width:320px;background:#0d0c0a;border:1px solid var(--border);z-index:200;font-family:monospace">
-        <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:9px;font-weight:800;letter-spacing:0.15em;color:var(--muted);display:flex;justify-content:space-between;align-items:center">
-          ALERTS
-          <span onclick="clearNotifications()" style="cursor:pointer;color:rgba(93,100,120,0.5);font-size:8px">CLEAR ALL</span>
+      <div id="notif-dropdown" style="display:none;position:fixed;top:52px;right:12px;width:400px;background:#0f0f0f;border:1px solid rgba(255,255,255,0.1);border-radius:12px;z-index:200;font-family:monospace;box-shadow:0 12px 40px rgba(0,0,0,0.6);overflow:hidden">
+        <div style="padding:14px 18px;border-bottom:1px solid rgba(255,255,255,0.07);font-size:10px;font-weight:700;letter-spacing:0.12em;color:var(--text-secondary);display:flex;justify-content:space-between;align-items:center">
+          ALERTS &amp; NOTIFICATIONS
+          <span onclick="clearNotifications()" style="cursor:pointer;color:rgba(150,155,170,0.5);font-size:9px;letter-spacing:0.08em;transition:color 0.15s" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='rgba(150,155,170,0.5)'">CLEAR ALL</span>
         </div>
-        <div id="notif-list" style="max-height:320px;overflow-y:auto"></div>
+        <div id="notif-list" style="max-height:420px;overflow-y:auto"></div>
       </div>
 
     </div><!-- #main -->
