@@ -446,44 +446,46 @@
   .pwa-btn-primary { background:var(--bull); color:#000; }
   .pwa-btn-dismiss { background:transparent; color:var(--muted); border:1px solid var(--border) !important; border:none; }
 
-  /* Trade Ideas Modal */
-  #tradeIdeasModal { display:none; position:fixed; inset:0; background:rgba(4,6,12,0.96); z-index:600; overflow-y:auto; }
-  .ti-modal-inner { max-width:860px; margin:0 auto; padding:40px 20px 60px; }
-  .ti-modal-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; }
-  .ti-modal-title { font-size:22px; font-weight:700; color:#fff; letter-spacing:-0.02em; font-family:var(--sans); line-height:1.2; }
-  .ti-modal-title span { color:var(--accent); }
-  .ti-modal-meta { font-size:10px; color:var(--text-muted); letter-spacing:0.08em; margin-top:6px; font-family:var(--mono); }
-  .ti-close-btn { background:none; border:1px solid rgba(255,255,255,0.08); color:var(--text-muted); padding:6px 14px; font-family:var(--mono); font-size:9px; cursor:pointer; letter-spacing:0.1em; flex-shrink:0; transition:border-color 0.15s,color 0.15s; }
-  .ti-close-btn:hover { border-color:rgba(255,255,255,0.2); color:var(--fg); }
-  .ti-disclaimer { font-size:9px; color:var(--text-muted); letter-spacing:0.06em; margin-bottom:28px; padding:8px 0; border-top:1px solid rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.05); }
-
-  /* Trade idea cards */
-  .ti-card { margin-bottom:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.06); background:rgba(13,15,24,0.8); transition:border-color 0.15s; }
-  .ti-card:hover { border-color:rgba(255,255,255,0.12); }
-  .ti-card.long-card  { border-left:3px solid #22C55E; }
-  .ti-card.short-card { border-left:3px solid #EF4444; }
-  .ti-card.spread-card{ border-left:3px solid var(--accent); }
-  .ti-card-header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.05); }
-  .ti-direction { font-size:9px; font-weight:800; letter-spacing:0.18em; padding:3px 10px; border-radius:2px; }
-  .ti-direction.long   { color:#22C55E; border:1px solid rgba(34,197,94,0.35);  background:rgba(34,197,94,0.1); }
-  .ti-direction.short  { color:#EF4444; border:1px solid rgba(239,68,68,0.35);  background:rgba(239,68,68,0.1); }
-  .ti-direction.spread { color:var(--accent); border:1px solid rgba(200,168,112,0.35); background:rgba(200,168,112,0.08); }
-  .ti-commodity { font-size:15px; font-weight:700; color:#fff; letter-spacing:0.01em; font-family:var(--sans); }
-  .ti-conviction { margin-left:auto; font-size:8px; font-weight:700; letter-spacing:0.14em; padding:3px 10px; border-radius:2px; }
-  .ti-conviction.HIGH   { color:#22C55E; background:rgba(34,197,94,0.1);   border:1px solid rgba(34,197,94,0.3); }
-  .ti-conviction.MEDIUM { color:var(--accent); background:rgba(200,168,112,0.08); border:1px solid rgba(200,168,112,0.3); }
-  .ti-conviction.LOW    { color:var(--text-muted); background:transparent; border:1px solid rgba(255,255,255,0.08); }
-  .ti-card-body { padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
-  .ti-thesis { grid-column:1/-1; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:2px; }
-  .ti-field-lbl { font-size:7px; font-weight:800; letter-spacing:0.2em; color:var(--text-muted); margin-bottom:7px; font-family:var(--mono); }
-  .ti-field-val { font-size:13px; color:rgba(209,212,220,0.9); line-height:1.65; font-family:var(--sans); }
-  .ti-thesis .ti-field-val { font-size:14px; line-height:1.7; }
-
-  /* Loading spinner */
-  @keyframes tiSpin { to { transform:rotate(360deg); } }
-  .ti-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 0; gap:20px; }
-  .ti-spinner { width:32px; height:32px; border:2px solid rgba(200,168,112,0.15); border-top-color:var(--accent); border-radius:50%; animation:tiSpin 0.8s linear infinite; }
-  .ti-loading-txt { font-size:10px; color:var(--text-muted); letter-spacing:0.18em; font-family:var(--mono); }
+  /* ── Aria Chat Agent ─────────────────────────────────────────────────── */
+  #ariaModal { display:none; position:fixed; top:0; right:0; bottom:0; width:420px; max-width:100vw; background:#0d0d0d; border-left:1px solid rgba(255,255,255,0.07); z-index:600; flex-direction:column; box-shadow:-20px 0 60px rgba(0,0,0,0.7); }
+  #ariaModal.open { display:flex; }
+  .aria-header { padding:18px 20px 16px; border-bottom:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:12px; flex-shrink:0; background:#0a0a0a; }
+  .aria-avatar { width:34px; height:34px; border-radius:10px; background:linear-gradient(135deg,rgba(200,168,112,0.25),rgba(200,168,112,0.08)); border:1px solid rgba(200,168,112,0.3); display:flex; align-items:center; justify-content:center; font-size:16px; flex-shrink:0; }
+  .aria-hdr-info { flex:1; min-width:0; }
+  .aria-hdr-name { font-size:15px; font-weight:700; color:#fff; font-family:var(--sans); letter-spacing:-0.01em; }
+  .aria-hdr-sub { font-size:10px; color:var(--text-muted); font-family:var(--sans); margin-top:1px; }
+  .aria-close { background:none; border:1px solid rgba(255,255,255,0.08); color:var(--text-muted); width:28px; height:28px; border-radius:6px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; transition:all 0.15s; flex-shrink:0; }
+  .aria-close:hover { border-color:rgba(255,255,255,0.2); color:#fff; }
+  .aria-messages { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; }
+  .aria-messages::-webkit-scrollbar { width:3px; }
+  .aria-messages::-webkit-scrollbar-thumb { background:#222; border-radius:2px; }
+  .aria-welcome { display:flex; flex-direction:column; align-items:center; text-align:center; padding:32px 16px 16px; }
+  .aria-welcome-icon { font-size:32px; margin-bottom:16px; opacity:0.7; }
+  .aria-welcome-title { font-size:16px; font-weight:600; color:#fff; font-family:var(--sans); margin-bottom:6px; }
+  .aria-welcome-sub { font-size:12px; color:var(--text-muted); font-family:var(--sans); line-height:1.55; margin-bottom:24px; }
+  .aria-chips { display:flex; flex-direction:column; gap:8px; width:100%; }
+  .aria-chip { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 14px; font-size:12px; font-weight:500; color:var(--text-secondary); font-family:var(--sans); cursor:pointer; text-align:left; transition:all 0.15s; }
+  .aria-chip:hover { background:rgba(200,168,112,0.08); border-color:rgba(200,168,112,0.25); color:var(--gold); }
+  .aria-msg { display:flex; gap:10px; align-items:flex-start; }
+  .aria-msg.user { flex-direction:row-reverse; }
+  .aria-msg-avatar { width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; margin-top:2px; }
+  .aria-msg.assistant .aria-msg-avatar { background:rgba(200,168,112,0.15); border:1px solid rgba(200,168,112,0.2); color:var(--gold); }
+  .aria-msg.user .aria-msg-avatar { background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1); color:rgba(255,255,255,0.5); }
+  .aria-msg-bubble { max-width:calc(100% - 40px); padding:11px 14px; border-radius:12px; font-size:13px; line-height:1.65; font-family:var(--sans); }
+  .aria-msg.assistant .aria-msg-bubble { background:#1a1a1a; border:1px solid rgba(255,255,255,0.06); color:#e8eaf0; border-radius:4px 12px 12px 12px; }
+  .aria-msg.user .aria-msg-bubble { background:rgba(200,168,112,0.14); border:1px solid rgba(200,168,112,0.2); color:#fff; border-radius:12px 4px 12px 12px; }
+  .aria-typing { display:flex; gap:4px; align-items:center; padding:11px 14px; background:#1a1a1a; border:1px solid rgba(255,255,255,0.06); border-radius:4px 12px 12px 12px; width:fit-content; }
+  .aria-dot { width:5px; height:5px; border-radius:50%; background:var(--text-muted); animation:ariaDot 1.2s ease-in-out infinite; }
+  .aria-dot:nth-child(2) { animation-delay:0.2s; }
+  .aria-dot:nth-child(3) { animation-delay:0.4s; }
+  @keyframes ariaDot { 0%,80%,100%{opacity:0.25;transform:scale(0.9)} 40%{opacity:1;transform:scale(1.1)} }
+  .aria-input-row { padding:14px 16px; border-top:1px solid rgba(255,255,255,0.06); display:flex; gap:8px; flex-shrink:0; background:#0a0a0a; }
+  .aria-input { flex:1; background:#181818; border:1px solid rgba(255,255,255,0.08); color:#fff; border-radius:10px; padding:10px 14px; font-size:13px; font-family:var(--sans); outline:none; transition:border-color 0.15s; resize:none; min-height:42px; max-height:100px; line-height:1.45; }
+  .aria-input:focus { border-color:rgba(200,168,112,0.35); }
+  .aria-input::placeholder { color:var(--text-muted); }
+  .aria-send { background:var(--gold); border:none; color:#000; width:42px; height:42px; border-radius:10px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:opacity 0.15s; }
+  .aria-send:hover { opacity:0.85; }
+  .aria-send:disabled { opacity:0.35; cursor:not-allowed; }
 
   /* ── MOBILE RESPONSIVE ──────────────────────────────────────────────────── */
   @media (max-width: 768px) {
@@ -600,7 +602,7 @@
       </div>
     </div>
     <div class="tb-right">
-      <button onclick="openTradeIdeas()" id="tradeIdeasBtn" style="font-size:11px;font-weight:600;letter-spacing:0.01em;padding:6px 16px;border-radius:6px;border:none;background:#c8a870;color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:6px">⚡ Trade Ideas</button>
+      <button onclick="openAria()" id="ariaBtn" style="font-size:12px;font-weight:600;padding:6px 16px;border-radius:8px;border:none;background:#c8a870;color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:7px">✦ Aria</button>
       <div style="position:relative;cursor:pointer" onclick="toggleNotifications()">
         <span id="bellIcon" style="font-size:15px;color:rgba(180,190,210,0.45);padding:5px 8px;display:block;line-height:1">🔔</span>
         <span id="bellDot" style="display:none;position:absolute;top:4px;right:5px;width:6px;height:6px;background:#ef4444;border-radius:50%"></span>
@@ -839,18 +841,32 @@
   </div><!-- #body -->
 </div><!-- #terminal -->
 
-<!-- TRADE IDEAS MODAL -->
-<div id="tradeIdeasModal">
-  <div class="ti-modal-inner">
-    <div class="ti-modal-header">
-      <div>
-        <div class="ti-modal-title">AI <span>Trade Ideas</span></div>
-        <div class="ti-modal-meta" id="tiGeneratedAt"></div>
-      </div>
-      <button class="ti-close-btn" onclick="closeTradeIdeas()">✕ CLOSE</button>
+<!-- ARIA CHAT AGENT -->
+<div id="ariaModal">
+  <div class="aria-header">
+    <div class="aria-avatar">✦</div>
+    <div class="aria-hdr-info">
+      <div class="aria-hdr-name">Aria</div>
+      <div class="aria-hdr-sub">Commodity Intelligence Agent</div>
     </div>
-    <div class="ti-disclaimer">FOR INFORMATIONAL PURPOSES ONLY &nbsp;·&nbsp; NOT FINANCIAL ADVICE &nbsp;·&nbsp; DO YOUR OWN RESEARCH</div>
-    <div id="tiBody"></div>
+    <button class="aria-close" onclick="closeAria()">✕</button>
+  </div>
+  <div class="aria-messages" id="ariaMessages">
+    <div class="aria-welcome" id="ariaWelcome">
+      <div class="aria-welcome-icon">✦</div>
+      <div class="aria-welcome-title">Hi, I'm Aria</div>
+      <div class="aria-welcome-sub">Your AI commodity analyst. Ask me anything about markets, or let me generate trade ideas based on the latest analysis.</div>
+      <div class="aria-chips">
+        <button class="aria-chip" onclick="sendAriaPrompt('Generate trade ideas for me based on the current analysis')">⚡ Generate trade ideas</button>
+        <button class="aria-chip" onclick="sendAriaPrompt('What is the current outlook for Gold and what is driving prices?')">🥇 Gold outlook</button>
+        <button class="aria-chip" onclick="sendAriaPrompt('What are the key macro risks I should be watching right now across commodities?')">🌐 Key macro risks</button>
+        <button class="aria-chip" onclick="sendAriaPrompt('Compare Crude Oil and Natural Gas — which has stronger bullish drivers right now?')">⚖️ Crude vs Natural Gas</button>
+      </div>
+    </div>
+  </div>
+  <div class="aria-input-row">
+    <textarea class="aria-input" id="ariaInput" placeholder="Ask about any commodity..." rows="1" onkeydown="ariaKeydown(event)"></textarea>
+    <button class="aria-send" id="ariaSend" onclick="sendAria()">↑</button>
   </div>
 </div>
 
@@ -1869,53 +1885,90 @@ document.addEventListener('click', (e) => {
   }
 });
 
-// ── Trade Ideas ───────────────────────────────────────────────────────────────
-async function openTradeIdeas() {
-  const modal = document.getElementById('tradeIdeasModal');
-  const body  = document.getElementById('tiBody');
-  const btn   = document.getElementById('tradeIdeasBtn');
-  modal.style.display = 'block';
-  body.innerHTML = '<div class="ti-loading"><div class="ti-spinner"></div><div class="ti-loading-txt">GENERATING TRADE IDEAS</div></div>';
-  btn.textContent = '⏳ GENERATING...'; btn.disabled = true;
+// ── Aria Chat Agent ───────────────────────────────────────────────────────────
+let ariaHistory = []; // [{role:'user'|'assistant', content:str}]
+
+function openAria() {
+  document.getElementById('ariaModal').classList.add('open');
+  document.getElementById('ariaInput').focus();
+}
+function closeAria() {
+  document.getElementById('ariaModal').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeAria(); });
+
+function ariaKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAria(); }
+}
+
+function sendAriaPrompt(text) {
+  document.getElementById('ariaInput').value = text;
+  sendAria();
+}
+
+function ariaAppendMsg(role, content) {
+  const welcome = document.getElementById('ariaWelcome');
+  if (welcome) welcome.remove();
+  const container = document.getElementById('ariaMessages');
+  const isUser = role === 'user';
+  const div = document.createElement('div');
+  div.className = `aria-msg ${role}`;
+  div.innerHTML = `
+    <div class="aria-msg-avatar">${isUser ? '→' : '✦'}</div>
+    <div class="aria-msg-bubble">${content.replace(/\n/g, '<br>')}</div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+  return div;
+}
+
+function ariaShowTyping() {
+  const welcome = document.getElementById('ariaWelcome');
+  if (welcome) welcome.remove();
+  const container = document.getElementById('ariaMessages');
+  const div = document.createElement('div');
+  div.className = 'aria-msg assistant';
+  div.id = 'ariaTyping';
+  div.innerHTML = `<div class="aria-msg-avatar">✦</div><div class="aria-typing"><div class="aria-dot"></div><div class="aria-dot"></div><div class="aria-dot"></div></div>`;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+async function sendAria() {
+  const input = document.getElementById('ariaInput');
+  const sendBtn = document.getElementById('ariaSend');
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = ''; input.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  ariaAppendMsg('user', text);
+  ariaHistory.push({ role: 'user', content: text });
+  ariaShowTyping();
+
   try {
-    const res  = await fetchT('/trade-ideas', { method: 'POST', headers: authH() });
+    const res = await fetchT('/ai/chat', {
+      method: 'POST',
+      headers: { ...authH(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: ariaHistory })
+    });
+    const typing = document.getElementById('ariaTyping');
+    if (typing) typing.remove();
     const data = await res.json();
-    btn.textContent = '⚡ Trade Ideas'; btn.disabled = false;
-    if (!res.ok) { body.innerHTML = `<div style="color:#ef5350;font-size:13px;padding:40px;font-family:var(--sans)">${data.error || 'Failed to generate ideas.'}</div>`; return; }
-    document.getElementById('tiGeneratedAt').textContent = 'Generated ' + (data.generated_at || '');
-    const dirClass = d => d === 'LONG' ? 'long' : d === 'SHORT' ? 'short' : 'spread';
-    body.innerHTML = (data.ideas || []).map(idea => `
-      <div class="ti-card ${dirClass(idea.direction)}-card">
-        <div class="ti-card-header">
-          <span class="ti-direction ${dirClass(idea.direction)}">${idea.direction}</span>
-          <span class="ti-commodity">${idea.commodity}</span>
-          <span class="ti-conviction ${idea.conviction}">${idea.conviction} CONVICTION</span>
-        </div>
-        <div class="ti-card-body">
-          <div class="ti-thesis">
-            <div class="ti-field-lbl">THESIS</div>
-            <div class="ti-field-val">${idea.thesis}</div>
-          </div>
-          <div>
-            <div class="ti-field-lbl">ENTRY NOTE</div>
-            <div class="ti-field-val">${idea.entry_note}</div>
-          </div>
-          <div>
-            <div class="ti-field-lbl">KEY RISK TO WATCH</div>
-            <div class="ti-field-val">${idea.watch}</div>
-          </div>
-        </div>
-      </div>`).join('');
+    if (!res.ok) {
+      ariaAppendMsg('assistant', data.error || 'Something went wrong. Please try again.');
+    } else {
+      const reply = data.reply || '';
+      ariaHistory.push({ role: 'assistant', content: reply });
+      ariaAppendMsg('assistant', reply);
+    }
   } catch (e) {
-    console.error('trade ideas error:', e);
-    body.innerHTML = '<div style="color:#ef5350;font-size:11px;padding:20px">Network error. Please try again.</div>';
-    btn.textContent = '⚡ Trade Ideas'; btn.disabled = false;
+    const typing = document.getElementById('ariaTyping');
+    if (typing) typing.remove();
+    ariaAppendMsg('assistant', 'Network error. Please try again.');
   }
+  sendBtn.disabled = false;
+  input.focus();
 }
-function closeTradeIdeas() {
-  document.getElementById('tradeIdeasModal').style.display = 'none';
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTradeIdeas(); });
 
 // Init on load
 renderBell();

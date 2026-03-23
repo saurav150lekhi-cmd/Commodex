@@ -3344,6 +3344,87 @@ def _run_in_context():
         run_analysis()
 
 
+# ── Aria AI Chat Agent ──────────────────────────────────────────────────────────
+@app.route("/ai/chat", methods=["POST"])
+@jwt_required()
+def aria_chat():
+    if not ANTHROPIC_API_KEY:
+        return jsonify({"error": "AI not configured."}), 503
+
+    data     = request.get_json(silent=True) or {}
+    messages = data.get("messages", [])
+    if not messages:
+        return jsonify({"error": "No messages provided."}), 400
+
+    # Cap history to last 20 turns to control token cost
+    messages = messages[-20:]
+
+    # Build commodity context from latest analysis runs
+    all_runs = AnalysisRun.query.order_by(AnalysisRun.run_at.desc()).all()
+    seen, rows = set(), []
+    for r in all_runs:
+        if r.commodity not in seen:
+            seen.add(r.commodity)
+            rows.append(r)
+
+    price_data = fetch_live_prices()
+    ctx_lines  = []
+    for r in rows:
+        d    = r.data or {}
+        an   = d.get("analysis", d)
+        sent = an.get("sentiment", r.sentiment or "NEUTRAL")
+        summ = an.get("market_summary", "")[:500]
+        up   = "; ".join((an.get("drivers") or {}).get("up",   [])[:3])
+        dn   = "; ".join((an.get("drivers") or {}).get("down", [])[:2])
+        px   = price_data.get(r.commodity, {})
+        pstr = f"${px['price']:.2f} ({'+' if px.get('change',0)>=0 else ''}{px.get('change',0):.2f}%)" if px.get("price") else "N/A"
+        age  = f" (run {r.run_at.strftime('%d %b %H:%M UTC')})" if r.run_at else ""
+        ctx_lines.append(
+            f"### {r.commodity}{age}\n"
+            f"Sentiment: {sent} | Price: {pstr}\n"
+            f"Bullish drivers: {up or 'N/A'}\n"
+            f"Bearish risks: {dn or 'N/A'}\n"
+            f"Summary: {summ}"
+        )
+
+    context = "\n\n".join(ctx_lines) if ctx_lines else "No analysis data available yet."
+    today   = datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC")
+
+    system_prompt = f"""You are Aria, an expert AI commodity analyst for Commodex — a professional commodity research terminal used by traders and investors. Today is {today}.
+
+You have access to the latest AI-generated analysis for all tracked commodities:
+
+{context}
+
+---
+
+Your capabilities:
+- Answer any question about commodity markets (Gold, Silver, Crude Oil, Copper, Natural Gas, Corn, Wheat, Soybeans, Coffee, Sugar and more)
+- Generate specific trade ideas with entry levels, targets, stop-loss, and conviction
+- Explain macro drivers, supply/demand dynamics, geopolitical factors, and seasonal patterns
+- Discuss cross-commodity correlations and relative value
+- Summarise the current market environment
+- Explain commodity concepts for educational purposes
+
+Guidelines:
+- Be concise but insightful — no filler text
+- When generating trade ideas, be specific: direction, entry level, target, stop, thesis, key risk
+- Always acknowledge uncertainty and mention "not financial advice" briefly when giving trade ideas
+- Use the actual data above to ground your responses — cite specific prices and drivers
+- If asked about something outside commodities, politely redirect
+- Format responses cleanly — use bullet points or numbered lists when listing multiple items"""
+
+    client  = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=1024,
+        system=system_prompt,
+        messages=[{"role": m["role"], "content": m["content"]} for m in messages]
+    )
+    reply = message.content[0].text
+    return jsonify({"reply": reply})
+
+
 # ── Trade Ideas ────────────────────────────────────────────────────────────────
 @app.route("/trade-ideas", methods=["POST"])
 @jwt_required()
