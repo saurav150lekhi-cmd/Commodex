@@ -5,7 +5,7 @@ from flask import Blueprint, request, jsonify, redirect
 from flask_jwt_extended import create_access_token, create_refresh_token, jwt_required, get_jwt_identity
 from db import db
 from models import User, PasswordResetToken, UserAlert
-from email_utils import send_verification_email, send_reset_email
+from email_utils import send_reset_email
 import os
 
 VALID_COMMODITIES = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas"]
@@ -32,40 +32,11 @@ def register():
         return _error("Email already registered.", 409)
 
     hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
-    token  = secrets.token_urlsafe(32)
-    user   = User(email=email, password_hash=hashed, verification_token=token)
+    user   = User(email=email, password_hash=hashed, email_verified=True)
     db.session.add(user)
     db.session.commit()
 
-    send_verification_email(email, token)
-
-    return jsonify({"message": "Registered successfully. Check your email to verify your account."}), 201
-
-
-@auth_bp.route("/verify/<token>")
-def verify_email(token):
-    user = User.query.filter_by(verification_token=token).first()
-    if not user:
-        return redirect(f"{APP_URL}/app?verified=invalid")
-    user.email_verified     = True
-    user.verification_token = None
-    db.session.commit()
-    return redirect(f"{APP_URL}/app?verified=1")
-
-
-@auth_bp.route("/resend-verification", methods=["POST"])
-def resend_verification():
-    """Public endpoint — takes email, resends verification if account exists and is unverified."""
-    data  = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip().lower()
-    # Always return 200 to avoid enumeration
-    user = User.query.filter_by(email=email, is_active=True).first()
-    if user and not user.email_verified:
-        if not user.verification_token:
-            user.verification_token = secrets.token_urlsafe(32)
-            db.session.commit()
-        send_verification_email(user.email, user.verification_token)
-    return jsonify({"message": "If that email is registered and unverified, a new link has been sent."}), 200
+    return jsonify({"message": "Account created. You can now sign in."}), 201
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -81,9 +52,8 @@ def login():
     access_token  = create_access_token(identity=str(user.id))
     refresh_token = create_refresh_token(identity=str(user.id))
     return jsonify({
-        "access_token":   access_token,
-        "refresh_token":  refresh_token,
-        "email_verified": user.email_verified,
+        "access_token":  access_token,
+        "refresh_token": refresh_token,
     }), 200
 
 
@@ -102,10 +72,7 @@ def me():
     user    = User.query.get(int(user_id))
     if not user:
         return _error("User not found.", 404)
-    return jsonify({
-        "email":          user.email,
-        "email_verified": user.email_verified,
-    }), 200
+    return jsonify({"email": user.email}), 200
 
 
 @auth_bp.route("/forgot-password", methods=["POST"])
@@ -134,30 +101,6 @@ def forgot_password():
 
     return SAFE
 
-
-@auth_bp.route("/change-email", methods=["POST"])
-@jwt_required()
-def change_email():
-    user_id  = int(get_jwt_identity())
-    data     = request.get_json(silent=True) or {}
-    new_email = (data.get("email") or "").strip().lower()
-    password  = data.get("password") or ""
-    if not new_email or "@" not in new_email:
-        return _error("Valid email required.", 400)
-    user = User.query.get(user_id)
-    if not user:
-        return _error("User not found.", 404)
-    if not bcrypt.checkpw(password.encode(), user.password_hash.encode()):
-        return _error("Incorrect password.", 401)
-    if User.query.filter_by(email=new_email).first():
-        return _error("Email already in use.", 409)
-    token = secrets.token_urlsafe(32)
-    user.email              = new_email
-    user.email_verified     = False
-    user.verification_token = token
-    db.session.commit()
-    send_verification_email(new_email, token)
-    return jsonify({"message": "Email updated. Check your new inbox to verify."}), 200
 
 
 @auth_bp.route("/reset-password", methods=["POST"])

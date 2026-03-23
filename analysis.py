@@ -3515,7 +3515,7 @@ def _send_commodity_alerts(commodity, new_sentiment, old_sentiment, summary=""):
         subs = (UserAlert.query
                 .filter_by(commodity=commodity, enabled=True)
                 .join(User, User.id == UserAlert.user_id)
-                .filter(User.is_active == True, User.email_verified == True)
+                .filter(User.is_active == True)
                 .all())
         for sub in subs:
             user = User.query.get(sub.user_id)
