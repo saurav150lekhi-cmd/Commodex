@@ -72,7 +72,7 @@ def me():
     user    = User.query.get(int(user_id))
     if not user:
         return _error("User not found.", 404)
-    return jsonify({"email": user.email}), 200
+    return jsonify({"email": user.email, "is_admin": user.is_admin}), 200
 
 
 @auth_bp.route("/forgot-password", methods=["POST"])
