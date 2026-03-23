@@ -300,11 +300,10 @@
   .dp-price-block { text-align: right; }
   .dp-price { font-size: 22px; font-weight: 800; color: var(--fg); line-height: 1; }
   .dp-chg { font-size: 13px; font-weight: 700; margin-top: 2px; }
-  #dp-body { display: grid; grid-template-columns: 1fr 1fr; flex: 1; overflow: hidden; }
-  .dp-col { overflow-y: auto; padding: 24px 28px; }
+  #dp-body { display: flex; flex: 1; overflow: hidden; }
+  .dp-col { overflow-y: auto; padding: 32px 40px; }
   .dp-col::-webkit-scrollbar { width: 2px; }
   .dp-col::-webkit-scrollbar-thumb { background: var(--border); }
-  .dp-col-left { border-right: 1px solid var(--border); }
 
   .dp-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
   .dp-meta-cell { background: rgba(8,10,16,0.6); border: 1px solid var(--border); padding: 10px 14px; }
@@ -312,9 +311,7 @@
   .dp-meta-val { font-size: 16px; font-weight: 800; }
   .dp-section { margin-bottom: 20px; }
   .dp-section-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 12px; }
-  .dp-why-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 16px; }
-  .dp-why-bul { font-size: 14px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
-  .dp-why-txt { font-size: 13px; color: rgba(209,212,220,0.9); line-height: 1.6; font-family: var(--sans); }
+
   .dp-sig-item { display: flex; align-items: flex-start; gap: 9px; margin-bottom: 12px; }
   .dp-sig-arrow { font-size: 13px; font-weight: 700; flex-shrink: 0; }
   .dp-sig-txt { font-size: 12px; font-weight: 600; color: rgba(209,212,220,0.93); line-height: 1.55; font-family: var(--sans); }
@@ -457,7 +454,7 @@
     .dcard-why { padding: 8px 10px; }
     .why-txt { font-size: 10px; }
     #dp-body { grid-template-columns: 1fr; }
-    .dp-col-left { border-right: none; border-bottom: 1px solid var(--border); padding: 16px; }
+
     .dp-col { padding: 16px; }
     .dp-topbar { padding: 8px 12px; flex-wrap: wrap; gap: 8px; }
     .dp-name { font-size: 16px; }
@@ -746,17 +743,10 @@
               </div>
             </div>
             <div id="dp-body">
-              <!-- LEFT COLUMN -->
-              <div class="dp-col dp-col-left">
+              <div class="dp-col" style="max-width:720px">
                 <div class="dp-section" id="dp-summary-section">
                   <div class="dp-section-lbl">AI ANALYSIS</div>
-                  <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.7;font-family:var(--sans)">—</div>
-                </div>
-              </div>
-              <!-- RIGHT COLUMN -->
-              <div class="dp-col">
-                <div class="dp-section">
-                  <div id="dp-why"></div>
+                  <div id="dp-summary" style="font-size:14px;color:rgba(209,212,220,0.88);line-height:1.85;font-family:var(--sans)">—</div>
                 </div>
               </div>
             </div>
@@ -1497,23 +1487,6 @@ async function openDetail(name) {
   const chgEl = document.getElementById('dp-chg');
   chgEl.textContent = (chg.cls === 'up' ? '▲ ' : chg.cls === 'dn' ? '▼ ' : '') + (chg.text === '—' ? '—' : Math.abs(price?.change||0).toFixed(2) + '%');
   chgEl.style.color = chgColor;
-
-  // WHY — up drivers then risks subheading for down drivers
-  const upDrivers   = drivers.up   || [];
-  const downDrivers = drivers.down || [];
-  let whyHtml = '';
-  if (upDrivers.length) {
-    whyHtml += upDrivers.map(w =>
-      `<div class="dp-why-item"><span class="dp-why-bul" style="color:${BULL_C}">›</span><span class="dp-why-txt">${w}</span></div>`
-    ).join('');
-  }
-  if (downDrivers.length) {
-    whyHtml += `<div style="font-size:8px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:${BEAR_C};opacity:0.8;margin:14px 0 10px">RISKS</div>`;
-    whyHtml += downDrivers.map(w =>
-      `<div class="dp-why-item"><span class="dp-why-bul" style="color:${BEAR_C}">›</span><span class="dp-why-txt">${w}</span></div>`
-    ).join('');
-  }
-  document.getElementById('dp-why').innerHTML = whyHtml || '<div style="font-size:11px;color:var(--muted)">No drivers identified</div>';
 
   // AI Summary
   const summaryText = analysis.market_summary || '—';
