@@ -303,6 +303,7 @@
             <option value="30">LAST 30 DAYS</option>
           </select>
           <button class="act-btn" onclick="loadAnalysis()">↻ REFRESH</button>
+          <button id="runAnalysisBtn" onclick="triggerAnalysis()" style="background:#c8a870;color:#0a0908;border:none;padding:6px 16px;font-family:'DM Mono',monospace;font-size:10px;letter-spacing:1px;cursor:pointer;font-weight:700">▶ RUN ANALYSIS</button>
         </div>
       </div>
 
@@ -664,6 +665,26 @@ async function resetPassword(id, email) {
 }
 
 // ── Analysis history ──────────────────────────────────────────────────────────
+async function triggerAnalysis() {
+  const btn = document.getElementById("runAnalysisBtn");
+  btn.disabled = true; btn.textContent = "⏳ RUNNING...";
+  try {
+    const res = await apiFetch("/run", { method: "POST" });
+    if (!res) { btn.disabled = false; btn.textContent = "▶ RUN ANALYSIS"; return; }
+    if (res.status === 409) {
+      alert("Analysis is already running — please wait for it to finish.");
+      btn.disabled = false; btn.textContent = "▶ RUN ANALYSIS"; return;
+    }
+    if (res.ok) {
+      btn.textContent = "✓ STARTED";
+      btn.style.background = "#22c55e";
+      setTimeout(() => { btn.disabled = false; btn.textContent = "▶ RUN ANALYSIS"; btn.style.background = "#c8a870"; }, 4000);
+    }
+  } catch {
+    btn.disabled = false; btn.textContent = "▶ RUN ANALYSIS";
+  }
+}
+
 async function loadAnalysis() {
   document.getElementById("analysis-tbody").innerHTML = '<tr><td colspan="4" class="loading-text">Loading...</td></tr>';
   const days = document.getElementById("days-filter").value;
