@@ -1989,6 +1989,423 @@ def fetch_usda_data():
     return result
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# MINING GEOGRAPHY & PRODUCTION DATA
+# ══════════════════════════════════════════════════════════════════════════════
+
+# Static mining geography database — USGS 2024 Mineral Commodity Summaries
+# This is always available to Claude even when dynamic fetches fail
+MINING_GEOGRAPHY = {
+    "Gold": {
+        "top_producers": [
+            {"country": "China",       "output_t": 370,  "share_pct": 11},
+            {"country": "Russia",      "output_t": 330,  "share_pct": 10},
+            {"country": "Australia",   "output_t": 310,  "share_pct": 9},
+            {"country": "Canada",      "output_t": 200,  "share_pct": 6},
+            {"country": "United States","output_t": 170, "share_pct": 5},
+            {"country": "Kazakhstan",  "output_t": 130,  "share_pct": 4},
+            {"country": "Ghana",       "output_t": 130,  "share_pct": 4},
+            {"country": "Mexico",      "output_t": 125,  "share_pct": 4},
+            {"country": "Indonesia",   "output_t": 110,  "share_pct": 3},
+            {"country": "South Africa","output_t": 100,  "share_pct": 3},
+        ],
+        "key_mines": [
+            {"name": "Muruntau",         "country": "Uzbekistan", "annual_t": 90,  "operator": "Navoi"},
+            {"name": "Carlin Trend",     "country": "USA",        "annual_t": 50,  "operator": "Nevada Gold Mines (Barrick/Newmont)"},
+            {"name": "Boddington",       "country": "Australia",  "annual_t": 30,  "operator": "Newmont"},
+            {"name": "Kibali",           "country": "DRC",        "annual_t": 30,  "operator": "Barrick"},
+            {"name": "Grasberg",         "country": "Indonesia",  "annual_t": 40,  "operator": "Freeport-McMoRan"},
+            {"name": "Pueblo Viejo",     "country": "Dom. Rep.",  "annual_t": 30,  "operator": "Barrick/Newmont"},
+            {"name": "Olimpiada",        "country": "Russia",     "annual_t": 28,  "operator": "Polyus"},
+            {"name": "Lihir",            "country": "PNG",        "annual_t": 22,  "operator": "Newcrest"},
+        ],
+        "geopolitical_risk": "Russia sanctions (10% supply), China export controls risk, DRC instability, Mali/West Africa security",
+        "supply_concentration": "Top 3 countries = 30% of world supply. Low concentration vs. copper/cobalt.",
+        "world_total_t": 3300,
+    },
+    "Silver": {
+        "top_producers": [
+            {"country": "Mexico",      "output_kt": 6.3, "share_pct": 23},
+            {"country": "China",       "output_kt": 3.6, "share_pct": 13},
+            {"country": "Peru",        "output_kt": 3.6, "share_pct": 13},
+            {"country": "Chile",       "output_kt": 1.4, "share_pct": 5},
+            {"country": "Russia",      "output_kt": 1.4, "share_pct": 5},
+            {"country": "Australia",   "output_kt": 1.4, "share_pct": 5},
+            {"country": "Bolivia",     "output_kt": 1.3, "share_pct": 5},
+            {"country": "Poland",      "output_kt": 1.3, "share_pct": 5},
+        ],
+        "key_mines": [
+            {"name": "Penasquito",    "country": "Mexico", "annual_moz": 30, "operator": "Newmont"},
+            {"name": "Cannington",    "country": "Australia","annual_moz": 16,"operator": "South32"},
+            {"name": "Fresnillo",     "country": "Mexico", "annual_moz": 14, "operator": "Fresnillo plc"},
+            {"name": "Antamina",      "country": "Peru",   "annual_moz": 15, "operator": "Glencore/BHP"},
+            {"name": "KGHM Lubin",    "country": "Poland", "annual_moz": 40, "operator": "KGHM"},
+        ],
+        "geopolitical_risk": "Mexico mine nationalism risk (AMLO era policies persist), Peru social unrest",
+        "supply_concentration": "Mexico alone = 23% of supply. High country concentration.",
+        "key_demand_driver": "Solar PV (photovoltaics) = fastest growing demand sector; EVs; electronics",
+        "world_total_moz": 820,
+    },
+    "Copper": {
+        "top_producers": [
+            {"country": "Chile",       "output_mt": 5.3, "share_pct": 27},
+            {"country": "DRC",         "output_mt": 2.6, "share_pct": 13},
+            {"country": "Peru",        "output_mt": 2.6, "share_pct": 13},
+            {"country": "China",       "output_mt": 1.9, "share_pct": 10},
+            {"country": "United States","output_mt": 1.1,"share_pct": 6},
+            {"country": "Russia",      "output_mt": 0.9, "share_pct": 5},
+            {"country": "Australia",   "output_mt": 0.9, "share_pct": 5},
+            {"country": "Indonesia",   "output_mt": 0.8, "share_pct": 4},
+            {"country": "Kazakhstan",  "output_mt": 0.6, "share_pct": 3},
+            {"country": "Zambia",      "output_mt": 0.6, "share_pct": 3},
+        ],
+        "key_mines": [
+            {"name": "Escondida",      "country": "Chile",     "annual_mt": 1.2, "operator": "BHP (57.5%), Rio Tinto (30%)"},
+            {"name": "Grasberg",       "country": "Indonesia", "annual_mt": 0.7, "operator": "Freeport-McMoRan (48.76%)"},
+            {"name": "Collahuasi",     "country": "Chile",     "annual_mt": 0.65,"operator": "Glencore/Anglo American"},
+            {"name": "El Teniente",    "country": "Chile",     "annual_mt": 0.45,"operator": "Codelco (state-owned)"},
+            {"name": "Morenci",        "country": "USA",       "annual_mt": 0.43,"operator": "Freeport-McMoRan"},
+            {"name": "Las Bambas",     "country": "Peru",      "annual_mt": 0.35,"operator": "MMG (China)"},
+            {"name": "Buenavista",     "country": "Mexico",    "annual_mt": 0.35,"operator": "Grupo Mexico"},
+            {"name": "Chuquicamata",   "country": "Chile",     "annual_mt": 0.34,"operator": "Codelco"},
+            {"name": "Cerro Verde",    "country": "Peru",      "annual_mt": 0.32,"operator": "Freeport-McMoRan"},
+            {"name": "Oyu Tolgoi",     "country": "Mongolia",  "annual_mt": 0.18,"operator": "Rio Tinto/Turquoise Hill"},
+        ],
+        "geopolitical_risk": (
+            "Chile: Escondida strike risk, water scarcity, mining royalty tax; "
+            "Peru: Las Bambas community blockades (recurring), Cañariaco opposition; "
+            "DRC: Ivanhoe Kamoa-Kakula political risk; "
+            "Panama: First Quantum Cobre Panama forced closure 2023; "
+            "Indonesia: Grasberg export quota restrictions"
+        ),
+        "supply_concentration": "Chile+DRC+Peru = 53% of world supply. HIGH concentration risk.",
+        "world_total_mt": 22,
+        "pipeline": "Major projects: Oyu Tolgoi UG expansion, Kamoa-Kakula phase 3, QB2 Chile ramp-up",
+    },
+    "Natural Gas": {
+        "top_producers": [
+            {"country": "United States","output_bcm": 974, "share_pct": 24},
+            {"country": "Russia",       "output_bcm": 673, "share_pct": 17},
+            {"country": "Iran",         "output_bcm": 260, "share_pct": 6},
+            {"country": "China",        "output_bcm": 222, "share_pct": 6},
+            {"country": "Qatar",        "output_bcm": 178, "share_pct": 4},
+            {"country": "Australia",    "output_bcm": 153, "share_pct": 4},
+            {"country": "Norway",       "output_bcm": 122, "share_pct": 3},
+            {"country": "Canada",       "output_bcm": 186, "share_pct": 5},
+        ],
+        "key_basins": [
+            {"name": "Permian Basin",       "country": "USA",     "note": "Largest US gas+oil basin, 6+ bcf/d associated gas"},
+            {"name": "Marcellus/Utica",     "country": "USA",     "note": "Largest dedicated US gas play, NE Appalachia"},
+            {"name": "Yamal Peninsula",     "country": "Russia",  "note": "Largest Russian gas field, feeds Nord Stream/Arctic LNG"},
+            {"name": "South Pars/North Dome","country": "Qatar/Iran","note": "World's largest single gas field"},
+            {"name": "Browse Basin",        "country": "Australia","note": "Woodside offshore LNG source"},
+            {"name": "Gorgon/Ichthys",      "country": "Australia","note": "Key Asia LNG export hubs"},
+        ],
+        "key_lng_terminals": [
+            {"name": "Sabine Pass",    "country": "USA",      "capacity_mtpa": 30,  "operator": "Cheniere"},
+            {"name": "Freeport LNG",   "country": "USA",      "capacity_mtpa": 15,  "operator": "Freeport"},
+            {"name": "RasGas/QatarLNG","country": "Qatar",    "capacity_mtpa": 77,  "operator": "QatarEnergy"},
+            {"name": "ADNOC LNG",      "country": "UAE",      "capacity_mtpa": 5.8, "operator": "ADNOC"},
+            {"name": "Darwin LNG",     "country": "Australia","capacity_mtpa": 3.7, "operator": "Santos"},
+        ],
+        "geopolitical_risk": "Russia sanctions (Nordstream closure, rerouting); Qatar Strait of Hormuz risk; Australia labor strikes at LNG plants",
+    },
+    "Crude Oil": {
+        "top_producers": [
+            {"country": "United States","output_mbd": 13.3,"share_pct": 14},
+            {"country": "Saudi Arabia", "output_mbd": 9.0, "share_pct": 9},
+            {"country": "Russia",       "output_mbd": 9.8, "share_pct": 10},
+            {"country": "Canada",       "output_mbd": 5.8, "share_pct": 6},
+            {"country": "Iraq",         "output_mbd": 4.3, "share_pct": 4},
+            {"country": "UAE",          "output_mbd": 4.0, "share_pct": 4},
+            {"country": "Iran",         "output_mbd": 3.4, "share_pct": 3},
+            {"country": "China",        "output_mbd": 4.3, "share_pct": 4},
+            {"country": "Brazil",       "output_mbd": 3.5, "share_pct": 4},
+            {"country": "Kuwait",       "output_mbd": 2.7, "share_pct": 3},
+        ],
+        "key_fields": [
+            {"name": "Ghawar",           "country": "Saudi Arabia","output_mbd": 3.8,"operator": "Saudi Aramco"},
+            {"name": "Permian Basin",    "country": "USA",         "output_mbd": 6.0, "operator": "Multiple"},
+            {"name": "Rumaila",          "country": "Iraq",        "output_mbd": 1.5, "operator": "BP/CNPC"},
+            {"name": "Burgan",           "country": "Kuwait",      "output_mbd": 1.7, "operator": "KOC"},
+            {"name": "West Qurna",       "country": "Iraq",        "output_mbd": 1.3, "operator": "Lukoil/ExxonMobil"},
+            {"name": "Kashagan",         "country": "Kazakhstan",  "output_mbd": 0.5, "operator": "Consortium (Eni/Shell/ExxonMobil)"},
+        ],
+        "key_chokepoints": [
+            {"name": "Strait of Hormuz", "flow_mbd": 21, "risk": "Iran closure threat — 21% of world oil supply"},
+            {"name": "Strait of Malacca","flow_mbd": 16, "risk": "China-India-Japan supply route"},
+            {"name": "Suez Canal",       "flow_mbd": 5.5,"risk": "Yemen Houthi disruption (active 2024)"},
+            {"name": "Turkish Straits",  "flow_mbd": 2.8,"risk": "Black Sea Russian exports"},
+            {"name": "Panama Canal",     "flow_mbd": 0.8,"risk": "Drought-related restrictions 2024"},
+        ],
+        "geopolitical_risk": "OPEC+ production discipline; Russia sanctions; Iran nuclear deal; Houthi Red Sea attacks; Venezuelan production recovery",
+    },
+    "Corn": {
+        "top_producers": [
+            {"country": "United States","output_mt": 390, "share_pct": 32},
+            {"country": "China",        "output_mt": 290, "share_pct": 24},
+            {"country": "Brazil",       "output_mt": 137, "share_pct": 11},
+            {"country": "Argentina",    "output_mt": 50,  "share_pct": 4},
+            {"country": "Ukraine",      "output_mt": 28,  "share_pct": 2},
+            {"country": "India",        "output_mt": 35,  "share_pct": 3},
+        ],
+        "key_regions": [
+            {"region": "US Corn Belt",       "states": "Iowa, Illinois, Indiana, Minnesota, Nebraska", "note": "Largest single production zone globally"},
+            {"region": "Brazil Center-West", "states": "Mato Grosso, Goiás",                           "note": "Safrinha second crop — harvested May-Aug"},
+            {"region": "Ukraine Black Sea",  "states": "Vinnytsia, Poltava",                           "note": "Key export corridor; war disruption risk"},
+            {"region": "Argentina Pampas",   "states": "Córdoba, Buenos Aires, Santa Fe",              "note": "Dec-Apr growing season; La Niña drought risk"},
+        ],
+        "geopolitical_risk": "Ukraine war (port disruptions), Argentina export taxes/quotas, China buy/no-buy decisions",
+    },
+    "Wheat": {
+        "top_producers": [
+            {"country": "China",        "output_mt": 137, "share_pct": 18},
+            {"country": "India",        "output_mt": 108, "share_pct": 14},
+            {"country": "Russia",       "output_mt": 92,  "share_pct": 12},
+            {"country": "United States","output_mt": 45,  "share_pct": 6},
+            {"country": "Australia",    "output_mt": 26,  "share_pct": 3},
+            {"country": "Canada",       "output_mt": 32,  "share_pct": 4},
+            {"country": "Ukraine",      "output_mt": 22,  "share_pct": 3},
+            {"country": "France",       "output_mt": 36,  "share_pct": 5},
+        ],
+        "key_regions": [
+            {"region": "Black Sea Region",   "countries": "Russia, Ukraine, Kazakhstan", "note": "~35% of global exports; war/sanctions disruption risk"},
+            {"region": "US Hard Red Belt",   "states": "Kansas, Oklahoma, Texas",        "note": "Hard Red Winter wheat — drought-prone"},
+            {"region": "Australian Wheat Belt","states": "Western Australia, NSW",       "note": "Southern hemisphere — harvested Nov-Jan"},
+            {"region": "Punjab (India/Pakistan)","countries": "India, Pakistan",         "note": "Heat stress risk during grain fill in April"},
+        ],
+        "geopolitical_risk": "Russia export quotas and taxes; Ukraine port/infrastructure attacks; India export bans (2022, 2023); Egypt procurement as largest importer",
+    },
+    "Soybeans": {
+        "top_producers": [
+            {"country": "Brazil",       "output_mt": 162, "share_pct": 37},
+            {"country": "United States","output_mt": 113, "share_pct": 26},
+            {"country": "Argentina",    "output_mt": 50,  "share_pct": 11},
+            {"country": "China",        "output_mt": 20,  "share_pct": 5},
+            {"country": "India",        "output_mt": 13,  "share_pct": 3},
+        ],
+        "key_regions": [
+            {"region": "Brazil Cerrado",     "states": "Mato Grosso, Pará, Goiás",          "note": "World #1 soy producer; Oct-Mar planting/growing"},
+            {"region": "US Midwest",         "states": "Illinois, Iowa, Minnesota, Indiana", "note": "May-Sep growing season"},
+            {"region": "Argentina Pampas",   "states": "Buenos Aires, Córdoba, Santa Fe",   "note": "Nov-Apr; La Niña drought biggest risk"},
+            {"region": "Paraná/Rio Grande do Sul","states": "Brazil South",                  "note": "Earlier Brazil harvest — Nov-Feb"},
+        ],
+        "geopolitical_risk": "China US-trade war tariff risk; Brazil currency (BRL) + logistics costs; Argentina peso devaluation and export taxes",
+    },
+    "Coffee": {
+        "top_producers": [
+            {"country": "Brazil",      "output_bags_m": 65, "share_pct": 38, "type": "Arabica + Robusta"},
+            {"country": "Vietnam",     "output_bags_m": 29, "share_pct": 17, "type": "Robusta dominant"},
+            {"country": "Colombia",    "output_bags_m": 14, "share_pct": 8,  "type": "Arabica (Mild washed)"},
+            {"country": "Indonesia",   "output_bags_m": 11, "share_pct": 6,  "type": "Robusta + Arabica"},
+            {"country": "Ethiopia",    "output_bags_m": 8,  "share_pct": 5,  "type": "Arabica (Heirloom)"},
+            {"country": "Honduras",    "output_bags_m": 8,  "share_pct": 5,  "type": "Arabica"},
+            {"country": "India",       "output_bags_m": 6,  "share_pct": 3,  "type": "Robusta + Arabica"},
+            {"country": "Uganda",      "output_bags_m": 6,  "share_pct": 3,  "type": "Robusta"},
+        ],
+        "key_regions": [
+            {"region": "Minas Gerais",        "country": "Brazil",   "note": "World's largest arabica region; frost risk Jul-Aug is #1 price catalyst"},
+            {"region": "Espirito Santo",       "country": "Brazil",   "note": "Brazil's main conilon (robusta) belt"},
+            {"region": "Sao Paulo/Paraná",     "country": "Brazil",   "note": "Coffee pioneer region; biennial bearing cycle"},
+            {"region": "Central Highlands",    "country": "Vietnam",  "note": "Dak Lak, Gia Lai provinces; robusta; dry season Feb-Apr = harvest"},
+            {"region": "Huila/Nariño",         "country": "Colombia", "note": "High-altitude arabica; two crops/year (mitaca system)"},
+            {"region": "Yirgacheffe/Sidama",   "country": "Ethiopia", "note": "Premium heirloom arabica; supply thin, specialty premium"},
+            {"region": "Sumatra/Sulawesi",     "country": "Indonesia","note": "Mandheling, Toraja; wet-hulled process"},
+        ],
+        "seasonal_calendar": {
+            "Brazil_flowering": "Sep-Oct (determines next crop size)",
+            "Brazil_harvest":   "May-Sep",
+            "Brazil_frost_risk":"Jun-Aug (Minas Gerais — market-moving)",
+            "Vietnam_harvest":  "Oct-Mar",
+            "Colombia_main":    "Oct-Feb (main crop)",
+            "Colombia_mitaca":  "Apr-Jun (fly crop)",
+        },
+        "geopolitical_risk": "Brazil biennial cycle (on/off years); Vietnam La Niña drought (Central Highlands); Colombia security/road access; Ethiopia forex controls; EU deforestation regulation (EUDR) impacting supply",
+        "supply_concentration": "Brazil + Vietnam = 55% of world supply. HIGH concentration. Brazil frost or drought is a market-moving event.",
+        "world_total_bags_m": 171,
+    },
+    "Sugar": {
+        "top_producers": [
+            {"country": "Brazil",      "output_mt": 42,  "share_pct": 26, "note": "Sugar/ethanol flex mills"},
+            {"country": "India",       "output_mt": 36,  "share_pct": 22, "note": "Domestic consumption > exports; policy-driven"},
+            {"country": "EU",          "output_mt": 17,  "share_pct": 10, "note": "Beet sugar; EU production quota removed 2017"},
+            {"country": "China",       "output_mt": 10,  "share_pct": 6,  "note": "Large importer; domestic deficit"},
+            {"country": "Thailand",    "output_mt": 11,  "share_pct": 7,  "note": "#3 global exporter"},
+            {"country": "United States","output_mt": 9,  "share_pct": 5,  "note": "Beet + cane; protective import quotas"},
+            {"country": "Australia",   "output_mt": 5,   "share_pct": 3,  "note": "Queensland cane"},
+            {"country": "Pakistan",    "output_mt": 8,   "share_pct": 5,  "note": "Domestic use; erratic exports"},
+        ],
+        "key_regions": [
+            {"region": "São Paulo/Minas Gerais","country": "Brazil",  "note": "Center-South Brazil = 90% of Brazil output; Apr-Dec crush season"},
+            {"region": "Uttar Pradesh",         "country": "India",   "note": "Largest Indian cane state; monsoon + government price policy critical"},
+            {"region": "Maharashtra",           "country": "India",   "note": "2nd largest Indian state; drought-prone Marathwada region"},
+            {"region": "Udon Thani/Khon Kaen",  "country": "Thailand","note": "Northeast Thailand cane belt; drought risk"},
+            {"region": "Queensland",            "country": "Australia","note": "Mackay to Cairns coast; Cyclone risk Jun-Nov"},
+        ],
+        "geopolitical_risk": "India export quotas/ban (recurring government intervention); Brazil ethanol-sugar flex ratio; Thailand drought; EU sugar beet competition with wheat",
+        "supply_concentration": "Brazil + India = 48% of world production. Brazil is #1 exporter by far.",
+        "world_total_mt": 186,
+    },
+}
+
+
+def fetch_usgs_minerals():
+    """
+    Fetch dynamic mine production data from USGS National Minerals Information Center.
+    Falls back gracefully to the static MINING_GEOGRAPHY database.
+    Returns updates to top producer lists and any recent supply alerts.
+    """
+    result = {}
+    # Try USGS ScienceBase for latest MCS data (JSON available for some commodities)
+    commodity_map = {
+        "Gold":    "gold",
+        "Silver":  "silver",
+        "Copper":  "copper",
+    }
+    for comm, slug in commodity_map.items():
+        try:
+            url = f"https://minerals.usgs.gov/minerals/pubs/commodity/{slug}/mcs-{slug}.json"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            if data:
+                result[comm] = {"usgs_data": data, "source": "USGS MCS JSON"}
+        except:
+            pass
+
+    # USGS MRDS API — mine count by commodity (gives activity signal)
+    for comm, commod_code in [("Gold", "Gold"), ("Copper", "Copper"), ("Silver", "Silver")]:
+        try:
+            url = (f"https://mrdata.usgs.gov/mrds/api/1/query.json"
+                   f"?commod={commod_code}&recstatus=A&$format=json&$top=1")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            if data and data.get("features"):
+                result.setdefault(comm, {})["active_mines_sample"] = len(data["features"])
+        except:
+            pass
+    return result
+
+
+def fetch_cochilco():
+    """
+    Fetch Chilean copper production data from COCHILCO (free, no key).
+    Chile = 27% of world copper supply — critical for price forecasting.
+    """
+    result = {}
+    # COCHILCO publishes monthly statistical bulletins
+    try:
+        req = urllib.request.Request(
+            "https://www.cochilco.cl/estadisticas-con/630/category/9.aspx",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=12) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Look for production figure (kt or thousand metric tons)
+        for pattern in [
+            r'(\d[\d,]+\.?\d*)\s*(?:kt|TMF|thousand\s+metric\s+tons?)',
+            r'producción[^0-9]*([\d,.]+)',
+            r'(\d+[,.]\d{3})\s*(?:kt|TMF)',
+        ]:
+            m = re.search(pattern, html, re.IGNORECASE)
+            if m:
+                val_str = m.group(1).replace(",", "")
+                val = float(val_str)
+                if 100 < val < 600:  # sanity: Chile ~400-500 kt/month
+                    result["chile_monthly_production_kt"] = {
+                        "label": "Chile Monthly Copper Production (COCHILCO, kt)",
+                        "value": val,
+                    }
+                    break
+    except Exception as e:
+        log.debug("COCHILCO fetch failed: %s", e)
+
+    # Try COCHILCO price bulletin
+    try:
+        req = urllib.request.Request(
+            "https://www.cochilco.cl/estadisticas-con/630/category/1.aspx",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r'(\d+\.\d+)\s*(?:US\$|USD)/lb', html, re.IGNORECASE)
+        if m:
+            val = float(m.group(1))
+            if 2 < val < 6:  # sanity: copper ~$3-5/lb
+                result["cochilco_copper_price"] = {
+                    "label": "COCHILCO Reference Copper Price (USD/lb)",
+                    "value": val,
+                }
+    except Exception as e:
+        log.debug("COCHILCO price fetch failed: %s", e)
+    return result
+
+
+def fetch_mine_disruptions():
+    """
+    Scrape and detect active mine disruptions at major operations.
+    Checks news feeds for keywords matching key mine names and disruption events.
+    Returns a dict of flagged disruptions by commodity.
+    """
+    result = {}
+    # Key mines and their disruption keywords to watch
+    MINE_WATCH = {
+        "Copper": [
+            ("Escondida",   ["escondida", "bhp chile", "escondida strike", "escondida production"]),
+            ("Grasberg",    ["grasberg", "freeport indonesia", "pt-fi", "grasberg mine"]),
+            ("Las Bambas",  ["las bambas", "mmc peru", "bambas blockade", "bambas protest"]),
+            ("Codelco",     ["codelco", "el teniente", "chuquicamata", "codelco production", "codelco output"]),
+            ("Collahuasi",  ["collahuasi", "glencore chile"]),
+            ("Oyu Tolgoi",  ["oyu tolgoi", "rio tinto mongolia", "turquoise hill"]),
+            ("Kamoa-Kakula",["kamoa", "kakula", "ivanhoe mines drc"]),
+            ("Cobre Panama",["cobre panama", "first quantum panama", "panama copper"]),
+        ],
+        "Gold": [
+            ("Muruntau",    ["muruntau", "navoi uzbekistan"]),
+            ("Carlin/NVG",  ["nevada gold mines", "barrick nevada", "carlin complex"]),
+            ("Kibali",      ["kibali", "barrick drc"]),
+            ("Pueblo Viejo",["pueblo viejo", "barrick dominican"]),
+        ],
+        "Natural Gas": [
+            ("Sabine Pass", ["sabine pass", "cheniere sabine", "lng sabine"]),
+            ("Freeport LNG",["freeport lng", "freeport terminal"]),
+            ("Yamal",       ["yamal lng", "novatek yamal", "arctic lng"]),
+        ],
+    }
+
+    # Pull from existing DB articles (already fetched) and scan for mine keywords
+    try:
+        cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
+        for commodity, mines in MINE_WATCH.items():
+            flagged = []
+            for mine_name, keywords in mines:
+                articles = (NewsArticle.query
+                            .filter_by(commodity=commodity)
+                            .filter(NewsArticle.fetched_at >= cutoff)
+                            .limit(200).all())
+                for a in articles:
+                    text = (a.title + " " + (a.summary or "")).lower()
+                    disruption_words = ["strike", "halt", "suspend", "block", "protest", "closure",
+                                        "shutdown", "outage", "accident", "flood", "drought",
+                                        "cut", "reduce", "disruption", "force majeure", "stoppage"]
+                    if any(kw in text for kw in keywords):
+                        if any(dw in text for dw in disruption_words):
+                            flagged.append({
+                                "mine":    mine_name,
+                                "title":   a.title,
+                                "source":  a.source,
+                                "date":    a.published,
+                                "impact":  a.impact,
+                            })
+                            break  # one alert per mine is enough
+            if flagged:
+                result[commodity] = flagged
+    except Exception as e:
+        log.debug("Mine disruption scan failed: %s", e)
+    return result
+
+
 # ── Atlanta Fed GDPNow — real-time US GDP estimate (free, no key) ─────────────
 def fetch_gdpnow():
     """Scrape Atlanta Fed GDPNow real-time GDP growth estimate — updates daily."""
@@ -2605,7 +3022,8 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                         fao=None, metals=None, coal=None, currencies=None,
                         credit=None, bitcoin=None, eua=None, ico_coffee=None,
                         gdpnow=None, fedwatch=None, equities=None, ratios=None,
-                        eu_pmi=None, pboc=None):
+                        eu_pmi=None, pboc=None,
+                        mining_geo=None, cochilco=None, mine_alerts=None):
     lines = []
 
     # LIVE PRICE — always first so Claude sees today's move immediately
@@ -3327,6 +3745,87 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
             lines.append("FAO FOOD PRICE INDICES (global supply pressure):")
             lines.extend(fao_lines[:4])
 
+    # ── Mining Geography & Supply Concentration ──────────────────────────────
+    geo = MINING_GEOGRAPHY.get(commodity_name)
+    if geo:
+        # Top producers
+        top3 = geo.get("top_producers", [])[:3]
+        if top3:
+            prod_str = ", ".join(f"{p['country']} ({p.get('share_pct', '?')}%)" for p in top3)
+            total    = geo.get("world_total_mt") or geo.get("world_total_t") or geo.get("world_total_bags_m") or geo.get("world_total_moz")
+            unit_str = ""
+            if commodity_name in ("Corn","Wheat","Soybeans","Sugar"): unit_str = "Mt"
+            elif commodity_name == "Gold": unit_str = "t"
+            elif commodity_name == "Coffee": unit_str = "M bags"
+            elif commodity_name == "Silver": unit_str = "Moz"
+            else: unit_str = "Mt"
+            world_str = f" | World total: {total} {unit_str}" if total else ""
+            lines.append(f"SUPPLY GEOGRAPHY ({commodity_name.upper()}): Top producers: {prod_str}{world_str}")
+
+        # Supply concentration risk
+        if geo.get("supply_concentration"):
+            lines.append(f"CONCENTRATION RISK: {geo['supply_concentration']}")
+
+        # Key mines / regions
+        if commodity_name in ("Gold", "Silver", "Copper"):
+            mines = geo.get("key_mines", [])[:5]
+            if mines:
+                lines.append(f"MAJOR MINES:")
+                for m in mines:
+                    output = m.get("annual_mt") or m.get("annual_t") or m.get("annual_moz")
+                    unit   = "Mt/yr" if commodity_name == "Copper" else "t/yr" if commodity_name == "Gold" else "Moz/yr"
+                    lines.append(f"  {m['name']} ({m['country']}): {output} {unit} — {m.get('operator','')}")
+
+        elif commodity_name in ("Corn", "Wheat", "Soybeans", "Coffee", "Sugar"):
+            regions = geo.get("key_regions", [])[:4]
+            if regions:
+                lines.append(f"KEY PRODUCTION REGIONS:")
+                for r in regions:
+                    loc = r.get("country", r.get("states", ""))
+                    lines.append(f"  {r['region']} ({loc}): {r.get('note','')}")
+
+        elif commodity_name in ("Crude Oil", "Natural Gas"):
+            if commodity_name == "Crude Oil":
+                chokepoints = geo.get("key_chokepoints", [])
+                if chokepoints:
+                    lines.append("OIL CHOKEPOINTS:")
+                    for c in chokepoints[:3]:
+                        lines.append(f"  {c['name']}: {c.get('flow_mbd','?')} mb/d — {c.get('risk','')}")
+            else:
+                basins = geo.get("key_basins", [])[:3]
+                if basins:
+                    lines.append("KEY GAS BASINS:")
+                    for b in basins:
+                        lines.append(f"  {b['name']} ({b['country']}): {b.get('note','')}")
+
+        # Coffee seasonal calendar (unique to coffee)
+        if commodity_name == "Coffee" and geo.get("seasonal_calendar"):
+            cal = geo["seasonal_calendar"]
+            lines.append("COFFEE SEASONAL CALENDAR:")
+            for event, timing in cal.items():
+                lines.append(f"  {event.replace('_',' ')}: {timing}")
+
+        # Geopolitical supply risk
+        if geo.get("geopolitical_risk"):
+            lines.append(f"GEOPOLITICAL SUPPLY RISK: {geo['geopolitical_risk']}")
+
+    # ── COCHILCO — Chile copper production (Copper only) ─────────────────────
+    if cochilco and commodity_name == "Copper":
+        if "chile_monthly_production_kt" in cochilco:
+            d = cochilco["chile_monthly_production_kt"]
+            lines.append(f"COCHILCO CHILE PRODUCTION: {d['value']} kt/month (Chile = 27% world supply)")
+        if "cochilco_copper_price" in cochilco:
+            d = cochilco["cochilco_copper_price"]
+            lines.append(f"COCHILCO REFERENCE PRICE: ${d['value']:.3f}/lb")
+
+    # ── Active mine disruption alerts ────────────────────────────────────────
+    if mine_alerts and commodity_name in mine_alerts:
+        alerts = mine_alerts[commodity_name]
+        if alerts:
+            lines.append(f"⚠ ACTIVE MINE DISRUPTION ALERTS ({commodity_name.upper()}):")
+            for a in alerts[:4]:
+                lines.append(f"  [{a['impact']}] {a['mine']}: {a['title'][:100]} ({a['source']})")
+
     # ── ICO Coffee data — certified stocks, robusta, spread ──────────────────
     if ico_coffee and commodity_name == "Coffee":
         if "robusta_price" in ico_coffee:
@@ -3735,6 +4234,9 @@ def run_analysis():
         wgc           = fetch_world_gold_council()
         conab         = fetch_conab_brazil()
         lbma          = fetch_lbma_data()
+        usgs          = fetch_usgs_minerals()
+        cochilco      = fetch_cochilco()
+        mine_alerts   = fetch_mine_disruptions()
         gdpnow        = fetch_gdpnow()
         fedwatch      = fetch_fedwatch()
         equities      = fetch_equity_sentiment()
@@ -3786,7 +4288,9 @@ def run_analysis():
                                                 bitcoin=bitcoin, eua=eua, ico_coffee=ico_coffee,
                                                 gdpnow=gdpnow, fedwatch=fedwatch,
                                                 equities=equities, ratios=ratios,
-                                                eu_pmi=eu_pmi, pboc=pboc)
+                                                eu_pmi=eu_pmi, pboc=pboc,
+                                                mining_geo=MINING_GEOGRAPHY,
+                                                cochilco=cochilco, mine_alerts=mine_alerts)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
@@ -3841,7 +4345,8 @@ def run_analysis():
                     metals=metals, coal=coal, credit=credit,
                     bitcoin=bitcoin, eua=eua,
                     gdpnow=gdpnow, fedwatch=fedwatch, equities=equities,
-                    ratios=ratios, eu_pmi=eu_pmi, pboc=pboc)
+                    ratios=ratios, eu_pmi=eu_pmi, pboc=pboc,
+                    cochilco=cochilco, mine_alerts=mine_alerts)
             save_macro_cache(macro_snapshot)
         except Exception as e:
             log.warning("Macro snapshot save failed: %s", e)
@@ -3928,7 +4433,8 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
                          currencies=None, ico_coffee=None, metals=None,
                          coal=None, credit=None, bitcoin=None, eua=None,
                          gdpnow=None, fedwatch=None, equities=None, ratios=None,
-                         eu_pmi=None, pboc=None):
+                         eu_pmi=None, pboc=None,
+                         cochilco=None, mine_alerts=None):
     """Build a structured key-data snapshot for the frontend Key Data Panel."""
     rows = []  # each row: {label, value, change, signal, signal_color}
     BULL = "#22c55e"; BEAR = "#ef4444"; NEUT = "#fbbf24"; MUTED = "#5d6478"
@@ -4292,6 +4798,27 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
         if d and d.get("price"):
             sc = BEAR if (d.get("change") or 0) > 0 else BULL
             row("EU Carbon EUA", f"€{d['price']:.2f}", _chg(d.get("change"), 2, "%"), "€/t CO2", sc)
+
+    # ── Mine disruption alerts (Key Data Panel) ───────────────────────────────
+    if mine_alerts and commodity in mine_alerts:
+        alerts = mine_alerts[commodity]
+        if alerts:
+            row("⚠ Mine Disruption", f"{len(alerts)} alert(s)", None,
+                alerts[0]["mine"], BEAR)
+
+    # ── COCHILCO Chile copper production ──────────────────────────────────────
+    if cochilco and commodity == "Copper":
+        if "chile_monthly_production_kt" in cochilco:
+            d = cochilco["chile_monthly_production_kt"]
+            row("Chile Output (COCHILCO)", f"{d['value']}kt/mo", None, "27% world supply", NEUT)
+
+    # ── Supply concentration from static geo database ─────────────────────────
+    geo = MINING_GEOGRAPHY.get(commodity)
+    if geo:
+        top1 = geo.get("top_producers", [{}])[0]
+        if top1.get("share_pct"):
+            sc = BEAR if top1["share_pct"] > 25 else NEUT
+            row("Top Supplier", top1["country"], None, f"{top1['share_pct']}% world supply", sc)
 
     # ── GDPNow / Fed rate signals (all commodities) ───────────────────────────
     if gdpnow and gdpnow.get("gdpnow"):
@@ -5352,6 +5879,17 @@ ARIA_TOOLS = [
             "required": ["commodity", "direction"]
         }
     },
+    {
+        "name": "get_mining_geography",
+        "description": "Get detailed mining geography data for a commodity: top producing countries and their market share, key mine names and operators, major production regions, seasonal calendars (for ag), geopolitical supply risks, and any active mine disruption alerts from recent news.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commodity": {"type": "string", "description": "Commodity name: Gold, Silver, Copper, Crude Oil, Natural Gas, Corn, Wheat, Soybeans, Coffee, or Sugar"}
+            },
+            "required": ["commodity"]
+        }
+    },
 ]
 
 VALID_ALERT_COMMODITIES = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas", "Corn", "Wheat", "Soybeans", "Coffee", "Sugar"]
@@ -5615,6 +6153,45 @@ Key Risks:
 Not financial advice.
 --------------------------"""
         return {"success": True, "journal_entry": journal}
+
+    elif tool_name == "get_mining_geography":
+        commodity = tool_input.get("commodity", "")
+        geo = MINING_GEOGRAPHY.get(commodity)
+        if not geo:
+            return {"success": False, "message": f"No mining geography data available for '{commodity}'. Valid: {list(MINING_GEOGRAPHY.keys())}"}
+
+        result = {"commodity": commodity, "geography": geo}
+
+        # Add live mine disruption alerts from DB
+        try:
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=72)
+            articles = (NewsArticle.query
+                        .filter_by(commodity=commodity)
+                        .filter(NewsArticle.fetched_at >= cutoff)
+                        .limit(300).all())
+            disruptions = []
+            disruption_words = ["strike", "halt", "suspend", "block", "protest", "closure",
+                                "shutdown", "accident", "flood", "force majeure", "stoppage", "disruption"]
+            mines_watched = [m["name"] for m in geo.get("key_mines", [])]
+            for a in articles:
+                text = (a.title + " " + (a.summary or "")).lower()
+                if any(dw in text for dw in disruption_words):
+                    for mine in mines_watched:
+                        if mine.lower() in text:
+                            disruptions.append({"mine": mine, "headline": a.title, "source": a.source, "date": a.published})
+                            break
+            if disruptions:
+                result["active_disruptions"] = disruptions[:5]
+        except Exception as e:
+            log.debug("Mine disruption tool scan failed: %s", e)
+
+        # Add COCHILCO live data if copper
+        if commodity == "Copper":
+            cochilco_data = fetch_cochilco()
+            if cochilco_data:
+                result["cochilco_live"] = cochilco_data
+
+        return {"success": True, "data": result}
 
     return {"success": False, "message": f"Unknown tool: {tool_name}"}
 
