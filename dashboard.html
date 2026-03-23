@@ -1906,6 +1906,23 @@ function sendAriaPrompt(text) {
   sendAria();
 }
 
+function ariaMarkdown(text) {
+  text = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  text = text.replace(/^### (.+)$/gm, '<div style="font-weight:700;color:var(--gold);font-size:11px;letter-spacing:0.06em;text-transform:uppercase;margin:10px 0 3px">$1</div>');
+  text = text.replace(/^## (.+)$/gm,  '<div style="font-weight:700;color:#fff;font-size:13px;margin:10px 0 3px">$1</div>');
+  text = text.replace(/^# (.+)$/gm,   '<div style="font-weight:700;color:#fff;font-size:14px;margin:10px 0 4px">$1</div>');
+  text = text.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
+  text = text.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#fff">$1</strong>');
+  text = text.replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+  text = text.replace(/`([^`]+)`/g, '<code style="background:rgba(255,255,255,0.08);padding:1px 5px;border-radius:3px;font-family:var(--mono);font-size:11px">$1</code>');
+  text = text.replace(/^[-•] (.+)$/gm, '<div style="display:flex;gap:7px;margin:2px 0"><span style="color:var(--gold);flex-shrink:0">•</span><span>$1</span></div>');
+  text = text.replace(/^(\d+)\. (.+)$/gm, '<div style="display:flex;gap:7px;margin:2px 0"><span style="color:var(--gold);flex-shrink:0;min-width:14px">$1.</span><span>$2</span></div>');
+  text = text.replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid rgba(255,255,255,0.08);margin:10px 0">');
+  text = text.replace(/\n/g, '<br>');
+  text = text.replace(/(<\/div>|<hr[^>]*>)<br>/g, '$1');
+  return text;
+}
+
 function ariaAppendMsg(role, content) {
   const welcome = document.getElementById('ariaWelcome');
   if (welcome) welcome.remove();
@@ -1915,7 +1932,7 @@ function ariaAppendMsg(role, content) {
   div.className = `aria-msg ${role}`;
   div.innerHTML = `
     <div class="aria-msg-avatar">${isUser ? '→' : '✦'}</div>
-    <div class="aria-msg-bubble">${content.replace(/\n/g, '<br>')}</div>`;
+    <div class="aria-msg-bubble">${isUser ? content.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : ariaMarkdown(content)}</div>`;
   container.appendChild(div);
   container.scrollTop = container.scrollHeight;
   return div;
