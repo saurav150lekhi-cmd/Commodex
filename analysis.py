@@ -4687,37 +4687,52 @@ Guidelines:
     actions_taken = []
 
     # Agentic loop — execute tools if Claude calls them (max 4 iterations)
-    for _ in range(4):
-        response = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=1024,
-            system=system_prompt,
-            tools=ARIA_TOOLS,
-            messages=claude_messages
-        )
+    reply = ""
+    try:
+        for _ in range(4):
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1024,
+                system=system_prompt,
+                tools=ARIA_TOOLS,
+                messages=claude_messages
+            )
 
-        if response.stop_reason == "end_turn":
-            reply = next((b.text for b in response.content if hasattr(b, "text")), "")
-            break
+            if response.stop_reason == "end_turn":
+                reply = next((b.text for b in response.content if hasattr(b, "text")), "")
+                break
 
-        if response.stop_reason == "tool_use":
-            tool_results = []
-            for block in response.content:
-                if block.type == "tool_use":
-                    result = _aria_execute_tool(block.name, block.input, user_id)
-                    actions_taken.append({"tool": block.name, "result": result})
-                    tool_results.append({
-                        "type": "tool_result",
-                        "tool_use_id": block.id,
-                        "content": json.dumps(result)
-                    })
-            claude_messages.append({"role": "assistant", "content": response.content})
-            claude_messages.append({"role": "user",      "content": tool_results})
+            if response.stop_reason == "tool_use":
+                # Serialize content blocks to plain dicts so they survive re-serialization
+                serialized_content = []
+                tool_results = []
+                for block in response.content:
+                    if block.type == "text":
+                        serialized_content.append({"type": "text", "text": block.text})
+                    elif block.type == "tool_use":
+                        serialized_content.append({
+                            "type":  "tool_use",
+                            "id":    block.id,
+                            "name":  block.name,
+                            "input": block.input,
+                        })
+                        result = _aria_execute_tool(block.name, block.input, user_id)
+                        actions_taken.append({"tool": block.name, "result": result})
+                        tool_results.append({
+                            "type":        "tool_result",
+                            "tool_use_id": block.id,
+                            "content":     json.dumps(result),
+                        })
+                claude_messages.append({"role": "assistant", "content": serialized_content})
+                claude_messages.append({"role": "user",      "content": tool_results})
+            else:
+                reply = next((b.text for b in response.content if hasattr(b, "text")), "")
+                break
         else:
-            reply = next((b.text for b in response.content if hasattr(b, "text")), "")
-            break
-    else:
-        reply = next((b.text for b in response.content if hasattr(b, "text")), "Something went wrong.")
+            reply = next((b.text for b in response.content if hasattr(b, "text")), "I ran into an issue — please try again.")
+    except Exception as e:
+        log.error("aria_chat error: %s", e)
+        return jsonify({"error": "Aria encountered an error. Please try again."}), 500
 
     return jsonify({"reply": reply, "actions": actions_taken})
 
