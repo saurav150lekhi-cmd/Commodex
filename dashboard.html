@@ -14,7 +14,7 @@
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;600;700;800;900&family=Roboto+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Roboto:wght@300;400;600;700;800;900&family=Roboto+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -26,10 +26,14 @@
     --border: #1e2336;
     --bg: #0c0e14;
     --mono: 'Roboto Mono', monospace;
-    --sans: 'Roboto', system-ui, sans-serif;
+    --sans: 'Inter', sans-serif;
     --gold: #c8a870;
     --text: #d1d4dc;
     --text-dim: #a0a8bc;
+    --text-primary: #FFFFFF;
+    --text-secondary: #A0A0A0;
+    --text-muted: #555555;
+    --amber: #F59E0B;
   }
   html, body { height: 100%; overflow: hidden; }
   body { background: var(--bg); color: var(--fg); font-family: var(--mono); font-size: 12px; display: flex; flex-direction: column; }
@@ -40,15 +44,15 @@
     50%       { opacity: 0.4; transform: scale(0.75); }
   }
   @keyframes badge-pulse-bull {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(38,166,154,0.6); opacity:1; }
-    50%       { box-shadow: 0 0 8px 4px rgba(38,166,154,0.25); opacity:0.85; }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.6); opacity:1; }
+    50%       { box-shadow: 0 0 8px 4px rgba(34,197,94,0.25); opacity:0.85; }
   }
   @keyframes badge-pulse-bear {
-    0%, 100% { box-shadow: 0 0 0 0 rgba(239,83,80,0.6); opacity:1; }
-    50%       { box-shadow: 0 0 8px 4px rgba(239,83,80,0.25); opacity:0.85; }
+    0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.6); opacity:1; }
+    50%       { box-shadow: 0 0 8px 4px rgba(239,68,68,0.25); opacity:0.85; }
   }
-  .badge-bull { animation: badge-pulse-bull 1.4s ease-in-out infinite; }
-  .badge-bear { animation: badge-pulse-bear 1.4s ease-in-out infinite; }
+  .badge-bull { background: rgba(34,197,94,0.12) !important; color: #22C55E !important; border: 1px solid rgba(34,197,94,0.3) !important; animation: badge-pulse-bull 1.4s ease-in-out infinite; }
+  .badge-bear { background: rgba(239,68,68,0.2) !important; color: #EF4444 !important; border: 1px solid rgba(239,68,68,0.4) !important; animation: badge-pulse-bear 1.4s ease-in-out infinite; }
 
   /* ══ AUTH OVERLAY ══════════════════════════════════════════════════════════ */
   #authOverlay {
@@ -168,7 +172,7 @@
   .news-list { flex: 1; overflow-y: auto; }
   .news-list::-webkit-scrollbar { width: 2px; }
   .news-list::-webkit-scrollbar-thumb { background: var(--border); }
-  .news-item { padding: 10px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+  .news-item { padding: 10px 12px; border-bottom: 1px solid rgba(30,35,54,0.8); cursor: pointer; margin-bottom: 0; }
   .news-item:hover { background: rgba(255,255,255,0.02); }
   .news-item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; }
   .news-item-body { flex: 1; }
@@ -191,7 +195,7 @@
   #scan-bar { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: #090b10; flex-shrink: 0; overflow-x: auto; }
   #scan-bar::-webkit-scrollbar { height: 0; }
   .scan-label-cell { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border-right: 1px solid var(--border); flex-shrink: 0; }
-  .scan-cell { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-right: 1px solid var(--border); flex-shrink: 0; cursor: pointer; transition: background 0.12s; }
+  .scan-cell { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-right: 1px solid var(--border); flex-shrink: 0; cursor: pointer; transition: background 0.12s; }
   .scan-cell:hover { background: rgba(255,255,255,0.03); }
   .scan-cell.active-scan { background: rgba(38,166,154,0.08); }
   .s-name { font-size: 10px; font-weight: 800; color: rgba(209,212,220,0.8); }
@@ -214,10 +218,10 @@
   #content-row { flex: 1; display: flex; overflow: hidden; }
 
   /* ── CARDS AREA ── */
-  #cards-area { flex: 1; overflow-y: auto; padding: 16px 20px; min-width: 0; }
+  #cards-area { flex: 1; overflow-y: auto; padding: 20px 24px; min-width: 0; }
   #cards-area::-webkit-scrollbar { width: 3px; }
   #cards-area::-webkit-scrollbar-thumb { background: var(--border); }
-  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
+  .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
 
   /* ── DECISION CARD ── */
   .dcard { background: var(--card); border: 1px solid var(--border); overflow: hidden; cursor: pointer; position: relative; transition: transform 0.08s, box-shadow 0.1s, border-color 0.15s; }
@@ -225,19 +229,29 @@
   .dcard.selected { border-color: rgba(38,166,154,0.5); box-shadow: 0 0 24px rgba(38,166,154,0.15); }
   .dcard.selected-bear { border-color: rgba(239,83,80,0.5); box-shadow: 0 0 24px rgba(239,83,80,0.15); }
   @keyframes card-glow-bull {
-    0%,100% { border-color:rgba(38,166,154,0.2); box-shadow:0 0 0px 0px rgba(38,166,154,0); background: var(--card); }
-    50%      { border-color:rgba(38,166,154,1);   box-shadow:0 0 28px 6px rgba(38,166,154,0.35), inset 0 0 20px rgba(38,166,154,0.08); background: rgba(38,166,154,0.05); }
+    0%,100% { border-color:rgba(34,197,94,0.3); box-shadow:0 0 0px 0px rgba(34,197,94,0); background: var(--card); }
+    50%      { border-color:rgba(34,197,94,1);   box-shadow:0 0 28px 6px rgba(34,197,94,0.35), inset 0 0 20px rgba(34,197,94,0.08); background: rgba(34,197,94,0.05); }
   }
   @keyframes card-glow-bear {
-    0%,100% { border-color:rgba(239,83,80,0.2); box-shadow:0 0 0px 0px rgba(239,83,80,0); background: var(--card); }
-    50%      { border-color:rgba(239,83,80,1);   box-shadow:0 0 28px 6px rgba(239,83,80,0.35), inset 0 0 20px rgba(239,83,80,0.08); background: rgba(239,83,80,0.05); }
+    0%,100% { border-color:rgba(239,68,68,0.4); box-shadow:0 0 0px 0px rgba(239,68,68,0); background: var(--card); }
+    50%      { border-color:rgba(239,68,68,1);   box-shadow:0 0 28px 6px rgba(239,68,68,0.35), inset 0 0 20px rgba(239,68,68,0.08); background: rgba(239,68,68,0.05); }
   }
   .dcard.card-bull { animation: card-glow-bull 1.2s ease-in-out infinite; transition: none !important; }
   .dcard.card-bear { animation: card-glow-bear 1.2s ease-in-out infinite; transition: none !important; }
+  @keyframes strongBullPulse {
+    0%, 100% { border-color: rgba(34,197,94,0.5); }
+    50% { border-color: rgba(34,197,94,0.8); }
+  }
+  @keyframes strongBearPulse {
+    0%, 100% { border-color: rgba(239,68,68,0.5); }
+    50% { border-color: rgba(239,68,68,0.8); }
+  }
+  .dcard.card-strong-bull { border-color: rgba(34,197,94,0.5); box-shadow: 0 0 12px rgba(34,197,94,0.08); animation: strongBullPulse 3s ease-in-out infinite; }
+  .dcard.card-strong-bear { border-color: rgba(239,68,68,0.5); box-shadow: 0 0 12px rgba(239,68,68,0.08); animation: strongBearPulse 3s ease-in-out infinite; }
   .dcard-top { height: 2px; }
-  .dcard-header { padding: 10px 14px; border-bottom-width: 1px; border-bottom-style: solid; }
+  .dcard-header { padding: 12px 16px; border-bottom-width: 1px; border-bottom-style: solid; }
   .dcard-bias-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-  .dcard-bias-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(93,100,120,0.8); margin-right: 8px; }
+  .dcard-bias-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); margin-right: 8px; }
   .dcard-bias-val { font-weight: 900; font-size: 14px; letter-spacing: 0.08em; }
   .new-badge { display: flex; align-items: center; gap: 3px; }
   .new-dot { width: 5px; height: 5px; border-radius: 50%; animation: pulse-dot 0.9s ease-in-out infinite; }
@@ -248,19 +262,21 @@
   .risk-val { font-size: 9px; font-weight: 800; }
   .mid-dot { color: var(--border); }
   .sig-badge { font-size: 9px; font-weight: 800; padding: 2px 7px; }
-  .dcard-instrument { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--border); }
-  .inst-name { font-size: 13px; font-weight: 800; color: var(--fg); line-height: 1.2; }
+  .risk-pill { font-size:8px; font-weight:700; letter-spacing:0.1em; padding:2px 8px; background:rgba(93,100,120,0.15); border:1px solid rgba(93,100,120,0.3); color:var(--text-secondary); }
+  .bias-pill { font-size:8px; font-weight:700; letter-spacing:0.1em; padding:2px 8px; }
+  .dcard-instrument { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .inst-name { font-size: 13px; font-weight: 800; color: var(--text-primary); line-height: 1.2; }
   .inst-ticker-row { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
   .inst-tick { font-size: 9px; color: var(--muted); }
   .inst-exch { font-size: 8px; border: 1px solid var(--border); padding: 0 4px; color: rgba(93,100,120,0.7); }
-  .inst-price { font-size: 16px; font-weight: 800; color: var(--fg); text-align: right; line-height: 1; }
+  .inst-price { font-size: 16px; font-weight: 800; color: var(--text-primary); text-align: right; line-height: 1; }
   .inst-chg { font-size: 11px; font-weight: 700; text-align: right; margin-top: 2px; }
-  .dcard-why { padding: 8px 14px; }
-  .section-lbl { font-size: 7px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(93,100,120,0.7); margin-bottom: 5px; }
-  .why-item { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 4px; }
+  .dcard-why { padding: 12px 16px; }
+  .section-lbl { font-size: 7px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 5px; }
+  .why-item { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 10px; }
   .why-bul { font-size: 10px; font-weight: 700; flex-shrink: 0; margin-top: 1px; }
   .why-txt { font-size: 11px; color: rgba(209,212,220,0.87); line-height: 1.4; font-family: var(--sans); }
-  .dcard-signal { padding: 7px 14px 8px; border-top-width: 1px; border-top-style: solid; }
+  .dcard-signal { padding: 12px 16px; border-top-width: 1px; border-top-style: solid; }
   .sig-item { display: flex; align-items: flex-start; gap: 5px; margin-bottom: 3px; }
   .sig-arrow { font-size: 10px; font-weight: 700; flex-shrink: 0; }
   .sig-txt { font-size: 10px; font-weight: 600; color: rgba(209,212,220,0.93); line-height: 1.4; font-family: var(--sans); }
@@ -327,7 +343,7 @@
   .dp-driver-bar-wrap { flex: 1; margin-left: 14px; height: 4px; background: rgba(0,0,0,0.4); }
   .dp-driver-bar { height: 100%; transition: width 0.5s; }
   .dp-footer { padding: 10px 24px; border-top: 1px solid var(--border); background: rgba(8,10,16,0.7); flex-shrink: 0; }
-  .dp-disclaimer { font-size: 8px; color: rgba(93,100,120,0.4); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.5; }
+  .dp-disclaimer { font-size: 8px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; line-height: 1.5; }
 
   /* ── PROFILE PANEL ── */
   .profile-panel {
@@ -591,7 +607,7 @@
       <div class="tb-sep"></div>
       <div class="tb-time" id="clock">00:00:00 UTC</div>
       <div class="tb-sep"></div>
-      <button class="tb-user" id="newsletterBtn" onclick="downloadNewsletter()" title="Download Weekly PDF Report" style="color:var(--accent);border-color:rgba(200,168,112,0.3)">↓ WEEKLY PDF</button>
+      <button class="tb-user" id="newsletterBtn" onclick="downloadNewsletter()" title="Download your weekly commodities report" style="background:var(--bull);color:#000;border:none;font-weight:700">↓ WEEKLY PDF</button>
       <div class="tb-sep"></div>
       <a id="adminBtn" href="/admin" style="display:none;font-size:9px;font-weight:700;letter-spacing:0.14em;border:1px solid rgba(200,168,112,0.35);padding:4px 12px;color:var(--accent);cursor:pointer;background:none;font-family:var(--mono);text-decoration:none">ADMIN</a>
       <div id="adminBtnSep" style="display:none" class="tb-sep"></div>
@@ -770,7 +786,7 @@
               <div class="dp-col dp-col-left">
                 <div class="dp-section" id="dp-summary-section">
                   <div class="dp-section-lbl">AI ANALYSIS</div>
-                  <div id="dp-summary" style="font-size:13px;color:rgba(209,212,220,0.88);line-height:1.85;font-family:var(--sans)">—</div>
+                  <div id="dp-summary" style="font-size:15px;color:rgba(209,212,220,0.88);line-height:1.75;font-family:var(--sans)">—</div>
                 </div>
                 <div class="dp-section">
                   <div class="dp-section-lbl">KEY DATA</div>
@@ -899,7 +915,7 @@
 // ══════════════════════════════════════════════════════════════════════════════
 // CONSTANTS
 // ══════════════════════════════════════════════════════════════════════════════
-const BULL_C = '#26a69a', BEAR_C = '#ef5350', WATCH_C = '#7b8fb5', AMBER = '#c8a84b';
+const BULL_C = '#22C55E', BEAR_C = '#EF4444', WATCH_C = '#7b8fb5', AMBER = '#c8a84b';
 
 const META = {
   'Gold':        { short: 'GOLD',     ticker: 'GC=F',  exchange: 'COMEX' },
@@ -1397,7 +1413,7 @@ function buildCard(name) {
   const selCls = activeDetailName === name ? (cls === 'bear' ? ' selected-bear' : ' selected') : '';
 
   return `
-  <div class="dcard${selCls}${cls==='bull'?' card-bull':cls==='bear'?' card-bear':''}" data-name="${name}" onclick="openDetail('${name.replace(/'/g,"\\'")}')">
+  <div class="dcard${selCls}${cls==='bull'?' card-bull':cls==='bear'?' card-bear':''}${sent.toUpperCase()==='STRONG_BULLISH'?' card-strong-bull':sent.toUpperCase()==='STRONG_BEARISH'?' card-strong-bear':''}" data-name="${name}" onclick="openDetail('${name.replace(/'/g,"\\'")}')">
     <div class="dcard-top" style="background:${color}"></div>
     <div class="dcard-header" style="background:${bg};border-bottom-color:${bdr}">
       <div class="dcard-bias-row">
@@ -1409,10 +1425,8 @@ function buildCard(name) {
       </div>
 
       <div class="risk-row">
-        <span class="risk-lbl">RISK</span>
-        <span class="risk-val" style="color:${risk.color}">${risk.label}</span>
-        <span class="mid-dot">·</span>
-        <span class="sig-badge${cls==='bull'?' badge-bull':cls==='bear'?' badge-bear':''}" style="color:${badge.color};background:${sbg};border:1px solid ${sbc}">${badge.text}</span>
+        <span class="risk-pill">RISK: ${risk.label}</span>
+        <span class="bias-pill" style="color:${color};background:rgba(${cls==='bull'?'34,197,94':cls==='bear'?'239,68,68':'123,143,181'},0.1);border:1px solid ${color}40">BIAS: ${sentLabel(sent)}</span>
       </div>
     </div>
     <div class="dcard-instrument">
@@ -1427,7 +1441,7 @@ function buildCard(name) {
     </div>
     <div class="dcard-why">
       <div class="section-lbl">REASONS</div>
-      ${whys.map(w => `<div class="why-item"><span class="why-bul" style="color:${color}">›</span><span class="why-txt">${w}</span></div>`).join('')}
+      ${whys.map(w => `<div class="why-item"><span class="why-bul"><span style="width:6px;height:6px;border-radius:50%;background:${color};display:inline-block;flex-shrink:0;margin-top:5px"></span></span><span class="why-txt">${w}</span></div>`).join('')}
     </div>
     <div class="dcard-signal" style="background:${sbg};border-top-color:${sbc}">
       <div class="section-lbl" style="color:${color}88">SIGNAL</div>
@@ -1468,11 +1482,14 @@ function renderNews() {
     const url = (a.url || '#').replace(/'/g, "\\'");
     const imp = a.impact || 'LOW';
     const isHigh = imp === 'HIGH';
-    return `<div class="news-item" onclick="window.open('${url}','_blank')">
+    const borderColor = imp === 'HIGH' ? '#EF4444' : imp === 'MEDIUM' ? '#F59E0B' : '#374151';
+    const headlineFW = imp === 'HIGH' ? '600' : imp === 'MEDIUM' ? '500' : '400';
+    const headlineColor = imp === 'HIGH' ? 'var(--text-primary)' : imp === 'LOW' ? 'var(--text-secondary)' : 'var(--fg)';
+    return `<div class="news-item" style="border-left:3px solid ${borderColor}" onclick="window.open('${url}','_blank')">
       <div class="news-item-top">
         <div class="news-item-body">
           <span class="news-tag ${imp}">${imp}</span>
-          <div class="news-headline">${stripHtml(a.title)}</div>
+          <div class="news-headline" style="font-weight:${headlineFW};color:${headlineColor}">${stripHtml(a.title)}</div>
           <div class="news-meta">
             <span class="news-source">${a.commodity} · ${a.source||'—'}</span>
             <span class="news-dot">·</span>
@@ -1546,13 +1563,13 @@ async function openDetail(name) {
   if (upDrivers.length) {
     whyHtml += `<div style="font-size:8px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:${BULL_C};opacity:0.8;margin-bottom:10px">BULLISH DRIVERS</div>`;
     whyHtml += upDrivers.map(w =>
-      `<div class="dp-why-item"><span class="dp-why-bul" style="color:${BULL_C}">›</span><span class="dp-why-txt">${w}</span></div>`
+      `<div class="dp-why-item"><span class="dp-why-bul"><span style="width:8px;height:8px;border-radius:50%;background:${BULL_C};display:inline-block;flex-shrink:0;margin-top:4px"></span></span><span class="dp-why-txt">${w}</span></div>`
     ).join('');
   }
   if (downDrivers.length) {
     whyHtml += `<div style="font-size:8px;font-weight:800;letter-spacing:0.16em;text-transform:uppercase;color:${BEAR_C};opacity:0.8;margin:${upDrivers.length?'18px':'0'} 0 10px">RISKS</div>`;
     whyHtml += downDrivers.map(w =>
-      `<div class="dp-why-item"><span class="dp-why-bul" style="color:${BEAR_C}">›</span><span class="dp-why-txt">${w}</span></div>`
+      `<div class="dp-why-item"><span class="dp-why-bul"><span style="width:8px;height:8px;border-radius:50%;background:${BEAR_C};display:inline-block;flex-shrink:0;margin-top:4px"></span></span><span class="dp-why-txt">${w}</span></div>`
     ).join('');
   }
   document.getElementById('dp-why').innerHTML = whyHtml || '<div style="font-size:11px;color:var(--muted)">No drivers identified</div>';
@@ -1628,12 +1645,16 @@ async function loadProfile() {
     const res = await fetch('/auth/alerts', { headers: authH() });
     if (!res.ok) return;
     const alerts = await res.json();
-    document.getElementById('ppAlerts').innerHTML = alerts.map(a =>
-      `<div class="pp-alert-row">
-        <span class="pp-alert-name">${a.commodity}</span>
-        <div class="toggle ${a.enabled ? 'on' : ''}" onclick="toggleAlert('${a.commodity}',this)"></div>
-      </div>`
-    ).join('');
+    if (!alerts.length) {
+      document.getElementById('ppAlerts').innerHTML = `<div style="font-size:10px;color:var(--muted)">No alerts set</div><button onclick="toggleProfile();document.getElementById('filterInput')&&document.getElementById('filterInput').focus()" style="margin-top:10px;background:transparent;border:1px solid var(--bull);color:var(--bull);padding:5px 14px;font-family:var(--mono);font-size:9px;letter-spacing:0.1em;cursor:pointer">＋ SET ALERT</button>`;
+    } else {
+      document.getElementById('ppAlerts').innerHTML = alerts.map(a =>
+        `<div class="pp-alert-row">
+          <span class="pp-alert-name">${a.commodity}</span>
+          <div class="toggle ${a.enabled ? 'on' : ''}" onclick="toggleAlert('${a.commodity}',this)"></div>
+        </div>`
+      ).join('');
+    }
   } catch {}
   try {
     const res = await fetch('/auth/notify', { headers: authH() });
