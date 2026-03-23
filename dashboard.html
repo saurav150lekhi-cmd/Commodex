@@ -14,7 +14,7 @@
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700;800;900&family=Roboto+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;600;700;800;900&family=Roboto+Mono:wght@400;600;700&display=swap" rel="stylesheet" />
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
@@ -705,7 +705,7 @@
             <!-- hidden decoys so Chrome fills these instead of the real filter -->
             <input type="text" style="display:none;position:absolute;opacity:0" tabindex="-1" aria-hidden="true" autocomplete="username">
             <input type="password" style="display:none;position:absolute;opacity:0" tabindex="-1" aria-hidden="true" autocomplete="current-password">
-            <input class="grid-filter" id="filterInput" type="text" placeholder="Filter..." autocomplete="off" autocorrect="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="filterCards(this.value)">
+            <input class="grid-filter" id="filterInput" type="text" placeholder="Filter..." autocomplete="off" autocorrect="off" spellcheck="false" readonly onfocus="this.removeAttribute('readonly')" oninput="filterCardsDebounced(this.value)">
           </div>
         </div>
       </div>
@@ -865,8 +865,6 @@
 // ══════════════════════════════════════════════════════════════════════════════
 const BULL_C = '#26a69a', BEAR_C = '#ef5350', WATCH_C = '#7b8fb5', AMBER = '#c8a84b';
 
-const COMMODITIES = ['Gold', 'Silver', 'Crude Oil', 'Copper', 'Natural Gas', 'Corn', 'Wheat', 'Soybeans', 'Coffee', 'Sugar'];
-
 const META = {
   'Gold':        { short: 'GOLD',     ticker: 'GC=F',  exchange: 'COMEX' },
   'Silver':      { short: 'SILVER',   ticker: 'SI=F',  exchange: 'COMEX' },
@@ -879,6 +877,8 @@ const META = {
   'Coffee':      { short: 'COFFEE',   ticker: 'KC=F',  exchange: 'ICE'   },
   'Sugar':       { short: 'SUGAR',    ticker: 'SB=F',  exchange: 'ICE'   },
 };
+// Derived from META — add a commodity in one place only
+const COMMODITIES = Object.keys(META);
 
 const CONF_PCT = { HIGH: 85, MEDIUM: 67, LOW: 44 };
 const SENT_SCORE = { STRONG_BULLISH: 2, BULLISH: 1, NEUTRAL: 0, BEARISH: -1, STRONG_BEARISH: -2 };
@@ -893,6 +893,19 @@ let currentNewsFilter = 'All';
 let activeDetailName = null;
 let newsLastTs = null;   // Date of last news fetch
 let aiLastTs   = null;   // Date of last AI analysis
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════════════════════════════
+// Fetch with 8s timeout to prevent hanging requests
+function fetchT(url, opts = {}) {
+  return fetch(url, { signal: AbortSignal.timeout(8000), ...opts });
+}
+// Debounce — prevents a function firing on every keystroke
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 // HELPERS
@@ -1093,6 +1106,8 @@ async function doReset(e) {
 function doLogout() {
   localStorage.removeItem('cmdx_token'); localStorage.removeItem('cmdx_refresh');
   accessToken = '';
+  if (window._analysisInterval) { clearInterval(window._analysisInterval); window._analysisInterval = null; }
+  if (window._marketBadgeInterval) { clearInterval(window._marketBadgeInterval); window._marketBadgeInterval = null; }
   document.getElementById('terminal').classList.remove('visible');
   document.getElementById('authOverlay').style.display = 'flex';
   showForm('login');
@@ -1102,7 +1117,11 @@ function enterTerminal() {
   document.getElementById('terminal').classList.add('visible');
   const fi = document.getElementById('filterInput');
   if (fi) fi.value = '';
-  loadAll(); loadProfile(); startClock(); updateMarketBadges();
+  loadAll(); loadProfile(); startClock();
+  updateMarketBadges();
+  if (!window._marketBadgeInterval) window._marketBadgeInterval = setInterval(updateMarketBadges, 60000);
+  pollAnalysisStatus();
+  if (!window._analysisInterval) window._analysisInterval = setInterval(pollAnalysisStatus, 30000);
   loadCalendar();
 }
 async function tryAutoLogin() {
@@ -1174,7 +1193,6 @@ function updateMarketBadges() {
   set('badgeNYMEX', wk && tod >= 0    && tod < 21*60);
   set('badgeICE',   wk && tod >= 60   && tod < 23*60);
   set('badgeLME',   wk && tod >= 60   && tod < 19*60);
-  setTimeout(updateMarketBadges, 60000);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1186,7 +1204,7 @@ async function loadAll() {
 }
 async function loadData() {
   try {
-    const res = await fetch('/data', { headers: authH() });
+    const res = await fetchT('/data', { headers: authH() });
     if (res.status === 401) { doLogout(); return; }
     if (!res.ok) { showDataError('Server error — retrying shortly.'); return; }
     allData = await res.json();
@@ -1202,11 +1220,11 @@ async function loadData() {
       aiLastTs = new Date(first.timestamp);
       document.getElementById('aiAge').textContent = timeAgo(first.timestamp);
     }
-  } catch (e) { console.error('loadData', e); showDataError('Network error — retrying shortly.'); }
+  } catch (e) { console.error('loadData error:', e); showDataError('Network error — retrying shortly.'); }
 }
 async function checkAnalysisStatus() {
   try {
-    const res = await fetch('/health');
+    const res = await fetchT('/health');
     const data = await res.json();
     if (data.analysis_running) {
       showDataError('AI analysis in progress — data will appear in a few minutes.', 'info');
@@ -1214,7 +1232,7 @@ async function checkAnalysisStatus() {
       const last = data.last_run ? ` Last run: ${timeAgo(data.last_run)}.` : '';
       showDataError(`No analysis data yet.${last} Next run scheduled automatically.`, 'info');
     }
-  } catch { showDataError('Loading data...', 'info'); }
+  } catch (e) { console.error('checkAnalysisStatus error:', e); showDataError('Loading data...', 'info'); }
 }
 function showDataError(msg, type) {
   const grid = document.getElementById('cardsGrid');
@@ -1222,17 +1240,17 @@ function showDataError(msg, type) {
   const color = type === 'info' ? 'var(--gold)' : 'var(--bear)';
   grid.innerHTML = `<div style="grid-column:1/-1;padding:40px 20px;font-size:10px;color:${color};letter-spacing:0.08em;line-height:1.8;font-family:var(--mono)">${msg}</div>`;
 }
-function hideDataError() { /* data loaded — renderCards() will replace grid content */ }
+function hideDataError() { /* data loaded — renderCards() replaces grid content */ }
 async function loadPrices() {
   try {
-    const res = await fetch('/prices', { headers: authH() });
+    const res = await fetchT('/prices', { headers: authH() });
     if (!res.ok) { setTimeout(loadPrices, 60000); return; }
     pricesData = await res.json();
     renderWatchbar();
     renderCards();
     newsLastTs = new Date();
     document.getElementById('newsAge').textContent = timeAgo(new Date().toISOString());
-  } catch { setTimeout(loadPrices, 60000); }
+  } catch (e) { console.error('loadPrices error:', e); setTimeout(loadPrices, 60000); }
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1310,6 +1328,7 @@ function renderCards(filter) {
   grid.innerHTML = names.length ? names.map(buildCard).join('') : '<div style="padding:40px;font-size:10px;color:var(--muted);text-align:center">No results</div>';
 }
 function filterCards(v) { renderCards(v); }
+const filterCardsDebounced = debounce(filterCards, 250);
 
 function buildCard(name) {
   const payload = allData[name] || {};
@@ -1413,7 +1432,7 @@ function renderNews() {
   }
   items.sort((a, b) => new Date(b.published || 0) - new Date(a.published || 0));
   const seen = new Set();
-  items = items.filter(a => { if (seen.has(a.title)) return false; seen.add(a.title); return true; }).slice(0, 80);
+  items = items.filter(a => { const k = (a.title || '').toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 80);
   document.getElementById('newsCount').textContent = items.length;
   if (!items.length) { container.innerHTML = '<div class="news-empty">No articles</div>'; return; }
   container.innerHTML = items.map(a => {
@@ -1801,10 +1820,8 @@ async function pollAnalysisStatus() {
     // If just finished, reload data
     if (_prevRunning && !data.analysis_running) loadAll();
     _prevRunning = !!data.analysis_running;
-  } catch {}
+  } catch (e) { console.error('pollAnalysisStatus error:', e); }
 }
-setInterval(pollAnalysisStatus, 30000);
-pollAnalysisStatus();
 
 // ── Notification system ───────────────────────────────────────────────────────
 function addNotification(title, body, type) {
