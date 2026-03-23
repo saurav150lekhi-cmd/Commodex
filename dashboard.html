@@ -195,7 +195,7 @@
   .scan-cell:hover { background: rgba(255,255,255,0.03); }
   .scan-cell.active-scan { background: rgba(38,166,154,0.08); }
   .s-name { font-size: 10px; font-weight: 800; color: rgba(209,212,220,0.8); }
-  .s-pct  { font-size: 10px; font-weight: 700; }
+
   .s-badge { font-size: 8px; font-weight: 800; padding: 1px 6px; }
 
   /* ── GRID HEADER ── */
@@ -242,10 +242,7 @@
   .new-badge { display: flex; align-items: center; gap: 3px; }
   .new-dot { width: 5px; height: 5px; border-radius: 50%; animation: pulse-dot 0.9s ease-in-out infinite; }
   .new-txt { font-size: 7px; font-weight: 800; letter-spacing: 0.12em; }
-  .conf-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
-  .conf-bg { flex: 1; height: 5px; background: rgba(0,0,0,0.45); overflow: hidden; }
-  .conf-fill { height: 100%; transition: width 0.5s; }
-  .conf-pct { font-size: 13px; font-weight: 800; flex-shrink: 0; }
+
   .risk-row { display: flex; align-items: center; gap: 8px; }
   .risk-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.7); }
   .risk-val { font-size: 9px; font-weight: 800; }
@@ -308,11 +305,7 @@
   .dp-col::-webkit-scrollbar { width: 2px; }
   .dp-col::-webkit-scrollbar-thumb { background: var(--border); }
   .dp-col-left { border-right: 1px solid var(--border); }
-  .dp-conf-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-  .dp-conf-lbl { font-size: 8px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.7); width: 90px; flex-shrink: 0; }
-  .dp-conf-bg { flex: 1; height: 7px; background: rgba(0,0,0,0.5); overflow: hidden; }
-  .dp-conf-fill { height: 100%; transition: width 0.5s; }
-  .dp-conf-pct { font-size: 15px; font-weight: 800; width: 46px; text-align: right; flex-shrink: 0; }
+
   .dp-meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
   .dp-meta-cell { background: rgba(8,10,16,0.6); border: 1px solid var(--border); padding: 10px 14px; }
   .dp-meta-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(93,100,120,0.65); margin-bottom: 4px; }
@@ -1281,17 +1274,13 @@ function renderScanbar() {
   document.getElementById('scanbarItems').innerHTML = sorted.map(name => {
     const payload = allData[name] || {};
     const sent = (payload.analysis || {}).sentiment || 'NEUTRAL';
-    const conf = CONF_PCT[(payload.analysis || {}).confidence] || 44;
     const badge = scanBadge(sent);
     const cls = sentClass(sent);
-    const pctColor = cls === 'bull' ? BULL_C : cls === 'bear' ? BEAR_C : WATCH_C;
-    const pctSymbol = cls === 'bull' ? '▲' : cls === 'bear' ? '▼' : '◎';
     const bg = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.12)`;
     const bc = `rgba(${cls==='bull'?'38,166,154':cls==='bear'?'239,83,80':'123,143,181'},0.4)`;
     const active = activeDetailName === name ? ' active-scan' : '';
     return `<div class="scan-cell${active}" data-name="${name}" onclick="openDetail('${name}')">
       <span class="s-name">${META[name].short}</span>
-      <span class="s-pct" style="color:${pctColor}">${pctSymbol} ${conf}%</span>
       <span class="s-badge${cls==='bull'?' badge-bull':cls==='bear'?' badge-bear':''}" style="color:${badge.color};background:${bg};border:1px solid ${bc}">${badge.text}</span>
     </div>`;
   }).join('');
@@ -1375,10 +1364,7 @@ function buildCard(name) {
         </div>
         ${isBreaking ? `<div class="new-badge"><div class="new-dot" style="background:${color}"></div><span class="new-txt" style="color:${color}">NEW</span></div>` : ''}
       </div>
-      <div class="conf-row">
-        <div class="conf-bg"><div class="conf-fill" style="width:${confPct}%;background:${color}"></div></div>
-        <span class="conf-pct" style="color:${color}">${confPct}%</span>
-      </div>
+
       <div class="risk-row">
         <span class="risk-lbl">RISK</span>
         <span class="risk-val" style="color:${risk.color}">${risk.label}</span>
