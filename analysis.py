@@ -13,7 +13,7 @@ import urllib.request
 import urllib.parse
 from datetime import datetime, timezone, timedelta
 from flask import Flask, jsonify, send_from_directory, request, Response
-from flask_jwt_extended import JWTManager, jwt_required
+from flask_jwt_extended import JWTManager, jwt_required, get_jwt_identity
 from dotenv import load_dotenv
 from db import db
 from models import User, AnalysisRun, UserAlert, NewsArticle, MarketSignal, PriceThresholdAlert, AriaMemory, AriaWatchlist
