@@ -192,8 +192,7 @@
   #main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
 
   /* ── SCAN BAR ── */
-  #scan-bar { display: flex; align-items: stretch; border-bottom: 1px solid rgba(255,255,255,0.05); background: #050505; flex-shrink: 0; overflow-x: auto; padding: 0 8px; }
-  #scan-bar::-webkit-scrollbar { height: 0; }
+  #scan-bar { display: none; }
   .scan-label-cell { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border-right: 1px solid var(--border); flex-shrink: 0; }
   .scan-cell { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-right: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; cursor: pointer; transition: background 0.12s; border-radius: 0; }
   .scan-cell:hover { background: rgba(255,255,255,0.04); }
@@ -608,16 +607,9 @@
         <span class="tb-update-sep">·</span>
         <span id="aiNext" class="tb-update-next">—</span>
       </div>
-      <div class="tb-sep"></div>
-      <div class="tb-update-block" id="nextEventBlock" style="cursor:pointer" onclick="showCalendar()">
-        <span class="tb-update-lbl" style="color:#ef4444">EVENT</span>
-        <span id="nextEventName" class="tb-update-age" style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">—</span>
-        <span class="tb-update-sep">·</span>
-        <span id="nextEventCountdown" class="tb-update-next">—</span>
-      </div>
     </div>
     <div class="tb-right">
-      <button class="tb-user" onclick="openTradeIdeas()" style="background:rgba(200,168,112,0.1);border-color:rgba(200,168,112,0.25);color:var(--accent)" id="tradeIdeasBtn">⚡ Trade Ideas</button>
+      <button onclick="openTradeIdeas()" id="tradeIdeasBtn" style="font-size:11px;font-weight:600;letter-spacing:0.01em;padding:6px 16px;border-radius:6px;border:none;background:var(--accent);color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:6px">⚡ Trade Ideas</button>
       <div style="position:relative;cursor:pointer" onclick="toggleNotifications()">
         <span id="bellIcon" style="font-size:15px;color:rgba(180,190,210,0.45);padding:5px 8px;display:block;line-height:1">🔔</span>
         <span id="bellDot" style="display:none;position:absolute;top:4px;right:5px;width:6px;height:6px;background:#ef4444;border-radius:50%"></span>
@@ -722,13 +714,7 @@
     <div id="main">
 
       <!-- SCAN BAR -->
-      <div id="scan-bar">
-        <div class="scan-label-cell" onclick="hideCalendar();closeDetail && closeDetail()" style="cursor:pointer" title="Back to decision grid">
-          <svg style="width:9px;height:9px;stroke:var(--muted);fill:none;stroke-width:2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          <span style="font-size:8px;font-weight:800;letter-spacing:0.14em;text-transform:uppercase;color:rgba(93,100,120,0.9)">DECISIONS</span>
-        </div>
-        <div id="scanbarItems" style="display:contents"></div>
-      </div>
+      <div id="scanbarItems" style="display:none"></div>
 
       <!-- ANALYSIS RUNNING BANNER -->
       <div id="analysis-banner" style="display:none;background:rgba(200,168,112,0.07);border-bottom:1px solid rgba(200,168,112,0.2);padding:6px 20px;font-size:9px;font-weight:700;letter-spacing:0.12em;color:var(--gold);display:none;align-items:center;gap:8px">
