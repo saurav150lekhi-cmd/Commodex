@@ -2027,7 +2027,13 @@ STEP 4 - DRIVER IDENTIFICATION: Identify exactly 8 bullish drivers (up) and 5 ri
 
 STEP 5 - PRICE ACTION CONTEXT: The macro context above shows TODAY'S PRICE ACTION. Your sentiment output MUST be consistent with this. If the commodity is up 2%+ today, you should not output BEARISH or NEUTRAL unless there is overwhelming macro/fundamental evidence to the contrary — and you must explicitly explain the contradiction. A commodity up 4% on the day is almost never NEUTRAL.
 
-STEP 6 - MARKET SUMMARY: Write a 3-4 sentence institutional research commentary in the style of Goldman Sachs or JPMorgan. Lead with the single dominant price driver. Follow with supply/demand dynamics and current sentiment bias. Be precise and insight-driven — avoid generic statements. Sound authoritative, not descriptive.
+STEP 6 - MARKET SUMMARY: Write a detailed, multi-paragraph institutional research commentary in the style of a Goldman Sachs or JPMorgan commodity research note. Structure it as follows:
+  • Paragraph 1 — Lead with today's dominant price driver and what is moving the market right now. Reference specific data points, levels, or events from the context above.
+  • Paragraph 2 — Supply and demand dynamics: cover production, inventory levels, seasonal factors, and any supply-side disruptions or demand shifts relevant to this commodity.
+  • Paragraph 3 — Macroeconomic and geopolitical context: discuss how the broader macro environment (USD, rates, inflation, global growth), geopolitical developments, or policy decisions are influencing this commodity.
+  • Paragraph 4 — Market positioning and sentiment: describe current trader positioning, ETF flows if relevant, technical levels of note, and the prevailing sentiment bias.
+  • Paragraph 5 — Forward-looking view: synthesise the above into a clear directional bias with the key catalysts or risks to watch. Do not give buy/sell recommendations — frame as an observational research view.
+  Be precise and insight-driven. Use specific figures and data from the context above wherever possible. Sound authoritative and analytical, not generic or descriptive.
 
 STEP 7 - CURRENT BIAS BREAKDOWN: Generate observational insights reflecting current conditions. Focus on what to watch today, what near-term catalysts exist, and what the structural bias is based on current macro and news. Never give buy/sell recommendations. Never imply a specific timeframe — describe the bias as it stands now.
 
@@ -2038,7 +2044,7 @@ STEP 9 - MARKET NARRATIVE TRACKING: Identify the dominant narrative (e.g. inflat
 STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price levels in USD. No markdown, no explanation, no text before or after the JSON:
 
 {
-  "market_summary": "3-4 sentence institutional research commentary. Lead with the dominant price driver. Cover supply/demand dynamics and current sentiment bias. Precise and insight-driven like Goldman Sachs research.",
+  "market_summary": "Detailed multi-paragraph institutional research commentary as written in Step 6. Five structured paragraphs: (1) dominant price driver with specific data, (2) supply/demand dynamics, (3) macro and geopolitical context, (4) positioning and sentiment, (5) forward-looking directional view. Authoritative, precise, insight-driven. No buy/sell recommendations.",
   "sentiment": "STRONG_BULLISH or BULLISH or NEUTRAL or BEARISH or STRONG_BEARISH",
   "drivers": {
     "up": ["driver 1", "driver 2", "driver 3", "driver 4", "driver 5", "driver 6", "driver 7", "driver 8"],
@@ -2065,7 +2071,7 @@ STEP 10 - STRUCTURED OUTPUT: Return ONLY the following valid JSON. All price lev
 
     message = client.messages.create(
         model="claude-sonnet-4-20250514",
-        max_tokens=2048,
+        max_tokens=4096,
         messages=[{"role": "user", "content": prompt}]
     )
     raw = message.content[0].text.strip()
