@@ -208,6 +208,14 @@ NEWS_SOURCES = [
     "https://perfectdailygrind.com/feed/",                         # Perfect Daily Grind — coffee trade (VERIFIED)
     "https://www.worldcoffeeportal.com/rss",                       # World Coffee Portal — market data (VERIFIED)
     "https://www.coffeebi.com/feed/",                              # CoffeeBI — arabica futures, Brazil crop (VERIFIED)
+    "https://icocoffee.org/feed/",                                 # ICO — official world coffee statistics & reports
+    "https://www.ncausa.org/blog?format=rss",                      # NCA USA — US coffee consumption & market
+    "https://sca.coffee/feed/",                                    # Specialty Coffee Association — market & research
+    "https://www.coffeeintelligence.com/feed/",                    # Coffee Intelligence — trade analysis & pricing
+    "https://www.ico.org/index.asp?subsection=pr&rss=1",           # ICO press releases — global supply/demand data
+    "https://www.brazil-coffee.org/feed/",                         # Brazil Coffee Exporters — CECAFE data
+    "https://www.volcafe.com/feed/",                               # Volcafe — trade house, origin reports
+    "https://globalcoffeeplatform.org/feed/",                      # Global Coffee Platform — sustainability & supply
     # ── Sugar ─────────────────────────────────────────────────────────────────
     "https://www.sugaronline.com/feed",                            # Sugar Online — ICE #11 (VERIFIED)
     # ── Cross-commodity shipping/trade ────────────────────────────────────────
@@ -311,6 +319,14 @@ GOOGLE_SEARCHES = {
         "coffee export ICO report",
         "arabica robusta spread",
         "coffee weather frost Brazil",
+        "coffee certified stocks ICE exchange arabica",
+        "CECAFE Brazil coffee exports monthly",
+        "Colombia FNC coffee production forecast",
+        "Vietnam General Statistics Office coffee exports",
+        "coffee Colombia certified arabica crop",
+        "robusta coffee Vietnam Indonesia production",
+        "arabica coffee Colombia Peru certified",
+        "site:icocoffee.org coffee market report",
     ],
     "Sugar": [
         "raw sugar futures ICE price today",
@@ -1962,6 +1978,305 @@ def fetch_usda_data():
     return result
 
 
+# ── FAO Food Price Index — free REST API (no key) ─────────────────────────────
+def fetch_fao_food_price():
+    """Fetch FAO Food Price Index (FFPI) monthly sub-indices: cereals, oils, sugar, dairy, meat."""
+    result = {}
+    try:
+        # FAO FAOSTAT API — FFPI composite and sub-indices
+        url = "https://fenix.fao.org/faostat/api/v1/data/CPARI?format=JSON&lang=en"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=15) as r:
+            data = json.loads(r.read())
+        rows = data.get("data", [])
+        if rows:
+            latest = sorted(rows, key=lambda x: str(x.get("Year", "0")).zfill(4) + str(x.get("Months Code", "0")).zfill(2), reverse=True)
+            seen = set()
+            for row in latest[:60]:
+                item = row.get("Item", "")
+                val  = row.get("Value")
+                if item and val is not None and item not in seen:
+                    seen.add(item)
+                    result[item] = {
+                        "label": f"FAO {item}",
+                        "value": round(float(val), 1),
+                        "year":  row.get("Year", ""),
+                        "month": row.get("Months", ""),
+                    }
+                if len(seen) >= 6:
+                    break
+    except Exception as e:
+        log.debug("FAO Food Price Index fetch failed: %s", e)
+    return result
+
+
+# ── Additional metals — Platinum, Palladium, Aluminum, Iron Ore ───────────────
+def fetch_additional_metals():
+    """Fetch Platinum, Palladium (Stooq) and Aluminum, Iron Ore (Yahoo Finance)."""
+    result = {}
+    for name, sym, label in [
+        ("Platinum",  "pl.f", "Platinum (USD/troy oz)"),
+        ("Palladium", "pa.f", "Palladium (USD/troy oz)"),
+    ]:
+        try:
+            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                row   = lines[-1].split(",")
+                close = float(row[6])
+                open_ = float(row[3])
+                result[name] = {"label": label, "price": close,
+                                "change": round(((close - open_) / open_) * 100, 2) if open_ else None}
+        except Exception as e:
+            log.debug("Metals Stooq fetch failed for %s: %s", name, e)
+    for name, ticker, label in [
+        ("Aluminum", "ALI=F", "Aluminum Futures (USD/lb)"),
+        ("Iron Ore",  "TIO=F", "Iron Ore Futures (USD/t)"),
+    ]:
+        try:
+            data = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                prev  = meta.get("previousClose", price)
+                chg   = round(((price - prev) / prev) * 100, 2) if prev and price else None
+                result[name] = {"label": label, "price": price, "change": chg}
+        except Exception as e:
+            log.debug("Metals Yahoo fetch failed for %s: %s", name, e)
+    return result
+
+
+# ── Coal prices — Newcastle & Rotterdam via Stooq (free, no key) ──────────────
+def fetch_coal_prices():
+    """Fetch Newcastle coal (Asia benchmark) and Rotterdam coal (Europe benchmark)."""
+    result = {}
+    for name, sym, label in [
+        ("Newcastle Coal", "nc.f", "Newcastle Coal (USD/t) — Asia benchmark"),
+        ("Rotterdam Coal", "cc.f", "Rotterdam Coal (USD/t) — Europe benchmark"),
+    ]:
+        try:
+            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                row   = lines[-1].split(",")
+                close = float(row[6])
+                open_ = float(row[3])
+                result[name] = {"label": label, "price": close,
+                                "change": round(((close - open_) / open_) * 100, 2) if open_ else None}
+        except Exception as e:
+            log.debug("Coal price fetch failed for %s: %s", name, e)
+    return result
+
+
+# ── Currency pairs — BRL/USD, ARS/USD, COP/USD, VND/USD ─────────────────────
+def fetch_currency_pairs():
+    """Fetch key EM currency pairs — critical for coffee, sugar, soybean export cost signals."""
+    result = {}
+    for name, ticker, label in [
+        ("BRL/USD", "BRL=X",   "Brazilian Real / USD — coffee, sugar, soy export cost"),
+        ("ARS/USD", "ARS=X",   "Argentine Peso / USD — corn, soy export competitiveness"),
+        ("COP/USD", "COP=X",   "Colombian Peso / USD — arabica coffee export pricing"),
+        ("VND/USD", "VND=X",   "Vietnamese Dong / USD — robusta coffee export cost"),
+        ("MXN/USD", "MXN=X",   "Mexican Peso / USD — corn/sugar imports proxy"),
+        ("INR/USD", "INR=X",   "Indian Rupee / USD — sugar, gold demand proxy"),
+    ]:
+        try:
+            data = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                prev  = meta.get("previousClose", price)
+                chg   = round(((price - prev) / prev) * 100, 2) if prev and price else None
+                result[name] = {"label": label, "price": price, "change": chg}
+        except Exception as e:
+            log.debug("Currency pair fetch failed for %s: %s", name, e)
+    return result
+
+
+# ── Credit spreads — HYG/LQD/MOVE (risk sentiment proxy, free) ───────────────
+def fetch_credit_spreads():
+    """Fetch HYG (high yield), LQD (investment grade), and MOVE bond volatility index."""
+    result = {}
+    for ticker, label in [
+        ("HYG",   "iShares High Yield Corp ETF (HYG) — credit risk appetite"),
+        ("LQD",   "iShares Investment Grade Corp ETF (LQD)"),
+        ("^MOVE", "MOVE Bond Volatility Index — rate uncertainty"),
+    ]:
+        try:
+            data = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                prev  = meta.get("previousClose", price)
+                chg   = round(((price - prev) / prev) * 100, 2) if prev and price else None
+                key   = ticker.replace("^", "")
+                result[key] = {"label": label, "price": price, "change": chg}
+        except Exception as e:
+            log.debug("Credit spread fetch failed for %s: %s", ticker, e)
+    return result
+
+
+# ── Bitcoin — digital gold correlation & risk asset signal ────────────────────
+def fetch_crypto_bitcoin():
+    """Fetch Bitcoin price — risk-on/risk-off indicator correlated with gold at extremes."""
+    result = {}
+    try:
+        data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?interval=1d&range=2d")
+        if data:
+            meta  = data["chart"]["result"][0]["meta"]
+            price = meta.get("regularMarketPrice")
+            prev  = meta.get("previousClose", price)
+            chg   = round(((price - prev) / prev) * 100, 2) if prev and price else None
+            result["BTC"] = {
+                "label":  "Bitcoin (USD) — digital gold / risk proxy",
+                "price":  price,
+                "change": chg,
+                "signal": ("RISK-ON (watch gold correlation)" if (chg or 0) > 3
+                           else "RISK-OFF" if (chg or 0) < -3 else "NEUTRAL"),
+            }
+    except Exception as e:
+        log.debug("Bitcoin fetch failed: %s", e)
+    return result
+
+
+# ── European carbon allowances (EUA) — ICE/Stooq (no key) ────────────────────
+def fetch_eua_carbon():
+    """Fetch EU carbon allowance price — key input cost for European industry & energy."""
+    result = {}
+    # Try Yahoo Finance (ECF=F is EUA futures on ICE)
+    for ticker, label in [("ECF=F", "EU Carbon Allowances EUA (EUR/t CO2)")]:
+        try:
+            data = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                if price and 5 < price < 250:
+                    prev = meta.get("previousClose", price)
+                    chg  = round(((price - prev) / prev) * 100, 2) if prev else None
+                    result["EUA"] = {"label": label, "price": price, "change": chg}
+        except Exception as e:
+            log.debug("EUA Yahoo fetch failed: %s", e)
+    # Stooq fallback
+    if not result:
+        try:
+            url = "https://stooq.com/q/l/?s=eua.f&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                row   = lines[-1].split(",")
+                close = float(row[6])
+                open_ = float(row[3])
+                if 5 < close < 250:
+                    result["EUA"] = {"label": "EU Carbon EUA (EUR/t CO2)", "price": close,
+                                     "change": round(((close - open_) / open_) * 100, 2) if open_ else None}
+        except Exception as e:
+            log.debug("EUA Stooq fetch failed: %s", e)
+    return result
+
+
+# ── ICO Coffee data + ICE certified arabica stocks ────────────────────────────
+def fetch_ico_coffee_data():
+    """Fetch ICO coffee indicators, London Robusta price, ICE certified stocks, Brazil CEPEA price."""
+    result = {}
+
+    # London Robusta futures (LIFFE) via Stooq — lkc.f
+    try:
+        url = "https://stooq.com/q/l/?s=lkc.f&f=sd2t2ohlcv&h&e=csv"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            lines = r.read().decode().strip().split("\n")
+        if len(lines) >= 2:
+            row   = lines[-1].split(",")
+            close = float(row[6])
+            open_ = float(row[3])
+            result["robusta_price"] = {
+                "label":  "London Robusta Coffee LIFFE (USD/t)",
+                "price":  close,
+                "change": round(((close - open_) / open_) * 100, 2) if open_ else None,
+            }
+    except Exception as e:
+        log.debug("Robusta LIFFE fetch failed: %s", e)
+
+    # ICE Arabica certified stocks — ICE exchange page scrape
+    try:
+        req = urllib.request.Request(
+            "https://www.theice.com/products/15/Coffee-C",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=12) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        for pattern in [
+            r'[Cc]ertified\s+[Ss]tocks?[^0-9]*([\d,]+)',
+            r'[Ww]arehouse\s+[Rr]eceipts?[^0-9]*([\d,]+)',
+        ]:
+            m = re.search(pattern, html)
+            if m:
+                val = int(m.group(1).replace(",", ""))
+                if 100 < val < 15000000:
+                    result["ice_certified_stocks"] = {
+                        "label":  "ICE Arabica Certified Stocks (bags)",
+                        "value":  val,
+                        "signal": ("VERY LOW — supply squeeze" if val < 500000
+                                   else "LOW — supportive" if val < 1500000
+                                   else "MODERATE" if val < 3000000
+                                   else "HIGH — bearish overhang"),
+                    }
+                    break
+    except Exception as e:
+        log.debug("ICE certified stocks fetch failed: %s", e)
+
+    # Arabica/Robusta spread (derived if both prices available)
+    try:
+        # Arabica kc.f already in live_prices; try here as cross-check
+        url = "https://stooq.com/q/l/?s=kc.f&f=sd2t2ohlcv&h&e=csv"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            lines = r.read().decode().strip().split("\n")
+        if len(lines) >= 2:
+            arabica_cents = float(lines[-1].split(",")[6])  # US cents/lb
+            result["arabica_cents"] = {"label": "ICE Arabica (US cents/lb)", "value": arabica_cents}
+            if "robusta_price" in result:
+                # Robusta is in USD/t; convert to cents/lb: 1 USD/t = 0.04536 cents/lb
+                robusta_cents = result["robusta_price"]["price"] * 0.04536
+                spread = round(arabica_cents - robusta_cents, 2)
+                result["arabica_robusta_spread"] = {
+                    "label":  "Arabica–Robusta Spread (cents/lb)",
+                    "value":  spread,
+                    "signal": ("WIDE — arabica premium elevated" if spread > 80
+                               else "NARROW — robusta competitive" if spread < 40
+                               else "NORMAL"),
+                }
+    except Exception as e:
+        log.debug("Arabica price / spread calc failed: %s", e)
+
+    # Brazil CEPEA/ESALQ arabica price (proxy via ICO or CECAFE scrape)
+    try:
+        req = urllib.request.Request(
+            "https://www.cepea.esalq.usp.br/en/indicator/coffee.aspx",
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r'R\$\s*([\d,.]+)', html)
+        if m:
+            val_str = m.group(1).replace(".", "").replace(",", ".")
+            val = float(val_str)
+            if 300 < val < 10000:
+                result["brazil_arabica_brl"] = {
+                    "label": "Brazil Arabica Price CEPEA (BRL/60kg bag)",
+                    "value": val,
+                }
+    except Exception as e:
+        log.debug("CEPEA Brazil arabica fetch failed: %s", e)
+
+    return result
+
+
 # ── Build macro context string for Claude ─────────────────────────────────────
 def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commodity_name,
                         bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
@@ -1971,7 +2286,9 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                         gie_agsi=None, crop_progress=None, oecd_cli=None, silver_etf=None,
                         shfe_copper=None, opec=None, caixin_ism=None, wgc=None,
                         conab=None, lbma=None,
-                        nasa_power=None, nasa_eonet=None, drought=None):
+                        nasa_power=None, nasa_eonet=None, drought=None,
+                        fao=None, metals=None, coal=None, currencies=None,
+                        credit=None, bitcoin=None, eua=None, ico_coffee=None):
     lines = []
 
     # LIVE PRICE — always first so Claude sees today's move immediately
@@ -2513,6 +2830,108 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                      f"{drought.get('serious_pct', 0):.1f}% of US in severe+ drought "
                      f"(D2: {drought.get('d2_pct',0):.1f}%, D3: {drought.get('d3_pct',0):.1f}%, D4: {drought.get('d4_pct',0):.1f}%)")
 
+    # ── Key currency pairs — EM currencies for ag commodities ────────────────
+    if currencies:
+        CURR_SCOPE = {
+            "Coffee":   ["BRL/USD", "COP/USD", "VND/USD"],
+            "Sugar":    ["BRL/USD", "INR/USD"],
+            "Soybeans": ["BRL/USD", "ARS/USD"],
+            "Corn":     ["BRL/USD", "ARS/USD"],
+            "Wheat":    ["BRL/USD", "ARS/USD"],
+            "Gold":     ["INR/USD"],
+            "Silver":   ["INR/USD"],
+        }
+        relevant_curr = CURR_SCOPE.get(commodity_name, [])
+        curr_lines = []
+        for k in relevant_curr:
+            d = currencies.get(k)
+            if d and d.get("price"):
+                chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+                curr_lines.append(f"  {d['label']}: {d['price']:.4f}{chg}")
+        if curr_lines:
+            lines.append("KEY CURRENCY RATES:")
+            lines.extend(curr_lines)
+
+    # ── Additional metals (Gold/Silver cross-asset) ───────────────────────────
+    if metals and commodity_name in ("Gold", "Silver", "Copper"):
+        metal_lines = []
+        for name, d in metals.items():
+            if d.get("price"):
+                chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+                metal_lines.append(f"  {d['label']}: ${d['price']:,.2f}{chg}")
+        if metal_lines:
+            lines.append("RELATED METALS (cross-asset context):")
+            lines.extend(metal_lines)
+
+    # ── Coal prices — energy cost proxy for smelting / natural gas competition ─
+    if coal and commodity_name in ("Natural Gas", "Crude Oil", "Copper"):
+        coal_lines = []
+        for name, d in coal.items():
+            if d.get("price"):
+                chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+                coal_lines.append(f"  {d['label']}: ${d['price']:.2f}{chg}")
+        if coal_lines:
+            lines.append("COAL PRICES (energy competition):")
+            lines.extend(coal_lines)
+
+    # ── EU Carbon allowances — energy/industrial cost context ────────────────
+    if eua and commodity_name in ("Natural Gas", "Crude Oil", "Copper"):
+        d = eua.get("EUA")
+        if d and d.get("price"):
+            chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+            lines.append(f"EU CARBON EUA: €{d['price']:.2f}/t CO2{chg} — impacts European industrial margins")
+
+    # ── Credit spreads — macro risk signal affecting all commodities ──────────
+    if credit:
+        hyg = credit.get("HYG")
+        move = credit.get("MOVE")
+        if hyg and hyg.get("price"):
+            chg = f" ({hyg['change']:+.2f}%)" if hyg.get("change") is not None else ""
+            signal = "RISK-ON" if (hyg.get("change") or 0) > 0 else "RISK-OFF"
+            lines.append(f"CREDIT SPREADS: HYG ${hyg['price']:.2f}{chg} — {signal} (high yield bond demand)")
+        if move and move.get("price"):
+            chg = f" ({move['change']:+.2f}%)" if move.get("change") is not None else ""
+            lines.append(f"  MOVE Bond Vol Index: {move['price']:.1f}{chg} — rate uncertainty proxy")
+
+    # ── Bitcoin — risk proxy / digital gold correlation ───────────────────────
+    if bitcoin and commodity_name in ("Gold", "Silver"):
+        btc = bitcoin.get("BTC")
+        if btc and btc.get("price"):
+            chg = f" ({btc['change']:+.2f}%)" if btc.get("change") is not None else ""
+            lines.append(f"BITCOIN: ${btc['price']:,.0f}{chg} — {btc.get('signal', '')} (digital gold correlation)")
+
+    # ── FAO Food Price Index — global food inflation signal ───────────────────
+    if fao and commodity_name in ("Coffee", "Sugar", "Corn", "Wheat", "Soybeans"):
+        fao_lines = []
+        for item, d in fao.items():
+            if d.get("value"):
+                fao_lines.append(f"  {d['label']}: {d['value']} ({d.get('month', '')} {d.get('year', '')})")
+        if fao_lines:
+            lines.append("FAO FOOD PRICE INDICES (global supply pressure):")
+            lines.extend(fao_lines[:4])
+
+    # ── ICO Coffee data — certified stocks, robusta, spread ──────────────────
+    if ico_coffee and commodity_name == "Coffee":
+        if "robusta_price" in ico_coffee:
+            d = ico_coffee["robusta_price"]
+            chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+            lines.append(f"LONDON ROBUSTA (LIFFE): ${d['price']:,.0f}/t{chg}")
+        if "arabica_cents" in ico_coffee:
+            d = ico_coffee["arabica_cents"]
+            lines.append(f"ICE ARABICA: {d['value']:.2f} US cents/lb")
+        if "arabica_robusta_spread" in ico_coffee:
+            d = ico_coffee["arabica_robusta_spread"]
+            lines.append(f"ARABICA–ROBUSTA SPREAD: {d['value']:+.2f} cents/lb — {d['signal']}")
+        if "ice_certified_stocks" in ico_coffee:
+            d = ico_coffee["ice_certified_stocks"]
+            lines.append(f"ICE CERTIFIED ARABICA STOCKS: {d['value']:,} bags — {d['signal']}")
+        if "brazil_arabica_brl" in ico_coffee:
+            d = ico_coffee["brazil_arabica_brl"]
+            lines.append(f"BRAZIL ARABICA PRICE (CEPEA): R${d['value']:,.0f}/60kg bag")
+        lines.append("KEY COFFEE SUPPLY CHAIN: Brazil (arabica #1) + Vietnam (robusta #1) + Colombia + Indonesia + Ethiopia. "
+                     "Watch: certified stock levels on ICE, BRL/USD for Brazil export parity, frost risk Jul-Aug, "
+                     "Vietnam dry season yield, Colombia biennial crop cycle, global roaster restocking demand.")
+
     return "\n".join(lines) if lines else "No external data available."
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2899,6 +3318,14 @@ def run_analysis():
         wgc           = fetch_world_gold_council()
         conab         = fetch_conab_brazil()
         lbma          = fetch_lbma_data()
+        fao           = fetch_fao_food_price()
+        metals        = fetch_additional_metals()
+        coal          = fetch_coal_prices()
+        currencies    = fetch_currency_pairs()
+        credit        = fetch_credit_spreads()
+        bitcoin       = fetch_crypto_bitcoin()
+        eua           = fetch_eua_carbon()
+        ico_coffee    = fetch_ico_coffee_data()
         log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, GoldETF=%d, LME copper=%s, BDI=%s",
                  len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog), len(gold_etf),
                  lme_copper["value"] if lme_copper else "unavailable",
@@ -2930,7 +3357,10 @@ def run_analysis():
                                                 caixin_ism=caixin_ism, wgc=wgc,
                                                 conab=conab, lbma=lbma,
                                                 nasa_power=nasa_power, nasa_eonet=nasa_eonet,
-                                                drought=drought)
+                                                drought=drought,
+                                                fao=fao, metals=metals, coal=coal,
+                                                currencies=currencies, credit=credit,
+                                                bitcoin=bitcoin, eua=eua, ico_coffee=ico_coffee)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
@@ -2980,7 +3410,10 @@ def run_analysis():
                     silver_etf=silver_etf, shfe_copper=shfe_copper,
                     opec=opec, caixin_ism=caixin_ism, wgc=wgc,
                     conab=conab, lbma=lbma,
-                    nasa_power=nasa_power, drought=drought)
+                    nasa_power=nasa_power, drought=drought,
+                    currencies=currencies, ico_coffee=ico_coffee,
+                    metals=metals, coal=coal, credit=credit,
+                    bitcoin=bitcoin, eua=eua)
             save_macro_cache(macro_snapshot)
         except Exception as e:
             log.warning("Macro snapshot save failed: %s", e)
@@ -3063,7 +3496,9 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
                          usda_data=None, gie_agsi=None, crop_progress=None, oecd_cli=None,
                          silver_etf=None, shfe_copper=None, opec=None,
                          caixin_ism=None, wgc=None, conab=None, lbma=None,
-                         nasa_power=None, drought=None):
+                         nasa_power=None, drought=None,
+                         currencies=None, ico_coffee=None, metals=None,
+                         coal=None, credit=None, bitcoin=None, eua=None):
     """Build a structured key-data snapshot for the frontend Key Data Panel."""
     rows = []  # each row: {label, value, change, signal, signal_color}
     BULL = "#22c55e"; BEAR = "#ef4444"; NEUT = "#fbbf24"; MUTED = "#5d6478"
@@ -3367,6 +3802,66 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
         d_color = BEAR if drought.get("serious_pct", 0) > 20 else NEUT
         row("US Drought Monitor", f"{drought.get('serious_pct', 0):.1f}% severe+",
             None, drought.get("signal", ""), d_color)
+
+    # ── Coffee: additional data rows ──────────────────────────────────────────
+    if ico_coffee and commodity == "Coffee":
+        if "ice_certified_stocks" in ico_coffee:
+            d = ico_coffee["ice_certified_stocks"]
+            sc = BEAR if "HIGH" in d["signal"] else BULL if "LOW" in d["signal"] else NEUT
+            row("ICE Certified Stocks", f"{d['value']:,} bags", None, d["signal"][:20], sc)
+        if "robusta_price" in ico_coffee:
+            d = ico_coffee["robusta_price"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("London Robusta (LIFFE)", f"${d['price']:,.0f}/t", _chg(d.get("change"), 2, "%"), None, sc)
+        if "arabica_robusta_spread" in ico_coffee:
+            d = ico_coffee["arabica_robusta_spread"]
+            row("Arabica–Robusta Spread", f"{d['value']:+.2f} ¢/lb", None, d["signal"][:18], NEUT)
+
+    # ── Currency pairs for ag commodities ────────────────────────────────────
+    CURR_SCOPE = {
+        "Coffee":   [("BRL/USD", "BRL"), ("COP/USD", "COP"), ("VND/USD", "VND")],
+        "Sugar":    [("BRL/USD", "BRL"), ("INR/USD", "INR")],
+        "Soybeans": [("BRL/USD", "BRL"), ("ARS/USD", "ARS")],
+        "Corn":     [("BRL/USD", "BRL"), ("ARS/USD", "ARS")],
+        "Wheat":    [("BRL/USD", "BRL"), ("ARS/USD", "ARS")],
+        "Gold":     [("INR/USD", "INR")],
+    }
+    if currencies and commodity in CURR_SCOPE:
+        for pair_key, short in CURR_SCOPE[commodity]:
+            d = currencies.get(pair_key)
+            if d and d.get("price"):
+                sc = BEAR if (d.get("change") or 0) > 0 else BULL  # stronger local currency = cheaper exports
+                row(f"{short}/USD Rate", f"{d['price']:.4f}", _chg(d.get("change"), 2, "%"), None, sc)
+
+    # ── Credit spreads (macro risk — Gold/Silver/Crude) ───────────────────────
+    if credit and commodity in ("Gold", "Silver", "Crude Oil"):
+        hyg = credit.get("HYG")
+        if hyg and hyg.get("price"):
+            sc = BULL if (hyg.get("change") or 0) > 0 else BEAR
+            row("HYG High Yield ETF", f"${hyg['price']:.2f}", _chg(hyg.get("change"), 2, "%"), None, sc)
+
+    # ── Bitcoin (Gold/Silver digital gold correlation) ─────────────────────
+    if bitcoin and commodity in ("Gold", "Silver"):
+        btc = bitcoin.get("BTC")
+        if btc and btc.get("price"):
+            sc = BULL if (btc.get("change") or 0) > 0 else BEAR
+            row("Bitcoin (BTC-USD)", f"${btc['price']:,.0f}", _chg(btc.get("change"), 2, "%"),
+                btc.get("signal", "")[:18], sc)
+
+    # ── Additional metals (Platinum, Palladium for Gold context) ─────────────
+    if metals and commodity in ("Gold", "Silver"):
+        for name in ("Platinum", "Palladium"):
+            d = metals.get(name)
+            if d and d.get("price"):
+                sc = BULL if (d.get("change") or 0) > 0 else BEAR
+                row(name, f"${d['price']:,.2f}", _chg(d.get("change"), 2, "%"), None, sc)
+
+    # ── EUA carbon (Natural Gas, Crude Oil context) ───────────────────────────
+    if eua and commodity in ("Natural Gas", "Crude Oil"):
+        d = eua.get("EUA")
+        if d and d.get("price"):
+            sc = BEAR if (d.get("change") or 0) > 0 else BULL  # higher carbon = higher energy cost
+            row("EU Carbon EUA", f"€{d['price']:.2f}", _chg(d.get("change"), 2, "%"), "€/t CO2", sc)
 
     return rows
 
