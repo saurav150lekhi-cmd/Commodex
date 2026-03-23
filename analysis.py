@@ -565,6 +565,17 @@ def fetch_fred_data():
         "india_cpi":      ("INDCPIALLMINMEI",  "India CPI — gold demand / inflationary pressure"),
         "stress_index":   ("STLFSI2",          "St. Louis Financial Stress Index (0=normal, +ve=stress)"),
         "unemployment":   ("UNRATE",           "US Unemployment Rate (%)"),
+        # Expanded macro — new additions
+        "pce":            ("PCEPI",            "US PCE Price Index (Fed preferred inflation)"),
+        "core_pce":       ("PCEPILFE",         "US Core PCE ex Food & Energy (%)"),
+        "retail_sales":   ("RSXFS",            "US Retail Sales ex Food Services (Billions USD)"),
+        "jobless_claims": ("ICSA",             "US Initial Jobless Claims (weekly, thousands)"),
+        "conf_board_lei": ("USSLIND",          "Conference Board Leading Economic Index (US)"),
+        "sofr":           ("SOFR",             "SOFR Overnight Rate (%) — cost of carry"),
+        "us5y":           ("DGS5",             "US 5Y Treasury Yield (%)"),
+        "us30y":          ("DGS30",            "US 30Y Treasury Yield (%)"),
+        "jpyusd":         ("DEXJPUS",          "JPY/USD Exchange Rate — yen carry trade signal"),
+        "gbpusd":         ("DEXUSUK",          "GBP/USD Exchange Rate"),
     }
     result = {}
     for key, (series_id, label) in series.items():
@@ -1978,6 +1989,310 @@ def fetch_usda_data():
     return result
 
 
+# ── Atlanta Fed GDPNow — real-time US GDP estimate (free, no key) ─────────────
+def fetch_gdpnow():
+    """Scrape Atlanta Fed GDPNow real-time GDP growth estimate — updates daily."""
+    result = {}
+    try:
+        req = urllib.request.Request(
+            "https://www.atlantafed.org/cqer/research/gdpnow",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=12) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Look for GDPNow estimate (e.g. "2.4 percent" or "2.4%")
+        for pattern in [
+            r'GDPNow[^0-9\-]*([+-]?\d+\.?\d*)\s*percent',
+            r'latest\s+estimate[^0-9\-]*([+-]?\d+\.?\d*)',
+            r'nowcast[^0-9\-]*([+-]?\d+\.?\d*)\s*%',
+            r'(\-?\d+\.\d)\s*(?:percent|%)\s*(?:annualized|annual)',
+        ]:
+            m = re.search(pattern, html, re.IGNORECASE)
+            if m:
+                val = float(m.group(1))
+                if -15 < val < 15:  # sanity: US GDP rarely outside this range
+                    result["gdpnow"] = {
+                        "label":  "Atlanta Fed GDPNow (annualized %)",
+                        "value":  val,
+                        "signal": ("EXPANSION" if val > 0 else "CONTRACTION"),
+                    }
+                    break
+    except Exception as e:
+        log.debug("Atlanta Fed GDPNow fetch failed: %s", e)
+
+    # NY Fed Nowcast as fallback (also free, no key)
+    if not result:
+        try:
+            req = urllib.request.Request(
+                "https://www.newyorkfed.org/research/policy/nowcast",
+                headers={"User-Agent": "Mozilla/5.0"}
+            )
+            with urllib.request.urlopen(req, timeout=12) as r:
+                html = r.read().decode("utf-8", errors="ignore")
+            m = re.search(r'([+-]?\d+\.\d+)\s*%', html)
+            if m:
+                val = float(m.group(1))
+                if -15 < val < 15:
+                    result["gdpnow"] = {
+                        "label":  "NY Fed Nowcast GDP (annualized %)",
+                        "value":  val,
+                        "signal": ("EXPANSION" if val > 0 else "CONTRACTION"),
+                    }
+        except Exception as e:
+            log.debug("NY Fed Nowcast fetch failed: %s", e)
+    return result
+
+
+# ── CME FedWatch — implied Fed rate cut probability (scrape, no key) ──────────
+def fetch_fedwatch():
+    """Scrape CME FedWatch for market-implied probability of Fed rate change at next FOMC."""
+    result = {}
+    # CME FedWatch publishes probabilities for each meeting
+    # Primary: try the CME API endpoint
+    try:
+        url = "https://www.cmegroup.com/CmeWS/mvc/ProductCalendar/V2/getFedFundsProbabilities.json"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "application/json",
+            "Referer": "https://www.cmegroup.com/trading/interest-rates/countdown-to-fomc.html",
+        })
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read())
+        if isinstance(data, list) and data:
+            meeting = data[0]  # next meeting
+            probs   = meeting.get("probabilities", [])
+            if probs:
+                # Find cut, hold, hike probabilities
+                cut_prob  = sum(p.get("probability", 0) for p in probs if p.get("change", 0) < 0)
+                hold_prob = next((p.get("probability", 0) for p in probs if p.get("change", 0) == 0), 0)
+                hike_prob = sum(p.get("probability", 0) for p in probs if p.get("change", 0) > 0)
+                result["fedwatch"] = {
+                    "label":      "CME FedWatch — Next FOMC Probability",
+                    "cut_pct":    round(cut_prob * 100, 1),
+                    "hold_pct":   round(hold_prob * 100, 1),
+                    "hike_pct":   round(hike_prob * 100, 1),
+                    "meeting":    meeting.get("meetingDate", ""),
+                    "signal":     ("DOVISH (cut likely)" if cut_prob > 0.5
+                                   else "HAWKISH (hike likely)" if hike_prob > 0.5
+                                   else "ON HOLD"),
+                }
+    except Exception as e:
+        log.debug("CME FedWatch API fetch failed: %s", e)
+
+    # Fallback: scrape FedWatch page for implied rate
+    if not result:
+        try:
+            req = urllib.request.Request(
+                "https://www.cmegroup.com/trading/interest-rates/countdown-to-fomc.html",
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            )
+            with urllib.request.urlopen(req, timeout=12) as r:
+                html = r.read().decode("utf-8", errors="ignore")
+            # Look for probability values
+            m = re.search(r'(\d+\.?\d*)\s*%\s*(?:probability|chance|likelihood)\s*(?:of\s+)?(?:a\s+)?(?:rate\s+)?cut', html, re.IGNORECASE)
+            if m:
+                cut_p = float(m.group(1))
+                result["fedwatch"] = {
+                    "label":    "CME FedWatch — Cut Probability (next FOMC)",
+                    "cut_pct":  cut_p,
+                    "hold_pct": round(100 - cut_p, 1),
+                    "hike_pct": 0,
+                    "signal":   "DOVISH (cut likely)" if cut_p > 50 else "ON HOLD",
+                }
+        except Exception as e:
+            log.debug("CME FedWatch page scrape failed: %s", e)
+    return result
+
+
+# ── Equity sentiment — SPY, XLE, XLB, TLT, EEM (Yahoo Finance) ───────────────
+def fetch_equity_sentiment():
+    """Fetch S&P 500, energy sector (XLE), materials (XLB), bonds (TLT), EM (EEM) prices."""
+    result = {}
+    tickers = [
+        ("SPY",  "S&P 500 ETF (SPY) — broad risk sentiment"),
+        ("XLE",  "Energy Select SPDR (XLE) — oil/gas sector"),
+        ("XLB",  "Materials Select SPDR (XLB) — metals/mining sector"),
+        ("TLT",  "iShares 20Y+ Treasury ETF (TLT) — bond market / rate expectations"),
+        ("EEM",  "iShares MSCI EM ETF (EEM) — emerging market risk appetite"),
+        ("VWO",  "Vanguard FTSE EM ETF (VWO) — EM demand (China/Brazil/India)"),
+        ("DBC",  "Invesco DB Commodity ETF (DBC) — broad commodity basket"),
+        ("PDBC", "Invesco Optimum Yield Commodities ETF (PDBC)"),
+    ]
+    for ticker, label in tickers:
+        try:
+            data = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=2d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                prev  = meta.get("previousClose", price)
+                chg   = round(((price - prev) / prev) * 100, 2) if prev and price else None
+                result[ticker] = {"label": label, "price": price, "change": chg}
+        except Exception as e:
+            log.debug("Equity sentiment fetch failed for %s: %s", ticker, e)
+    return result
+
+
+# ── Commodity cross-ratios — Copper/Gold, Oil/Gold (derived) ─────────────────
+def fetch_commodity_ratios():
+    """
+    Derive Copper/Gold and Oil/Gold ratios from live prices.
+    Copper/Gold ratio: classic leading indicator for global growth expectations.
+    Oil/Gold ratio: signals real economy vs. financial stress regimes.
+    """
+    result = {}
+    prices = {}
+    for name, sym in [("Gold", "gc.f"), ("Copper", "hg.f"), ("WTI", "cl.f"), ("Silver", "si.f")]:
+        try:
+            url = f"https://stooq.com/q/l/?s={sym}&f=sd2t2ohlcv&h&e=csv"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                lines = r.read().decode().strip().split("\n")
+            if len(lines) >= 2:
+                prices[name] = float(lines[-1].split(",")[6])
+        except:
+            pass
+
+    if prices.get("Copper") and prices.get("Gold") and prices["Gold"] > 0:
+        ratio = round(prices["Copper"] / prices["Gold"], 6)
+        # Historical context: ratio >0.00035 = growth, <0.00020 = recession fear
+        signal = ("GROWTH SIGNAL — copper outperforming gold" if ratio > 0.00035
+                  else "RECESSION WARNING — gold outperforming copper" if ratio < 0.00020
+                  else "NEUTRAL")
+        result["copper_gold_ratio"] = {
+            "label":  "Copper / Gold Ratio (Dr. Copper signal)",
+            "value":  ratio,
+            "signal": signal,
+            "copper": prices["Copper"],
+            "gold":   prices["Gold"],
+        }
+
+    if prices.get("WTI") and prices.get("Gold") and prices["Gold"] > 0:
+        ratio = round(prices["WTI"] / prices["Gold"], 4)
+        # Historical: >0.07 = reflation/growth, <0.04 = deflation/recession fear
+        signal = ("REFLATION — oil/real economy strong vs. gold" if ratio > 0.07
+                  else "DEFLATION FEAR — gold safe haven dominant" if ratio < 0.04
+                  else "BALANCED")
+        result["oil_gold_ratio"] = {
+            "label":  "WTI / Gold Ratio (inflation regime signal)",
+            "value":  ratio,
+            "signal": signal,
+            "wti":    prices["WTI"],
+            "gold":   prices["Gold"],
+        }
+
+    if prices.get("Gold") and prices.get("Silver") and prices["Silver"] > 0:
+        ratio = round(prices["Gold"] / prices["Silver"], 1)
+        result["gold_silver_ratio_macro"] = {
+            "label":  "Gold / Silver Ratio (macro risk gauge)",
+            "value":  ratio,
+            "signal": ("RISK-OFF — elevated flight to gold" if ratio > 90
+                       else "RISK-ON — silver (industrial) outperforming" if ratio < 70
+                       else "NEUTRAL"),
+        }
+    return result
+
+
+# ── Eurozone PMI — composite + manufacturing (scrape, no key) ────────────────
+def fetch_eurozone_pmi():
+    """Fetch Eurozone composite and manufacturing PMI — key for European demand signal."""
+    result = {}
+    # Try FRED for Eurozone PMI proxies
+    if FRED_API_KEY:
+        for key, series_id, label in [
+            ("eu_manufacturing_pmi", "EUGPMEMANMISMEI", "Eurozone Manufacturing PMI"),
+            ("eu_composite_pmi",     "EUGPMECPMISMEI",  "Eurozone Composite PMI"),
+            ("de_manufacturing_pmi", "DEMPMIMANMISMEI", "Germany Manufacturing PMI"),
+        ]:
+            try:
+                url = (f"https://api.stlouisfed.org/fred/series/observations"
+                       f"?series_id={series_id}&api_key={FRED_API_KEY}"
+                       f"&sort_order=desc&limit=2&file_type=json")
+                data = fetch_json(url)
+                if data:
+                    obs = [o for o in data.get("observations", []) if o.get("value") not in (".", None, "")]
+                    if obs:
+                        val = float(obs[0]["value"])
+                        if 30 < val < 70:
+                            result[key] = {
+                                "label":  label,
+                                "value":  val,
+                                "date":   obs[0].get("date", ""),
+                                "signal": "EXPANSION" if val > 50 else "CONTRACTION",
+                            }
+            except Exception as e:
+                log.debug("Eurozone PMI FRED fetch failed for %s: %s", key, e)
+
+    # Scrape Trading Economics as fallback
+    if not result:
+        try:
+            req = urllib.request.Request(
+                "https://tradingeconomics.com/euro-area/composite-pmi",
+                headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+            )
+            with urllib.request.urlopen(req, timeout=10) as r:
+                html = r.read().decode("utf-8", errors="ignore")
+            m = re.search(r'"price"\s*:\s*"?([\d.]+)"?', html)
+            if m:
+                val = float(m.group(1))
+                if 30 < val < 70:
+                    result["eu_composite_pmi"] = {
+                        "label":  "Eurozone Composite PMI",
+                        "value":  val,
+                        "signal": "EXPANSION" if val > 50 else "CONTRACTION",
+                    }
+        except Exception as e:
+            log.debug("Eurozone PMI TE scrape failed: %s", e)
+    return result
+
+
+# ── PBOC CNY daily fix — China's yuan reference rate (scrape, no key) ─────────
+def fetch_pboc_fix():
+    """Fetch PBOC daily CNY/USD reference rate — controls yuan and signals China policy stance."""
+    result = {}
+    # Primary: PBOC publishes daily fix on their website
+    try:
+        req = urllib.request.Request(
+            "https://www.pbc.gov.cn/en/3688110/3688172/4263967/index.html",
+            headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+        )
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r'USD/CNY[^0-9]*([\d.]+)', html, re.IGNORECASE)
+        if not m:
+            m = re.search(r'(7\.\d{4})', html)  # CNY/USD is ~7.1-7.3 currently
+        if m:
+            val = float(m.group(1))
+            if 6.0 < val < 8.5:  # sanity check
+                result["pboc_fix"] = {
+                    "label":  "PBOC CNY/USD Daily Fix",
+                    "value":  val,
+                    "signal": ("YUAN WEAK — bearish for Chinese commodity imports" if val > 7.2
+                               else "YUAN FIRM — supportive for EM commodity demand"),
+                }
+    except Exception as e:
+        log.debug("PBOC fix primary fetch failed: %s", e)
+
+    # Fallback: Yahoo Finance CNY/USD
+    if not result:
+        try:
+            data = fetch_json("https://query1.finance.yahoo.com/v8/finance/chart/CNY=X?interval=1d&range=2d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                prev  = meta.get("previousClose", price)
+                chg   = round(((price - prev) / prev) * 100, 2) if prev and price else None
+                if price and 6.0 < price < 8.5:
+                    result["pboc_fix"] = {
+                        "label":  "CNY/USD Rate (Yahoo Finance)",
+                        "value":  price,
+                        "change": chg,
+                        "signal": ("YUAN WEAK" if price > 7.2 else "YUAN FIRM"),
+                    }
+        except Exception as e:
+            log.debug("PBOC CNY Yahoo fallback failed: %s", e)
+    return result
+
+
 # ── FAO Food Price Index — free REST API (no key) ─────────────────────────────
 def fetch_fao_food_price():
     """Fetch FAO Food Price Index (FFPI) monthly sub-indices: cereals, oils, sugar, dairy, meat."""
@@ -2288,7 +2603,9 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                         conab=None, lbma=None,
                         nasa_power=None, nasa_eonet=None, drought=None,
                         fao=None, metals=None, coal=None, currencies=None,
-                        credit=None, bitcoin=None, eua=None, ico_coffee=None):
+                        credit=None, bitcoin=None, eua=None, ico_coffee=None,
+                        gdpnow=None, fedwatch=None, equities=None, ratios=None,
+                        eu_pmi=None, pboc=None):
     lines = []
 
     # LIVE PRICE — always first so Claude sees today's move immediately
@@ -2830,6 +3147,106 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                      f"{drought.get('serious_pct', 0):.1f}% of US in severe+ drought "
                      f"(D2: {drought.get('d2_pct',0):.1f}%, D3: {drought.get('d3_pct',0):.1f}%, D4: {drought.get('d4_pct',0):.1f}%)")
 
+    # ── Atlanta Fed GDPNow / NY Fed Nowcast ─────────────────────────────────
+    if gdpnow and gdpnow.get("gdpnow"):
+        d = gdpnow["gdpnow"]
+        lines.append(f"GDP NOWCAST: {d['label']}: {d['value']:+.1f}% annualized — {d['signal']}")
+
+    # ── CME FedWatch — implied Fed rate change probability ───────────────────
+    if fedwatch and fedwatch.get("fedwatch"):
+        d = fedwatch["fedwatch"]
+        cut  = d.get("cut_pct", 0)
+        hold = d.get("hold_pct", 0)
+        hike = d.get("hike_pct", 0)
+        meeting = f" (meeting: {d['meeting']})" if d.get("meeting") else ""
+        lines.append(f"CME FEDWATCH{meeting}: Cut {cut}% | Hold {hold}% | Hike {hike}% — {d['signal']}")
+
+    # ── Equity & sector sentiment ─────────────────────────────────────────────
+    if equities:
+        EQ_SCOPE = {
+            "Gold":        ["SPY", "TLT", "EEM"],
+            "Silver":      ["SPY", "TLT", "XLB"],
+            "Crude Oil":   ["SPY", "XLE", "EEM"],
+            "Copper":      ["SPY", "XLB", "EEM"],
+            "Natural Gas": ["SPY", "XLE"],
+            "Corn":        ["SPY", "EEM", "DBC"],
+            "Wheat":       ["SPY", "EEM"],
+            "Soybeans":    ["SPY", "EEM", "DBC"],
+            "Coffee":      ["SPY", "EEM"],
+            "Sugar":       ["SPY", "EEM"],
+        }
+        relevant_eq = EQ_SCOPE.get(commodity_name, ["SPY"])
+        eq_lines = []
+        for t in relevant_eq:
+            d = equities.get(t)
+            if d and d.get("price"):
+                chg = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+                eq_lines.append(f"  {t}: ${d['price']:.2f}{chg}")
+        if eq_lines:
+            lines.append("EQUITY / SECTOR SENTIMENT:")
+            lines.extend(eq_lines)
+
+    # ── Cross-commodity ratios (Copper/Gold, Oil/Gold) ───────────────────────
+    if ratios:
+        if "copper_gold_ratio" in ratios and commodity_name in ("Gold", "Silver", "Copper", "Crude Oil"):
+            d = ratios["copper_gold_ratio"]
+            lines.append(f"COPPER/GOLD RATIO: {d['value']:.6f} — {d['signal']}")
+        if "oil_gold_ratio" in ratios and commodity_name in ("Gold", "Silver", "Crude Oil"):
+            d = ratios["oil_gold_ratio"]
+            lines.append(f"OIL/GOLD RATIO: {d['value']:.4f} — {d['signal']}")
+        if "gold_silver_ratio_macro" in ratios and commodity_name in ("Gold", "Silver"):
+            d = ratios["gold_silver_ratio_macro"]
+            lines.append(f"GOLD/SILVER RATIO (macro): {d['value']} — {d['signal']}")
+
+    # ── Eurozone PMI ─────────────────────────────────────────────────────────
+    if eu_pmi and commodity_name in ("Natural Gas", "Crude Oil", "Copper", "Gold", "Silver"):
+        pmi_lines = []
+        for key, d in eu_pmi.items():
+            pmi_lines.append(f"  {d['label']}: {d['value']} — {d['signal']}"
+                             + (f" ({d.get('date','')})" if d.get("date") else ""))
+        if pmi_lines:
+            lines.append("EUROZONE PMI:")
+            lines.extend(pmi_lines)
+
+    # ── PBOC CNY fix ──────────────────────────────────────────────────────────
+    if pboc and pboc.get("pboc_fix") and commodity_name in ("Copper", "Gold", "Silver", "Soybeans", "Corn"):
+        d = pboc["pboc_fix"]
+        chg = f" ({d['change']:+.4f}%)" if d.get("change") is not None else ""
+        lines.append(f"PBOC CNY/USD FIX: {d['value']:.4f}{chg} — {d['signal']}")
+
+    # ── FRED expanded macro ───────────────────────────────────────────────────
+    if fred:
+        if "jobless_claims" in fred:
+            d = fred["jobless_claims"]
+            chg_str = f" (chg: {d['change']:+.0f}k)" if d.get("change") is not None else ""
+            regime = "TIGHT LABOR" if d["value"] < 250 else "LOOSENING" if d["value"] > 350 else "NORMAL"
+            lines.append(f"JOBLESS CLAIMS (weekly): {d['value']:.0f}k{chg_str} — {regime} ({d['date']})")
+        if "retail_sales" in fred and commodity_name in ("Crude Oil", "Copper", "Natural Gas"):
+            d = fred["retail_sales"]
+            chg_str = f" (chg: {d['change']:+.1f})" if d.get("change") is not None else ""
+            lines.append(f"US RETAIL SALES: ${d['value']:.1f}B{chg_str} ({d['date']}) — consumer demand")
+        if "pce" in fred and commodity_name in ("Gold", "Silver"):
+            d = fred["pce"]
+            chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+            lines.append(f"PCE INFLATION (Fed preferred): {d['value']}{chg_str} ({d['date']})")
+        if "core_pce" in fred and commodity_name in ("Gold", "Silver"):
+            d = fred["core_pce"]
+            chg_str = f" (chg: {d['change']:+.3f})" if d.get("change") is not None else ""
+            lines.append(f"CORE PCE (ex food & energy): {d['value']}{chg_str} ({d['date']})")
+        if "sofr" in fred and commodity_name in ("Gold", "Silver", "Crude Oil"):
+            d = fred["sofr"]
+            lines.append(f"SOFR (overnight rate): {d['value']}% ({d['date']}) — cost of carry for commodity positions")
+        if "conf_board_lei" in fred:
+            d = fred["conf_board_lei"]
+            chg_str = f" (chg: {d['change']:+.1f})" if d.get("change") is not None else ""
+            regime = "EXPANSION" if (d.get("change") or 0) > 0 else "CONTRACTION"
+            lines.append(f"CONFERENCE BOARD LEI: {d['value']}{chg_str} — {regime} ({d['date']})")
+        if "jpyusd" in fred and commodity_name in ("Gold", "Silver", "Crude Oil"):
+            d = fred["jpyusd"]
+            chg_str = f" (chg: {d['change']:+.2f})" if d.get("change") is not None else ""
+            yen_signal = "YEN WEAK (carry trade active)" if d["value"] > 150 else "YEN FIRM (carry unwind risk)" if d["value"] < 130 else "NEUTRAL"
+            lines.append(f"JPY/USD: {d['value']:.2f}{chg_str} — {yen_signal}")
+
     # ── Key currency pairs — EM currencies for ag commodities ────────────────
     if currencies:
         CURR_SCOPE = {
@@ -3318,6 +3735,12 @@ def run_analysis():
         wgc           = fetch_world_gold_council()
         conab         = fetch_conab_brazil()
         lbma          = fetch_lbma_data()
+        gdpnow        = fetch_gdpnow()
+        fedwatch      = fetch_fedwatch()
+        equities      = fetch_equity_sentiment()
+        ratios        = fetch_commodity_ratios()
+        eu_pmi        = fetch_eurozone_pmi()
+        pboc          = fetch_pboc_fix()
         fao           = fetch_fao_food_price()
         metals        = fetch_additional_metals()
         coal          = fetch_coal_prices()
@@ -3360,7 +3783,10 @@ def run_analysis():
                                                 drought=drought,
                                                 fao=fao, metals=metals, coal=coal,
                                                 currencies=currencies, credit=credit,
-                                                bitcoin=bitcoin, eua=eua, ico_coffee=ico_coffee)
+                                                bitcoin=bitcoin, eua=eua, ico_coffee=ico_coffee,
+                                                gdpnow=gdpnow, fedwatch=fedwatch,
+                                                equities=equities, ratios=ratios,
+                                                eu_pmi=eu_pmi, pboc=pboc)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
@@ -3413,7 +3839,9 @@ def run_analysis():
                     nasa_power=nasa_power, drought=drought,
                     currencies=currencies, ico_coffee=ico_coffee,
                     metals=metals, coal=coal, credit=credit,
-                    bitcoin=bitcoin, eua=eua)
+                    bitcoin=bitcoin, eua=eua,
+                    gdpnow=gdpnow, fedwatch=fedwatch, equities=equities,
+                    ratios=ratios, eu_pmi=eu_pmi, pboc=pboc)
             save_macro_cache(macro_snapshot)
         except Exception as e:
             log.warning("Macro snapshot save failed: %s", e)
@@ -3498,7 +3926,9 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
                          caixin_ism=None, wgc=None, conab=None, lbma=None,
                          nasa_power=None, drought=None,
                          currencies=None, ico_coffee=None, metals=None,
-                         coal=None, credit=None, bitcoin=None, eua=None):
+                         coal=None, credit=None, bitcoin=None, eua=None,
+                         gdpnow=None, fedwatch=None, equities=None, ratios=None,
+                         eu_pmi=None, pboc=None):
     """Build a structured key-data snapshot for the frontend Key Data Panel."""
     rows = []  # each row: {label, value, change, signal, signal_color}
     BULL = "#22c55e"; BEAR = "#ef4444"; NEUT = "#fbbf24"; MUTED = "#5d6478"
@@ -3860,8 +4290,83 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
     if eua and commodity in ("Natural Gas", "Crude Oil"):
         d = eua.get("EUA")
         if d and d.get("price"):
-            sc = BEAR if (d.get("change") or 0) > 0 else BULL  # higher carbon = higher energy cost
+            sc = BEAR if (d.get("change") or 0) > 0 else BULL
             row("EU Carbon EUA", f"€{d['price']:.2f}", _chg(d.get("change"), 2, "%"), "€/t CO2", sc)
+
+    # ── GDPNow / Fed rate signals (all commodities) ───────────────────────────
+    if gdpnow and gdpnow.get("gdpnow"):
+        d = gdpnow["gdpnow"]
+        sc = BULL if d["signal"] == "EXPANSION" else BEAR
+        row("GDP Nowcast", f"{d['value']:+.1f}%", None, d["signal"], sc)
+
+    if fedwatch and fedwatch.get("fedwatch"):
+        d = fedwatch["fedwatch"]
+        sc = BULL if d.get("cut_pct", 0) > 50 else BEAR if d.get("hike_pct", 0) > 30 else NEUT
+        row("CME FedWatch (cut %)", f"{d.get('cut_pct', 0)}%", None, d["signal"], sc)
+
+    # ── Commodity cross-ratios ─────────────────────────────────────────────────
+    if ratios:
+        if commodity in ("Gold", "Silver", "Copper"):
+            d = ratios.get("copper_gold_ratio")
+            if d:
+                sc = BULL if "GROWTH" in d["signal"] else BEAR if "RECESSION" in d["signal"] else NEUT
+                row("Copper/Gold Ratio", f"{d['value']:.5f}", None, d["signal"][:20], sc)
+        if commodity in ("Gold", "Silver", "Crude Oil"):
+            d = ratios.get("oil_gold_ratio")
+            if d:
+                sc = BULL if "REFLATION" in d["signal"] else BEAR if "DEFLATION" in d["signal"] else NEUT
+                row("Oil/Gold Ratio", f"{d['value']:.4f}", None, d["signal"][:18], sc)
+
+    # ── Equity sector context ─────────────────────────────────────────────────
+    if equities:
+        EQ_SNAP = {
+            "Crude Oil":   "XLE",
+            "Natural Gas": "XLE",
+            "Copper":      "XLB",
+            "Gold":        "TLT",
+            "Silver":      "TLT",
+        }
+        ticker = EQ_SNAP.get(commodity, "SPY")
+        d = equities.get(ticker)
+        if d and d.get("price"):
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row(f"{ticker} ETF", f"${d['price']:.2f}", _chg(d.get("change"), 2, "%"), None, sc)
+        # Always show SPY
+        spy = equities.get("SPY")
+        if spy and spy.get("price") and ticker != "SPY":
+            sc = BULL if (spy.get("change") or 0) > 0 else BEAR
+            row("S&P 500 (SPY)", f"${spy['price']:.2f}", _chg(spy.get("change"), 2, "%"), None, sc)
+
+    # ── Eurozone PMI (copper, crude, gas) ─────────────────────────────────────
+    if eu_pmi and commodity in ("Copper", "Crude Oil", "Natural Gas"):
+        d = eu_pmi.get("eu_composite_pmi") or eu_pmi.get("eu_manufacturing_pmi")
+        if d:
+            sc = BULL if d["signal"] == "EXPANSION" else BEAR
+            row("Eurozone PMI", _fmt(d["value"], 1), None, d["signal"], sc)
+
+    # ── PBOC CNY fix (copper, gold, soybeans) ─────────────────────────────────
+    if pboc and pboc.get("pboc_fix") and commodity in ("Copper", "Gold", "Soybeans", "Corn"):
+        d = pboc["pboc_fix"]
+        sc = BEAR if d["value"] > 7.2 else BULL
+        row("PBOC CNY/USD Fix", f"{d['value']:.4f}", _chg(d.get("change"), 4), d["signal"][:16], sc)
+
+    # ── FRED expanded (jobless claims, PCE, LEI) ──────────────────────────────
+    if fred:
+        if "jobless_claims" in fred and commodity in ("Gold", "Silver", "Crude Oil", "Copper"):
+            d = fred["jobless_claims"]
+            sc = BULL if d["value"] < 250 else BEAR if d["value"] > 350 else NEUT
+            row("Jobless Claims (wkly)", f"{d['value']:.0f}k", _chg(d.get("change"), 0, "k"), None, sc)
+        if "core_pce" in fred and commodity in ("Gold", "Silver"):
+            d = fred["core_pce"]
+            row("Core PCE (Fed target)", _fmt(d["value"], 3), _chg(d.get("change"), 3))
+        if "conf_board_lei" in fred:
+            d = fred["conf_board_lei"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("Conference Board LEI", _fmt(d["value"], 1), _chg(d.get("change"), 1), None, sc)
+        if "jpyusd" in fred and commodity in ("Gold", "Silver"):
+            d = fred["jpyusd"]
+            sc = BULL if d["value"] > 150 else BEAR if d["value"] < 130 else NEUT
+            row("JPY/USD (carry trade)", _fmt(d["value"], 2), _chg(d.get("change"), 2))
 
     return rows
 
