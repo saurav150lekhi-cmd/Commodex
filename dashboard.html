@@ -108,48 +108,48 @@
 
   /* ── TOPBAR ── */
   #topbar {
-    height: 44px; border-bottom: 1px solid var(--border);
-    background: #0a0a0a; display: flex; align-items: center;
-    justify-content: space-between; padding: 0 16px; flex-shrink: 0;
+    height: 52px; border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: #080808; display: flex; align-items: center;
+    justify-content: space-between; padding: 0 20px; flex-shrink: 0;
   }
-  .tb-left { display: flex; align-items: center; gap: 14px; }
-  .tb-brand { display: flex; align-items: center; gap: 8px; }
-  .tb-logo { width: 20px; height: 20px; background: var(--bull); display: flex; align-items: center; justify-content: center; }
-  .tb-logo span { font-weight: 900; font-size: 11px; color: #000; }
-  .tb-name { font-weight: 900; font-size: 13px; letter-spacing: 0.16em; }
-  .live-dot { display: inline-flex; align-items: center; gap: 4px; }
-  .live-dot::before { content: ''; display: inline-block; width: 5px; height: 5px; border-radius: 50%; background: var(--bull); animation: pulse-dot 1.2s ease-in-out infinite; }
-  .live-label { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; color: var(--bull); }
+  .tb-left { display: flex; align-items: center; gap: 20px; }
+  .tb-brand { display: flex; align-items: center; gap: 10px; }
+  .tb-logo { width: 26px; height: 26px; background: var(--bull); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .tb-logo span { font-weight: 800; font-size: 12px; color: #000; font-family: var(--sans); }
+  .tb-name { font-weight: 600; font-size: 14px; letter-spacing: 0.02em; font-family: var(--sans); color: #fff; }
+  .live-dot { display: inline-flex; align-items: center; gap: 5px; }
+  .live-dot::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #22C55E; animation: pulse-dot 2s ease-in-out infinite; box-shadow: 0 0 6px rgba(34,197,94,0.5); }
+  .live-label { font-size: 10px; font-weight: 500; letter-spacing: 0.04em; color: #22C55E; font-family: var(--sans); }
   .tb-markets { display: flex; align-items: center; gap: 6px; }
-  .market-badge { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; padding: 2px 8px; border: 1px solid var(--border); color: rgba(209,212,220,0.7); }
-  .market-badge.open { border-color: rgba(38,166,154,0.4); color: var(--bull); }
-  .market-badge.closed { border-color: rgba(239,83,80,0.3); color: var(--bear); }
-  .tb-right { display: flex; align-items: center; gap: 16px; }
-  .tb-update-block { display: flex; align-items: center; gap: 4px; }
-  .tb-update-lbl { font-size: 8px; font-weight: 800; letter-spacing: 0.12em; color: rgba(93,100,120,0.7); }
-  .tb-update-age { font-size: 9px; color: rgba(209,212,220,0.55); letter-spacing: 0.04em; }
-  .tb-update-sep { font-size: 9px; color: rgba(93,100,120,0.4); }
-  .tb-update-next { font-size: 9px; color: var(--bull); opacity: 0.7; letter-spacing: 0.04em; }
-  .tb-time { font-size: 11px; font-weight: 600; color: var(--fg); letter-spacing: 0.06em; }
-  .tb-sep { width: 1px; height: 16px; background: var(--border); }
-  .tb-user { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; border: 1px solid var(--border); padding: 4px 12px; color: rgba(93,100,120,0.7); cursor: pointer; background: none; font-family: var(--mono); }
-  .tb-user:hover { color: var(--fg); border-color: rgba(209,212,220,0.3); }
-  .tb-exit { font-size: 9px; font-weight: 700; letter-spacing: 0.14em; border: 1px solid var(--border); padding: 4px 12px; color: rgba(93,100,120,0.7); cursor: pointer; text-decoration: none; }
-  .tb-exit:hover { color: var(--fg); }
+  .market-badge { font-size: 9px; font-weight: 500; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); color: rgba(200,210,220,0.5); font-family: var(--sans); }
+  .market-badge.open { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.2); color: #22C55E; }
+  .market-badge.closed { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.15); color: rgba(239,68,68,0.6); }
+  .tb-right { display: flex; align-items: center; gap: 10px; }
+  .tb-update-block { display: flex; align-items: center; gap: 5px; }
+  .tb-update-lbl { font-size: 9px; font-weight: 500; letter-spacing: 0.04em; color: rgba(150,160,180,0.5); font-family: var(--sans); }
+  .tb-update-age { font-size: 9px; color: rgba(200,210,220,0.45); font-family: var(--mono); }
+  .tb-update-sep { font-size: 9px; color: rgba(100,110,130,0.35); }
+  .tb-update-next { font-size: 9px; color: var(--bull); opacity: 0.6; font-family: var(--mono); }
+  .tb-time { font-size: 11px; font-weight: 500; color: rgba(200,210,220,0.6); letter-spacing: 0.02em; font-family: var(--mono); }
+  .tb-sep { width: 1px; height: 18px; background: rgba(255,255,255,0.07); }
+  .tb-user { font-size: 11px; font-weight: 500; letter-spacing: 0.01em; border: 1px solid rgba(255,255,255,0.1); padding: 5px 14px; border-radius: 6px; color: rgba(200,210,220,0.65); cursor: pointer; background: rgba(255,255,255,0.04); font-family: var(--sans); transition: all 0.15s; }
+  .tb-user:hover { color: #fff; border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); }
+  .tb-exit { font-size: 11px; font-weight: 500; letter-spacing: 0.01em; border: 1px solid rgba(255,255,255,0.1); padding: 5px 14px; border-radius: 6px; color: rgba(200,210,220,0.5); cursor: pointer; text-decoration: none; font-family: var(--sans); transition: all 0.15s; background: none; }
+  .tb-exit:hover { color: #fff; border-color: rgba(255,255,255,0.2); }
 
   /* ── WATCHLIST BAR ── */
   #watchlist {
-    height: 32px; border-bottom: 1px solid var(--border);
-    background: #0a0a0a; display: flex; align-items: center;
-    padding: 0 12px; flex-shrink: 0; overflow-x: auto;
+    height: 34px; border-bottom: 1px solid rgba(255,255,255,0.05);
+    background: #050505; display: flex; align-items: center;
+    padding: 0 20px; flex-shrink: 0; overflow-x: auto;
   }
   #watchlist::-webkit-scrollbar { height: 0; }
-  .wl-label { font-size: 8px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: rgba(93,100,120,0.8); padding-right: 12px; border-right: 1px solid var(--border); margin-right: 12px; white-space: nowrap; }
-  .wl-item { display: flex; align-items: center; gap: 6px; padding: 0 12px; border-right: 1px solid var(--border); white-space: nowrap; cursor: pointer; height: 100%; }
-  .wl-item:hover { background: rgba(255,255,255,0.02); }
-  .wl-name { font-size: 10px; font-weight: 700; color: var(--fg); }
-  .wl-price { font-size: 10px; font-weight: 600; color: rgba(209,212,220,0.7); }
-  .wl-change { font-size: 10px; font-weight: 700; }
+  .wl-label { font-size: 9px; font-weight: 500; letter-spacing: 0.06em; color: rgba(150,160,180,0.4); padding-right: 16px; border-right: 1px solid rgba(255,255,255,0.06); margin-right: 16px; white-space: nowrap; font-family: var(--sans); }
+  .wl-item { display: flex; align-items: center; gap: 8px; padding: 0 14px; border-right: 1px solid rgba(255,255,255,0.05); white-space: nowrap; cursor: pointer; height: 100%; transition: background 0.12s; }
+  .wl-item:hover { background: rgba(255,255,255,0.03); }
+  .wl-name { font-size: 10px; font-weight: 600; color: rgba(220,225,235,0.85); font-family: var(--sans); }
+  .wl-price { font-size: 10px; font-weight: 500; color: rgba(200,210,220,0.55); font-family: var(--mono); }
+  .wl-change { font-size: 10px; font-weight: 600; font-family: var(--mono); }
   .wl-change.up { color: var(--bull); }
   .wl-change.dn { color: var(--bear); }
   .wl-change.flat { color: var(--muted); }
@@ -192,18 +192,18 @@
   #main { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
 
   /* ── SCAN BAR ── */
-  #scan-bar { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); background: #0a0a0a; flex-shrink: 0; overflow-x: auto; }
+  #scan-bar { display: flex; align-items: stretch; border-bottom: 1px solid rgba(255,255,255,0.05); background: #050505; flex-shrink: 0; overflow-x: auto; padding: 0 8px; }
   #scan-bar::-webkit-scrollbar { height: 0; }
   .scan-label-cell { display: flex; align-items: center; gap: 5px; padding: 7px 14px; border-right: 1px solid var(--border); flex-shrink: 0; }
-  .scan-cell { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-right: 1px solid var(--border); flex-shrink: 0; cursor: pointer; transition: background 0.12s; }
-  .scan-cell:hover { background: rgba(255,255,255,0.03); }
-  .scan-cell.active-scan { background: rgba(38,166,154,0.08); }
-  .s-name { font-size: 10px; font-weight: 800; color: rgba(209,212,220,0.8); }
+  .scan-cell { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-right: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; cursor: pointer; transition: background 0.12s; border-radius: 0; }
+  .scan-cell:hover { background: rgba(255,255,255,0.04); }
+  .scan-cell.active-scan { background: rgba(34,197,94,0.07); }
+  .s-name { font-size: 10px; font-weight: 600; color: rgba(220,225,235,0.75); font-family: var(--sans); letter-spacing: 0.01em; }
 
   .s-badge { font-size: 8px; font-weight: 800; padding: 1px 6px; }
 
   /* ── GRID HEADER ── */
-  #grid-header { padding: 7px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; background: var(--bg); }
+  #grid-header { padding: 9px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); flex-shrink: 0; background: var(--bg); }
   .grid-title { font-size: 9px; font-weight: 800; letter-spacing: 0.18em; text-transform: uppercase; color: rgba(93,100,120,0.8); }
   .grid-meta { font-size: 9px; color: rgba(209,212,220,0.5); margin-left: 10px; }
   .grid-filter { width: 130px; background: #0a0a0a; border: 1px solid var(--border); color: var(--fg); font-family: var(--mono); font-size: 10px; padding: 4px 8px 4px 24px; outline: none; }
@@ -224,8 +224,8 @@
   .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 16px; }
 
   /* ── DECISION CARD ── */
-  .dcard { background: var(--card); border: 1px solid var(--border); overflow: hidden; cursor: pointer; position: relative; transition: transform 0.08s, box-shadow 0.1s, border-color 0.15s; }
-  .dcard:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,0.4); }
+  .dcard { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; overflow: hidden; cursor: pointer; position: relative; transition: transform 0.15s, box-shadow 0.15s, border-color 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+  .dcard:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(0,0,0,0.6); border-color: rgba(255,255,255,0.12); }
   .dcard.selected { border-color: rgba(38,166,154,0.5); box-shadow: 0 0 24px rgba(38,166,154,0.15); }
   .dcard.selected-bear { border-color: rgba(239,83,80,0.5); box-shadow: 0 0 24px rgba(239,83,80,0.15); }
   @keyframes card-glow-bull {
@@ -236,8 +236,8 @@
     0%,100% { border-color:rgba(239,68,68,0.4); box-shadow:0 0 0px 0px rgba(239,68,68,0); background: var(--card); }
     50%      { border-color:rgba(239,68,68,1);   box-shadow:0 0 28px 6px rgba(239,68,68,0.35), inset 0 0 20px rgba(239,68,68,0.08); background: rgba(239,68,68,0.05); }
   }
-  .dcard.card-bull { animation: card-glow-bull 1.2s ease-in-out infinite; transition: none !important; }
-  .dcard.card-bear { animation: card-glow-bear 1.2s ease-in-out infinite; transition: none !important; }
+  .dcard.card-bull { border-color: rgba(34,197,94,0.25); box-shadow: 0 2px 16px rgba(34,197,94,0.06); }
+  .dcard.card-bear { border-color: rgba(239,68,68,0.25); box-shadow: 0 2px 16px rgba(239,68,68,0.06); }
   @keyframes strongBullPulse {
     0%, 100% { border-color: rgba(34,197,94,0.5); }
     50% { border-color: rgba(34,197,94,0.8); }
@@ -246,13 +246,13 @@
     0%, 100% { border-color: rgba(239,68,68,0.5); }
     50% { border-color: rgba(239,68,68,0.8); }
   }
-  .dcard.card-strong-bull { border-color: rgba(34,197,94,0.5); box-shadow: 0 0 12px rgba(34,197,94,0.08); animation: strongBullPulse 3s ease-in-out infinite; }
-  .dcard.card-strong-bear { border-color: rgba(239,68,68,0.5); box-shadow: 0 0 12px rgba(239,68,68,0.08); animation: strongBearPulse 3s ease-in-out infinite; }
-  .dcard-top { height: 2px; }
-  .dcard-header { padding: 12px 16px; border-bottom-width: 1px; border-bottom-style: solid; }
+  .dcard.card-strong-bull { border-color: rgba(34,197,94,0.4); box-shadow: 0 4px 20px rgba(34,197,94,0.1); animation: strongBullPulse 4s ease-in-out infinite; }
+  .dcard.card-strong-bear { border-color: rgba(239,68,68,0.4); box-shadow: 0 4px 20px rgba(239,68,68,0.1); animation: strongBearPulse 4s ease-in-out infinite; }
+  .dcard-top { height: 3px; }
+  .dcard-header { padding: 14px 18px; border-bottom: 1px solid rgba(255,255,255,0.05); }
   .dcard-bias-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
   .dcard-bias-lbl { font-size: 7px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-secondary); margin-right: 8px; }
-  .dcard-bias-val { font-weight: 900; font-size: 14px; letter-spacing: 0.08em; }
+  .dcard-bias-val { font-weight: 700; font-size: 15px; letter-spacing: 0.04em; font-family: var(--sans); }
   .new-badge { display: flex; align-items: center; gap: 3px; }
   .new-dot { width: 5px; height: 5px; border-radius: 50%; animation: pulse-dot 0.9s ease-in-out infinite; }
   .new-txt { font-size: 7px; font-weight: 800; letter-spacing: 0.12em; }
@@ -620,21 +620,19 @@
       </div>
     </div>
     <div class="tb-right">
-      <button class="tb-user" onclick="openTradeIdeas()" style="color:var(--accent);border-color:rgba(200,168,112,0.3);display:flex;align-items:center;gap:5px" id="tradeIdeasBtn">⚡ TRADE IDEAS</button>
-      <div class="tb-sep"></div>
+      <button class="tb-user" onclick="openTradeIdeas()" style="background:rgba(200,168,112,0.1);border-color:rgba(200,168,112,0.25);color:var(--accent)" id="tradeIdeasBtn">⚡ Trade Ideas</button>
       <div style="position:relative;cursor:pointer" onclick="toggleNotifications()">
-        <span id="bellIcon" style="font-size:14px;color:rgba(93,100,120,0.7);padding:4px 8px;letter-spacing:0.05em">🔔</span>
-        <span id="bellDot" style="display:none;position:absolute;top:2px;right:6px;width:6px;height:6px;background:#ef4444;border-radius:50%"></span>
+        <span id="bellIcon" style="font-size:15px;color:rgba(180,190,210,0.45);padding:5px 8px;display:block;line-height:1">🔔</span>
+        <span id="bellDot" style="display:none;position:absolute;top:4px;right:5px;width:6px;height:6px;background:#ef4444;border-radius:50%"></span>
       </div>
       <div class="tb-sep"></div>
       <div class="tb-time" id="clock">00:00:00 UTC</div>
       <div class="tb-sep"></div>
-      <button class="tb-user" id="newsletterBtn" onclick="downloadNewsletter()" title="Download your weekly commodities report" style="background:var(--bull);color:#000;border:none;font-weight:700">↓ WEEKLY PDF</button>
-      <div class="tb-sep"></div>
-      <a id="adminBtn" href="/admin" style="display:none;font-size:9px;font-weight:700;letter-spacing:0.14em;border:1px solid rgba(200,168,112,0.35);padding:4px 12px;color:var(--accent);cursor:pointer;background:none;font-family:var(--mono);text-decoration:none">ADMIN</a>
+      <button class="tb-user" id="newsletterBtn" onclick="downloadNewsletter()" title="Download your weekly commodities report" style="background:rgba(38,166,154,0.15);border-color:rgba(38,166,154,0.3);color:var(--bull)">↓ Weekly PDF</button>
+      <a id="adminBtn" href="/admin" style="display:none;font-size:11px;font-weight:500;letter-spacing:0.01em;border:1px solid rgba(200,168,112,0.25);padding:5px 14px;border-radius:6px;color:var(--accent);cursor:pointer;background:rgba(200,168,112,0.08);font-family:var(--sans);text-decoration:none;transition:all 0.15s">Admin</a>
       <div id="adminBtnSep" style="display:none" class="tb-sep"></div>
-      <button class="tb-user" id="userBtn" onclick="toggleProfile()">ACCOUNT</button>
-      <a class="tb-exit" href="/">EXIT</a>
+      <button class="tb-user" id="userBtn" onclick="toggleProfile()">Account</button>
+      <a class="tb-exit" href="/">Exit</a>
     </div>
   </div>
 
