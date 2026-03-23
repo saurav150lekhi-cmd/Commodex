@@ -868,6 +868,10 @@
   <div class="pp-header">
     <div class="pp-email" id="ppEmail">—</div>
   </div>
+  <div id="ppAdminSection" style="display:none;padding:10px 16px;border-bottom:1px solid var(--border)">
+    <div class="pp-section-title">Administration</div>
+    <a href="/admin" style="display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:500;color:var(--gold);font-family:var(--sans);text-decoration:none;margin-top:4px">⚙ Admin dashboard →</a>
+  </div>
   <div class="pp-section">
     <div class="pp-section-title">Alert Notifications</div>
     <div id="ppAlerts"><div style="font-size:10px;color:var(--muted)">Loading...</div></div>
@@ -1565,6 +1569,7 @@ async function loadProfile() {
     if (user.is_admin) {
       document.getElementById('adminBtn').style.display = 'inline-block';
       document.getElementById('adminBtnSep').style.display = 'block';
+      document.getElementById('ppAdminSection').style.display = 'block';
     }
   } catch {}
   try {
