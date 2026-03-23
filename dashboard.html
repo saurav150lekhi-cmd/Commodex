@@ -609,7 +609,7 @@
       </div>
     </div>
     <div class="tb-right">
-      <button onclick="openTradeIdeas()" id="tradeIdeasBtn" style="font-size:11px;font-weight:600;letter-spacing:0.01em;padding:6px 16px;border-radius:6px;border:none;background:var(--accent);color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:6px">⚡ Trade Ideas</button>
+      <button onclick="openTradeIdeas()" id="tradeIdeasBtn" style="font-size:11px;font-weight:600;letter-spacing:0.01em;padding:6px 16px;border-radius:6px;border:none;background:#c8a870;color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:6px">⚡ Trade Ideas</button>
       <div style="position:relative;cursor:pointer" onclick="toggleNotifications()">
         <span id="bellIcon" style="font-size:15px;color:rgba(180,190,210,0.45);padding:5px 8px;display:block;line-height:1">🔔</span>
         <span id="bellDot" style="display:none;position:absolute;top:4px;right:5px;width:6px;height:6px;background:#ef4444;border-radius:50%"></span>
@@ -1730,7 +1730,7 @@ async function loadCalendar() {
 }
 
 function renderCalendar() {
-  renderScheduled();
+  loadScheduledCalendar();
 }
 
 function renderUpcoming() {
@@ -1938,7 +1938,7 @@ async function openTradeIdeas() {
   try {
     const res  = await fetchT('/trade-ideas', { method: 'POST', headers: authH() });
     const data = await res.json();
-    btn.textContent = '⚡ TRADE IDEAS'; btn.disabled = false;
+    btn.textContent = '⚡ Trade Ideas'; btn.disabled = false;
     if (!res.ok) { body.innerHTML = `<div style="color:#ef5350;font-size:13px;padding:40px;font-family:var(--sans)">${data.error || 'Failed to generate ideas.'}</div>`; return; }
     document.getElementById('tiGeneratedAt').textContent = 'Generated ' + (data.generated_at || '');
     const dirClass = d => d === 'LONG' ? 'long' : d === 'SHORT' ? 'short' : 'spread';
@@ -1967,7 +1967,7 @@ async function openTradeIdeas() {
   } catch (e) {
     console.error('trade ideas error:', e);
     body.innerHTML = '<div style="color:#ef5350;font-size:11px;padding:20px">Network error. Please try again.</div>';
-    btn.textContent = '⚡ TRADE IDEAS'; btn.disabled = false;
+    btn.textContent = '⚡ Trade Ideas'; btn.disabled = false;
   }
 }
 function closeTradeIdeas() {
@@ -1989,16 +1989,14 @@ function switchCalTab(tab, btn) {
   if (tab === 'scheduled') loadScheduledCalendar();
 }
 
-let scheduledLoaded = false;
 async function loadScheduledCalendar() {
-  if (scheduledLoaded) return;
   const container = document.getElementById('cal-scheduled-container');
+  if (!container) return;
   try {
     const res = await fetch('/calendar/scheduled', { headers: authH() });
     if (!res.ok) throw new Error('Failed');
     const data = await res.json();
     renderScheduledCalendar(data.events);
-    scheduledLoaded = true;
   } catch {
     container.innerHTML = '<div style="padding:20px;font-size:10px;color:var(--muted)">Could not load scheduled events. Please try again.</div>';
   }
