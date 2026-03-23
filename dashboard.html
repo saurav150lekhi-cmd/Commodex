@@ -124,6 +124,7 @@
   .market-badge { font-size: 9px; font-weight: 500; letter-spacing: 0.04em; padding: 3px 9px; border-radius: 20px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); color: rgba(200,210,220,0.5); font-family: var(--sans); }
   .market-badge.open { background: rgba(34,197,94,0.1); border-color: rgba(34,197,94,0.2); color: #22C55E; }
   .market-badge.closed { background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.15); color: rgba(239,68,68,0.6); }
+  .tb-center { display: flex; align-items: center; justify-content: center; gap: 10px; flex: 1; }
   .tb-right { display: flex; align-items: center; gap: 10px; }
   .tb-update-block { display: flex; align-items: center; gap: 5px; }
   .tb-update-lbl { font-size: 9px; font-weight: 600; letter-spacing: 0.04em; color: rgba(160,170,190,0.9); font-family: var(--sans); }
@@ -587,7 +588,7 @@
         <span class="market-badge" id="badgeLME">LME ●</span>
       </div>
     </div>
-    <div class="tb-right">
+    <div class="tb-center">
       <div class="tb-update-block">
         <span class="tb-update-lbl">NEWS</span>
         <span id="newsAge" class="tb-update-age">—</span>
@@ -601,7 +602,8 @@
         <span class="tb-update-sep">·</span>
         <span id="aiNext" class="tb-update-next">—</span>
       </div>
-      <div class="tb-sep"></div>
+    </div>
+    <div class="tb-right">
       <button onclick="openAria()" id="ariaBtn" style="font-size:12px;font-weight:600;padding:7px 22px;border-radius:8px;border:none;background:#c8a870;color:#000;cursor:pointer;font-family:var(--sans);transition:opacity 0.15s;display:flex;align-items:center;gap:8px;letter-spacing:0.01em">✦ Ask Aria</button>
       <div style="position:relative;cursor:pointer;padding:0 4px" onclick="toggleNotifications()">
         <span id="bellIcon" style="font-size:17px;color:rgba(180,190,210,0.55);padding:6px 10px;display:block;line-height:1">🔔</span>
