@@ -1659,6 +1659,177 @@ def fetch_weather_data():
     return result
 
 
+# ── NASA POWER — Satellite-derived soil moisture & crop stress (no key) ────────
+def fetch_nasa_power():
+    """
+    Fetch satellite-derived agricultural stress indicators from NASA POWER API.
+    Free, no API key. Returns soil moisture, evapotranspiration, precipitation
+    for key commodity production regions over the past 10 days.
+    """
+    from datetime import date, timedelta
+    end   = date.today() - timedelta(days=2)   # POWER has ~2 day lag
+    start = end - timedelta(days=9)
+    s_str = start.strftime("%Y%m%d")
+    e_str = end.strftime("%Y%m%d")
+
+    # Key agricultural regions: (name, lat, lon, commodities)
+    regions = [
+        ("Iowa Corn Belt",       42.0,  -93.5,  ["Corn", "Soybeans"]),
+        ("Kansas Winter Wheat",  38.5,  -98.0,  ["Wheat"]),
+        ("Minas Gerais Coffee", -19.9,  -43.9,  ["Coffee"]),
+        ("Sao Paulo Sugar",     -22.9,  -47.1,  ["Sugar", "Coffee"]),
+        ("Ukraine Black Sea",    48.5,   32.0,  ["Wheat", "Corn"]),
+        ("Argentina Pampas",    -34.6,  -60.0,  ["Soybeans", "Corn"]),
+        ("Vietnam Coffee",       12.7,  108.0,  ["Coffee"]),
+        ("Australia Wheat",     -31.9,  117.9,  ["Wheat"]),
+        ("India Sugar",          18.5,   74.0,  ["Sugar"]),
+    ]
+    params = "PRECTOTCORR,GWETROOT,EVPTRNS,T2M"
+    result = {}
+    for region_name, lat, lon, commodities in regions:
+        try:
+            url = (f"https://power.larc.nasa.gov/api/temporal/daily/point"
+                   f"?parameters={params}&community=AG"
+                   f"&longitude={lon}&latitude={lat}"
+                   f"&start={s_str}&end={e_str}&format=JSON")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=15) as r:
+                data = json.loads(r.read())
+            props = data.get("properties", {}).get("parameter", {})
+            # Average over the period
+            def avg(key):
+                vals = [v for v in props.get(key, {}).values() if v is not None and v != -999]
+                return round(sum(vals) / len(vals), 3) if vals else None
+
+            precip   = avg("PRECTOTCORR")   # mm/day precipitation
+            soil_wet = avg("GWETROOT")       # root zone soil wetness 0-1
+            et       = avg("EVPTRNS")        # evapotranspiration mm/day
+            temp     = avg("T2M")            # temperature °C
+
+            if soil_wet is not None:
+                stress = ("SEVERE DROUGHT" if soil_wet < 0.2
+                          else "DRY STRESS"  if soil_wet < 0.4
+                          else "ADEQUATE"    if soil_wet < 0.7
+                          else "WET/FLOODING RISK")
+                entry = {
+                    "region":       region_name,
+                    "soil_moisture": soil_wet,
+                    "precip_mm_day": precip,
+                    "evapotrans":   et,
+                    "temp_c":       temp,
+                    "stress":       stress,
+                    "commodities":  commodities,
+                    "period":       f"{start.strftime('%d %b')}–{end.strftime('%d %b')}",
+                }
+                for comm in commodities:
+                    result.setdefault(comm, []).append(entry)
+        except Exception as e:
+            log.debug("NASA POWER fetch failed for %s: %s", region_name, e)
+    return result   # dict: commodity -> list of region entries
+
+
+# ── NASA EONET — Active wildfire & drought events (no key) ────────────────────
+def fetch_nasa_eonet():
+    """
+    Fetch active wildfire and drought events from NASA EONET API.
+    Free, no API key. Maps events to affected commodities by proximity.
+    """
+    # Commodity production region bounding boxes: (min_lat, max_lat, min_lon, max_lon, commodities)
+    REGIONS = [
+        (-25, -15, -50, -40, ["Coffee"]),       # Brazil Minas Gerais
+        (-25, -18, -50, -44, ["Sugar"]),         # Brazil São Paulo/sugar belt
+        (-38, -28, -65, -55, ["Soybeans", "Corn"]),  # Argentina Pampas
+        (35,  50,   22,  40, ["Wheat"]),         # Ukraine/Black Sea
+        (25,  50,  -105, -90, ["Wheat", "Corn"]),    # US Great Plains
+        (35,  48,  -105, -88, ["Corn", "Soybeans"]), # US Midwest
+        (-35, -28,  113, 122, ["Wheat"]),        # Western Australia
+        (10,  15,  104, 110, ["Coffee"]),         # Vietnam Central Highlands
+    ]
+    result = {"wildfires": [], "droughts": []}
+    for category, key in [("wildfires", "wildfires"), ("drought", "droughts")]:
+        try:
+            url = f"https://eonet.gsfc.nasa.gov/api/v3/events?category={category}&status=open&days=14&limit=50"
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=12) as r:
+                data = json.loads(r.read())
+            for event in data.get("events", []):
+                geo = event.get("geometry", [])
+                if not geo:
+                    continue
+                coords = geo[-1].get("coordinates", [])
+                if not coords or len(coords) < 2:
+                    continue
+                lon, lat = float(coords[0]), float(coords[1])
+                # Find which commodities this event affects
+                affected = set()
+                for (min_lat, max_lat, min_lon, max_lon, comms) in REGIONS:
+                    if min_lat <= lat <= max_lat and min_lon <= lon <= max_lon:
+                        affected.update(comms)
+                if affected:
+                    result[key].append({
+                        "title":       event.get("title", ""),
+                        "date":        geo[-1].get("date", "")[:10],
+                        "lat":         lat,
+                        "lon":         lon,
+                        "commodities": sorted(affected),
+                    })
+        except Exception as e:
+            log.debug("NASA EONET fetch failed for %s: %s", category, e)
+    return result
+
+
+# ── NOAA Drought Monitor — US drought severity (no key) ───────────────────────
+def fetch_drought_monitor():
+    """
+    Fetch US drought monitor statistics from NOAA/NDMC API.
+    Free, no API key. Returns % of US land in each drought category.
+    Key signal for corn belt, wheat belt, and cattle/feed prices.
+    """
+    result = {}
+    try:
+        from datetime import date
+        today = date.today()
+        # Try last 4 weeks to find the most recent report (published Thursdays)
+        for delta in range(0, 28, 7):
+            dt = today - __import__('datetime').timedelta(days=delta)
+            date_str = dt.strftime("%Y-%m-%d")
+            url = (f"https://usdm.climate.unl.edu/api/USStatisticsForPeriod"
+                   f"?startdate={date_str}&enddate={date_str}&isForNation=true")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+            try:
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    data = json.loads(r.read())
+                if data and isinstance(data, list) and data[0]:
+                    row = data[0]
+                    d0  = float(row.get("D0", 0))  # Abnormally Dry
+                    d1  = float(row.get("D1", 0))  # Moderate Drought
+                    d2  = float(row.get("D2", 0))  # Severe Drought
+                    d3  = float(row.get("D3", 0))  # Extreme Drought
+                    d4  = float(row.get("D4", 0))  # Exceptional Drought
+                    serious = d2 + d3 + d4          # % of US in D2+ (market-moving)
+                    signal  = ("CRITICAL DROUGHT" if serious > 30
+                               else "ELEVATED DROUGHT" if serious > 15
+                               else "MODERATE CONDITIONS" if d0 + d1 > 40
+                               else "NORMAL CONDITIONS")
+                    result = {
+                        "date":         date_str,
+                        "d0_pct":       d0,
+                        "d1_pct":       d1,
+                        "d2_pct":       d2,
+                        "d3_pct":       d3,
+                        "d4_pct":       d4,
+                        "serious_pct":  round(serious, 1),
+                        "signal":       signal,
+                        "label":        f"US Drought Monitor — {serious:.1f}% of US in severe+ drought",
+                    }
+                    break
+            except:
+                continue
+    except Exception as e:
+        log.debug("Drought Monitor fetch failed: %s", e)
+    return result
+
+
 # ── 11. US Treasury — Yield curve direct from Treasury.gov (no API key) ────────
 def fetch_treasury_yields():
     """Fetch latest US Treasury yield curve from Treasury.gov XML feed."""
@@ -1799,7 +1970,8 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                         silver_data=None, live_prices=None, usda_data=None,
                         gie_agsi=None, crop_progress=None, oecd_cli=None, silver_etf=None,
                         shfe_copper=None, opec=None, caixin_ism=None, wgc=None,
-                        conab=None, lbma=None):
+                        conab=None, lbma=None,
+                        nasa_power=None, nasa_eonet=None, drought=None):
     lines = []
 
     # LIVE PRICE — always first so Claude sees today's move immediately
@@ -2311,6 +2483,36 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
         if d:
             lines.append(f"SHFE COPPER WAREHOUSE STOCKS: {d['value']:,} tonnes")
 
+    # ── NASA POWER — satellite soil moisture & crop stress ───────────────────
+    AG_COMMS = ("Corn", "Wheat", "Soybeans", "Coffee", "Sugar")
+    if nasa_power and commodity_name in AG_COMMS:
+        regions = nasa_power.get(commodity_name, [])
+        if regions:
+            lines.append(f"NASA SATELLITE SOIL MOISTURE ({commodity_name.upper()}) — {regions[0]['period']}:")
+            for r in regions[:3]:
+                lines.append(f"  {r['region']}: soil wetness {r['soil_moisture']:.2f} — {r['stress']}"
+                             + (f", precip {r['precip_mm_day']:.1f}mm/day" if r.get('precip_mm_day') else ""))
+
+    # ── NASA EONET — active wildfires near production regions ────────────────
+    if nasa_eonet and commodity_name in AG_COMMS:
+        fires = [e for e in nasa_eonet.get("wildfires", []) if commodity_name in e["commodities"]]
+        if fires:
+            lines.append(f"⚠ NASA ACTIVE WILDFIRES affecting {commodity_name} regions ({len(fires)} events):")
+            for f in fires[:3]:
+                lines.append(f"  {f['title']} ({f['date']}) — lat {f['lat']:.1f}, lon {f['lon']:.1f}")
+        droughts = [e for e in nasa_eonet.get("droughts", []) if commodity_name in e["commodities"]]
+        if droughts:
+            lines.append(f"⚠ NASA DROUGHT EVENTS near {commodity_name} regions ({len(droughts)} events):")
+            for d in droughts[:2]:
+                lines.append(f"  {d['title']} ({d['date']})")
+
+    # ── NOAA Drought Monitor — US drought severity ───────────────────────────
+    if drought and commodity_name in ("Corn", "Wheat", "Soybeans"):
+        lines.append(f"US DROUGHT MONITOR ({drought.get('date', '')}): "
+                     f"{drought.get('signal', '')} — "
+                     f"{drought.get('serious_pct', 0):.1f}% of US in severe+ drought "
+                     f"(D2: {drought.get('d2_pct',0):.1f}%, D3: {drought.get('d3_pct',0):.1f}%, D4: {drought.get('d4_pct',0):.1f}%)")
+
     return "\n".join(lines) if lines else "No external data available."
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2687,6 +2889,9 @@ def run_analysis():
         gie_agsi      = fetch_gie_agsi()
         crop_progress = fetch_usda_crop_progress()
         oecd_cli      = fetch_oecd_cli()
+        nasa_power    = fetch_nasa_power()
+        nasa_eonet    = fetch_nasa_eonet()
+        drought       = fetch_drought_monitor()
         silver_etf    = fetch_silver_etf()
         shfe_copper   = fetch_shfe_copper()
         opec          = fetch_opec_production()
@@ -2723,7 +2928,9 @@ def run_analysis():
                                                 oecd_cli=oecd_cli, silver_etf=silver_etf,
                                                 shfe_copper=shfe_copper, opec=opec,
                                                 caixin_ism=caixin_ism, wgc=wgc,
-                                                conab=conab, lbma=lbma)
+                                                conab=conab, lbma=lbma,
+                                                nasa_power=nasa_power, nasa_eonet=nasa_eonet,
+                                                drought=drought)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
@@ -2772,7 +2979,8 @@ def run_analysis():
                     crop_progress=crop_progress, oecd_cli=oecd_cli,
                     silver_etf=silver_etf, shfe_copper=shfe_copper,
                     opec=opec, caixin_ism=caixin_ism, wgc=wgc,
-                    conab=conab, lbma=lbma)
+                    conab=conab, lbma=lbma,
+                    nasa_power=nasa_power, drought=drought)
             save_macro_cache(macro_snapshot)
         except Exception as e:
             log.warning("Macro snapshot save failed: %s", e)
@@ -2854,7 +3062,8 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
                          tanker_rates, spr, pmi, ttf, weather, lng_exports,
                          usda_data=None, gie_agsi=None, crop_progress=None, oecd_cli=None,
                          silver_etf=None, shfe_copper=None, opec=None,
-                         caixin_ism=None, wgc=None, conab=None, lbma=None):
+                         caixin_ism=None, wgc=None, conab=None, lbma=None,
+                         nasa_power=None, drought=None):
     """Build a structured key-data snapshot for the frontend Key Data Panel."""
     rows = []  # each row: {label, value, change, signal, signal_color}
     BULL = "#22c55e"; BEAR = "#ef4444"; NEUT = "#fbbf24"; MUTED = "#5d6478"
@@ -3144,6 +3353,20 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
         if key in conab:
             d = conab[key]
             row("Brazil Production (USDA)", f"{d.get('value', '—')} MMT", None, None, NEUT)
+
+    # NASA satellite data
+    AG_COMMS = ("Corn", "Wheat", "Soybeans", "Coffee", "Sugar")
+    if nasa_power and commodity in AG_COMMS:
+        regions = nasa_power.get(commodity, [])
+        if regions:
+            best = regions[0]
+            stress_color = BEAR if "DROUGHT" in best["stress"] else BULL if best["stress"] == "ADEQUATE" else NEUT
+            row("Satellite Soil Moisture", f"{best['soil_moisture']:.2f}", None, best["stress"], stress_color)
+
+    if drought and commodity in ("Corn", "Wheat", "Soybeans"):
+        d_color = BEAR if drought.get("serious_pct", 0) > 20 else NEUT
+        row("US Drought Monitor", f"{drought.get('serious_pct', 0):.1f}% severe+",
+            None, drought.get("signal", ""), d_color)
 
     return rows
 
