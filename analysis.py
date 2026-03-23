@@ -3345,21 +3345,99 @@ def _run_in_context():
 
 
 # ── Aria AI Chat Agent ──────────────────────────────────────────────────────────
+ARIA_TOOLS = [
+    {
+        "name": "trigger_analysis",
+        "description": "Trigger a fresh analysis run across all commodities. Use this when the user asks to run analysis, refresh data, or update the AI analysis.",
+        "input_schema": {"type": "object", "properties": {}, "required": []}
+    },
+    {
+        "name": "set_alert",
+        "description": "Enable or disable a sentiment-change alert for a specific commodity for the current user.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commodity": {"type": "string", "description": "Commodity name e.g. Gold, Silver, Crude Oil, Copper, Natural Gas, Corn, Wheat, Soybeans, Coffee, Sugar"},
+                "enabled":   {"type": "boolean", "description": "True to enable the alert, False to disable/remove it"}
+            },
+            "required": ["commodity", "enabled"]
+        }
+    },
+    {
+        "name": "get_sentiment_history",
+        "description": "Retrieve the recent sentiment history for a specific commodity to show how its AI rating has changed over time.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "commodity": {"type": "string", "description": "Commodity name"},
+                "days":      {"type": "integer", "description": "Days of history to fetch (default 7, max 30)"}
+            },
+            "required": ["commodity"]
+        }
+    },
+]
+
+VALID_ALERT_COMMODITIES = ["Gold", "Silver", "Crude Oil", "Copper", "Natural Gas", "Corn", "Wheat", "Soybeans", "Coffee", "Sugar"]
+
+def _aria_execute_tool(tool_name, tool_input, user_id):
+    """Execute a tool call from Aria and return a result dict."""
+    if tool_name == "trigger_analysis":
+        user = User.query.get(user_id)
+        if not user or not user.is_admin:
+            return {"success": False, "message": "Only admin users can trigger analysis runs."}
+        if analysis_status["running"]:
+            return {"success": False, "message": "Analysis is already running. Please wait for it to finish."}
+        thread = threading.Thread(target=_run_in_context, daemon=True)
+        thread.start()
+        return {"success": True, "message": "Analysis run started successfully. It will complete in ~60 seconds."}
+
+    elif tool_name == "set_alert":
+        commodity = tool_input.get("commodity", "")
+        enabled   = bool(tool_input.get("enabled", True))
+        if commodity not in VALID_ALERT_COMMODITIES:
+            return {"success": False, "message": f"'{commodity}' is not a valid commodity. Valid options: {', '.join(VALID_ALERT_COMMODITIES)}"}
+        alert = UserAlert.query.filter_by(user_id=user_id, commodity=commodity).first()
+        if alert:
+            alert.enabled = enabled
+        else:
+            alert = UserAlert(user_id=user_id, commodity=commodity, enabled=enabled)
+            db.session.add(alert)
+        db.session.commit()
+        action = "enabled" if enabled else "disabled"
+        return {"success": True, "message": f"Alert for {commodity} has been {action}."}
+
+    elif tool_name == "get_sentiment_history":
+        commodity = tool_input.get("commodity", "")
+        days      = min(int(tool_input.get("days", 7)), 30)
+        since     = datetime.now(timezone.utc) - timedelta(days=days)
+        rows      = (AnalysisRun.query
+                     .filter_by(commodity=commodity)
+                     .filter(AnalysisRun.run_at >= since)
+                     .order_by(AnalysisRun.run_at.desc())
+                     .limit(20).all())
+        if not rows:
+            return {"commodity": commodity, "history": [], "message": f"No analysis data for {commodity} in the last {days} days."}
+        history = [{"date": r.run_at.strftime("%d %b %H:%M UTC"), "sentiment": r.sentiment} for r in rows]
+        return {"commodity": commodity, "days": days, "history": history}
+
+    return {"success": False, "message": f"Unknown tool: {tool_name}"}
+
+
 @app.route("/ai/chat", methods=["POST"])
 @jwt_required()
 def aria_chat():
     if not ANTHROPIC_API_KEY:
         return jsonify({"error": "AI not configured."}), 503
 
+    user_id  = int(get_jwt_identity())
     data     = request.get_json(silent=True) or {}
     messages = data.get("messages", [])
     if not messages:
         return jsonify({"error": "No messages provided."}), 400
 
-    # Cap history to last 20 turns to control token cost
-    messages = messages[-20:]
+    messages = messages[-20:]  # cap history
 
-    # Build commodity context from latest analysis runs
+    # Build commodity context
     all_runs = AnalysisRun.query.order_by(AnalysisRun.run_at.desc()).all()
     seen, rows = set(), []
     for r in all_runs:
@@ -3380,49 +3458,71 @@ def aria_chat():
         pstr = f"${px['price']:.2f} ({'+' if px.get('change',0)>=0 else ''}{px.get('change',0):.2f}%)" if px.get("price") else "N/A"
         age  = f" (run {r.run_at.strftime('%d %b %H:%M UTC')})" if r.run_at else ""
         ctx_lines.append(
-            f"### {r.commodity}{age}\n"
-            f"Sentiment: {sent} | Price: {pstr}\n"
-            f"Bullish drivers: {up or 'N/A'}\n"
-            f"Bearish risks: {dn or 'N/A'}\n"
-            f"Summary: {summ}"
+            f"### {r.commodity}{age}\nSentiment: {sent} | Price: {pstr}\n"
+            f"Bullish: {up or 'N/A'}\nBearish risks: {dn or 'N/A'}\nSummary: {summ}"
         )
+
+    # Check if user is admin (used by trigger_analysis tool)
+    user    = User.query.get(user_id)
+    is_admin = user and user.is_admin
 
     context = "\n\n".join(ctx_lines) if ctx_lines else "No analysis data available yet."
     today   = datetime.now(timezone.utc).strftime("%d %b %Y, %H:%M UTC")
 
-    system_prompt = f"""You are Aria, an expert AI commodity analyst for Commodex — a professional commodity research terminal used by traders and investors. Today is {today}.
+    system_prompt = f"""You are Aria, an expert AI commodity analyst for Commodex — a professional commodity research terminal. Today is {today}.
+{"You have admin privileges and can trigger analysis runs." if is_admin else "You do not have admin privileges."}
 
-You have access to the latest AI-generated analysis for all tracked commodities:
+Latest commodity analysis:
 
 {context}
 
 ---
-
-Your capabilities:
-- Answer any question about commodity markets (Gold, Silver, Crude Oil, Copper, Natural Gas, Corn, Wheat, Soybeans, Coffee, Sugar and more)
-- Generate specific trade ideas with entry levels, targets, stop-loss, and conviction
-- Explain macro drivers, supply/demand dynamics, geopolitical factors, and seasonal patterns
-- Discuss cross-commodity correlations and relative value
-- Summarise the current market environment
-- Explain commodity concepts for educational purposes
-
 Guidelines:
-- Be concise but insightful — no filler text
-- When generating trade ideas, be specific: direction, entry level, target, stop, thesis, key risk
-- Always acknowledge uncertainty and mention "not financial advice" briefly when giving trade ideas
-- Use the actual data above to ground your responses — cite specific prices and drivers
-- If asked about something outside commodities, politely redirect
-- Format responses cleanly — use bullet points or numbered lists when listing multiple items"""
+- Be concise but insightful
+- When generating trade ideas, be specific: direction, entry, target, stop, thesis, key risk
+- Always briefly note "not financial advice" when giving trade ideas
+- Cite specific prices and drivers from the data above
+- You can perform actions using your tools: trigger analysis runs, set/remove alerts, check sentiment history
+- Format responses cleanly with bullet points or numbered lists when appropriate"""
 
-    client  = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-    message = client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=1024,
-        system=system_prompt,
-        messages=[{"role": m["role"], "content": m["content"]} for m in messages]
-    )
-    reply = message.content[0].text
-    return jsonify({"reply": reply})
+    client   = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    claude_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
+    actions_taken = []
+
+    # Agentic loop — execute tools if Claude calls them (max 4 iterations)
+    for _ in range(4):
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1024,
+            system=system_prompt,
+            tools=ARIA_TOOLS,
+            messages=claude_messages
+        )
+
+        if response.stop_reason == "end_turn":
+            reply = next((b.text for b in response.content if hasattr(b, "text")), "")
+            break
+
+        if response.stop_reason == "tool_use":
+            tool_results = []
+            for block in response.content:
+                if block.type == "tool_use":
+                    result = _aria_execute_tool(block.name, block.input, user_id)
+                    actions_taken.append({"tool": block.name, "result": result})
+                    tool_results.append({
+                        "type": "tool_result",
+                        "tool_use_id": block.id,
+                        "content": json.dumps(result)
+                    })
+            claude_messages.append({"role": "assistant", "content": response.content})
+            claude_messages.append({"role": "user",      "content": tool_results})
+        else:
+            reply = next((b.text for b in response.content if hasattr(b, "text")), "")
+            break
+    else:
+        reply = next((b.text for b in response.content if hasattr(b, "text")), "Something went wrong.")
+
+    return jsonify({"reply": reply, "actions": actions_taken})
 
 
 # ── Trade Ideas ────────────────────────────────────────────────────────────────
