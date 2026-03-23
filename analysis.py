@@ -789,6 +789,444 @@ def fetch_entsog_flows():
     return result
 
 
+# ── GIE AGSI+ — European natural gas storage ──────────────────────────────────
+def fetch_gie_agsi():
+    """Fetch European gas storage % full from GIE AGSI+ public endpoint (no API key)."""
+    result = {}
+    url = "https://agsi.gie.eu/api/data/agsi?country=EU&date=latest&size=1"
+    try:
+        headers = {"User-Agent": "Mozilla/5.0"}
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+        entries = data.get("data", [])
+        if entries:
+            entry = entries[0]
+            full_pct = entry.get("full")
+            trend    = entry.get("trend")
+            status   = entry.get("status")
+            if full_pct is not None:
+                full_val = float(full_pct)
+                signal = ("VERY LOW (bearish supply)" if full_val < 40
+                          else "LOW (support for prices)" if full_val < 55
+                          else "MODERATE" if full_val < 75
+                          else "HIGH (bearish for NatGas)")
+                result["eu_gas_storage"] = {
+                    "label":   "EU Gas Storage % Full",
+                    "value":   full_val,
+                    "trend":   trend,
+                    "status":  status,
+                    "signal":  signal,
+                    "date":    entry.get("gasDayStart", ""),
+                }
+    except Exception as e:
+        log.debug("GIE AGSI fetch failed: %s", e)
+    return result
+
+
+# ── USDA NASS — Weekly Crop Progress & Condition Ratings ─────────────────────
+def fetch_usda_crop_progress():
+    """
+    Fetch USDA weekly crop progress: % planted, good/excellent condition.
+    Uses public DEMO_KEY (no sign-up required, rate-limited).
+    """
+    result = {}
+    key = "DEMO_KEY"
+    base = "https://quickstats.nass.usda.gov/api/api_GET/"
+    commodities = {
+        "Corn":     "CORN",
+        "Wheat":    "WHEAT, WINTER",
+        "Soybeans": "SOYBEANS",
+    }
+    for comm, nass_comm in commodities.items():
+        try:
+            # Crop condition: % Good + Excellent = quality signal
+            url = (f"{base}?key={key}&source_desc=SURVEY&sector_desc=CROPS"
+                   f"&commodity_desc={urllib.parse.quote(nass_comm)}"
+                   f"&statisticcat_desc=CONDITION&unit_desc=PCT+GOOD"
+                   f"&year=2025&reference_period_desc=WEEK+%23+1&format=JSON")
+            # Actually use a broader query for latest week
+            url = (f"{base}?key={key}&source_desc=SURVEY&sector_desc=CROPS"
+                   f"&commodity_desc={urllib.parse.quote(nass_comm)}"
+                   f"&statisticcat_desc=CONDITION&unit_desc=PCT+GOOD"
+                   f"&year__GE=2024&state_name=US+TOTAL&format=JSON")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            rows = data.get("data", [])
+            if rows:
+                # Get most recent
+                latest = sorted(rows, key=lambda x: x.get("week_ending", ""), reverse=True)
+                if latest:
+                    r0 = latest[0]
+                    good_pct = float(r0.get("Value", 0))
+                    result.setdefault(comm, {})["good_pct"] = {
+                        "label": f"{comm} Crop Condition % Good",
+                        "value": good_pct,
+                        "week_ending": r0.get("week_ending", ""),
+                        "signal": ("POOR" if good_pct < 35 else "BELOW AVERAGE" if good_pct < 50
+                                   else "AVERAGE" if good_pct < 65 else "GOOD" if good_pct < 75 else "EXCELLENT"),
+                    }
+        except Exception as e:
+            log.debug("USDA crop progress fetch failed for %s: %s", comm, e)
+
+        try:
+            # Planted progress %
+            url = (f"{base}?key={key}&source_desc=SURVEY&sector_desc=CROPS"
+                   f"&commodity_desc={urllib.parse.quote(nass_comm)}"
+                   f"&statisticcat_desc=PROGRESS&unit_desc=PCT+PLANTED"
+                   f"&year__GE=2024&state_name=US+TOTAL&format=JSON")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            rows = sorted(data.get("data", []), key=lambda x: x.get("week_ending", ""), reverse=True)
+            if rows:
+                r0 = rows[0]
+                pct = float(r0.get("Value", 0))
+                result.setdefault(comm, {})["planted_pct"] = {
+                    "label": f"{comm} % Planted",
+                    "value": pct,
+                    "week_ending": r0.get("week_ending", ""),
+                }
+        except Exception as e:
+            log.debug("USDA planted pct fetch failed for %s: %s", comm, e)
+    return result
+
+
+# ── OECD CLI — Composite Leading Indicators (free, no key) ────────────────────
+def fetch_oecd_cli():
+    """Fetch OECD Composite Leading Indicators for major economies (free SDMX-JSON API)."""
+    result = {}
+    # Fetch CLI for G20, US, China, EU, Japan
+    try:
+        url = ("https://stats.oecd.org/SDMX-JSON/data/MEI_CLI/"
+               "LOLITOAA.USA+CHN+DEU+JPN+G-20.ST/all?lastNObservations=2")
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            data = json.loads(r.read())
+        datasets   = data.get("dataSets", [{}])[0]
+        structure  = data.get("structure", {})
+        dimensions = structure.get("dimensions", {}).get("series", [])
+        country_dim = next((d for d in dimensions if d.get("id") == "LOCATION"), None)
+        if country_dim and datasets.get("series"):
+            countries_map = {str(i): v["name"] for i, v in enumerate(country_dim.get("values", []))}
+            for key, series in datasets["series"].items():
+                country_idx = key.split(":")[0]
+                country = countries_map.get(country_idx, country_idx)
+                obs = series.get("observations", {})
+                if obs:
+                    sorted_obs = sorted(obs.items(), key=lambda x: int(x[0]))
+                    latest_val = sorted_obs[-1][1][0] if sorted_obs else None
+                    prev_val   = sorted_obs[-2][1][0] if len(sorted_obs) > 1 else None
+                    if latest_val is not None:
+                        trend = ("EXPANDING" if latest_val > 100 else "CONTRACTING")
+                        momentum = ""
+                        if prev_val:
+                            momentum = " (improving)" if latest_val > prev_val else " (deteriorating)"
+                        result[country] = {
+                            "label": f"OECD CLI — {country}",
+                            "value": round(latest_val, 2),
+                            "trend": trend + momentum,
+                        }
+    except Exception as e:
+        log.debug("OECD CLI fetch failed: %s", e)
+    return result
+
+
+# ── Silver ETF flows — SLV / PSLV via Yahoo Finance (free, no key) ────────────
+def fetch_silver_etf():
+    """Fetch iShares SLV and Sprott PSLV silver ETF price + momentum."""
+    result = {}
+    for ticker, label in [("SLV", "iShares Silver ETF (SLV)"), ("PSLV", "Sprott Physical Silver (PSLV)"),
+                           ("SIVR", "abrdn Physical Silver ETF (SIVR)")]:
+        try:
+            data = fetch_json(f"https://query1.finance.yahoo.com/v8/finance/chart/{ticker}?interval=1d&range=5d")
+            if data:
+                meta  = data["chart"]["result"][0]["meta"]
+                price = meta.get("regularMarketPrice")
+                prev  = meta.get("previousClose", price)
+                chg   = round(((price - prev) / prev) * 100, 2) if prev and price else None
+                result[ticker] = {"label": label, "price": price, "change": chg}
+        except Exception as e:
+            log.debug("Silver ETF fetch failed for %s: %s", ticker, e)
+    return result
+
+
+# ── SHFE — Shanghai copper warehouse stocks (scrape, free) ────────────────────
+def fetch_shfe_copper():
+    """Fetch SHFE copper warehouse stocks from SHFE weekly report."""
+    result = {}
+    try:
+        # SHFE publishes weekly inventory data
+        url = "https://www.shfe.com.cn/data/dailydata/kx/kx20250101.dat"
+        # Use the SHFE API endpoint for current inventory
+        url = "https://www.shfe.com.cn/data/tradecontext.dat"
+        req = urllib.request.Request(url, headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+            "Referer": "https://www.shfe.com.cn"
+        })
+        with urllib.request.urlopen(req, timeout=10) as r:
+            data = json.loads(r.read())
+        # Look for copper (HG/CU) inventory
+        if isinstance(data, dict):
+            context = data.get("o_cursor", [])
+            for row in context:
+                if isinstance(row, dict) and "CU" in str(row.get("PRODUCTID", "")):
+                    wh = row.get("WARRANTSTOCK") or row.get("WSTOCK")
+                    if wh:
+                        result["shfe_copper_stocks"] = {
+                            "label": "SHFE Copper Warehouse Stocks (tonnes)",
+                            "value": int(wh),
+                        }
+                        break
+    except Exception as e:
+        log.debug("SHFE copper fetch failed: %s", e)
+    return result
+
+
+# ── OPEC — Monthly crude oil production (scrape OPEC website) ─────────────────
+def fetch_opec_production():
+    """Fetch OPEC total production from OPEC monthly oil market report page."""
+    result = {}
+    try:
+        # OPEC publishes its Monthly Oil Market Report data table
+        url = "https://www.opec.org/opec_web/en/publications/338.htm"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=12) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Look for OPEC total production number (in mb/d)
+        patterns = [
+            r'OPEC[- ]+(\d+)[,.](\d+)\s*(?:mb/d|mbd|million\s+barrels)',
+            r'total\s+OPEC[^0-9]*(\d+)[.,](\d+)',
+            r'(\d{2})[.,](\d{1,2})\s*mb/d',
+        ]
+        for pattern in patterns:
+            m = re.search(pattern, html, re.IGNORECASE)
+            if m:
+                val = float(f"{m.group(1)}.{m.group(2)}")
+                if 20 < val < 40:  # sanity: OPEC produces ~27-30 mb/d
+                    result["opec_production"] = {
+                        "label": "OPEC Crude Production (mb/d)",
+                        "value": val,
+                    }
+                    break
+    except Exception as e:
+        log.debug("OPEC production fetch failed: %s", e)
+
+    # Also fetch OPEC reference basket price
+    try:
+        url = "https://www.opec.org/opec_web/en/40.htm"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r'ORB[^\d]*(\d+\.?\d*)', html)
+        if m:
+            val = float(m.group(1))
+            if 40 < val < 200:
+                result["opec_basket_price"] = {
+                    "label": "OPEC Reference Basket Price (USD/bbl)",
+                    "value": val,
+                }
+    except Exception as e:
+        log.debug("OPEC basket price fetch failed: %s", e)
+    return result
+
+
+# ── Caixin/ISM PMI — Manufacturing PMI (scrape, best effort) ─────────────────
+def fetch_caixin_ism_pmi():
+    """Fetch Caixin China Manufacturing PMI and ISM US Manufacturing PMI."""
+    result = {}
+    # ISM US Manufacturing PMI — from FRED (series MANEMP/ISM)
+    # Actually use the Fred API if available
+    if FRED_API_KEY:
+        try:
+            url = f"https://api.stlouisfed.org/fred/series/observations?series_id=NAPM&api_key={FRED_API_KEY}&sort_order=desc&limit=2&file_type=json"
+            data = fetch_json(url)
+            if data:
+                obs = data.get("observations", [])
+                if obs:
+                    val = float(obs[0]["value"]) if obs[0]["value"] != "." else None
+                    if val:
+                        regime = "EXPANDING" if val > 50 else "CONTRACTING"
+                        result["ism_manufacturing"] = {
+                            "label": "ISM US Manufacturing PMI",
+                            "value": val,
+                            "regime": regime,
+                            "date": obs[0].get("date", ""),
+                            "signal": f"{val} — {regime} ({'bullish base metals/energy' if val > 50 else 'bearish industrials'})",
+                        }
+        except Exception as e:
+            log.debug("ISM PMI FRED fetch failed: %s", e)
+
+    # Caixin China Manufacturing PMI — try to scrape
+    try:
+        url = "https://www.pmi.caixin.com/en/"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        m = re.search(r'Manufacturing\s+PMI[^\d]*(\d+\.\d+)', html, re.IGNORECASE)
+        if not m:
+            m = re.search(r'(\d{2}\.\d)\s*(?:in|for)\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)', html, re.IGNORECASE)
+        if m:
+            val = float(m.group(1))
+            if 40 < val < 65:
+                result["caixin_manufacturing"] = {
+                    "label": "Caixin China Manufacturing PMI",
+                    "value": val,
+                    "regime": "EXPANDING" if val > 50 else "CONTRACTING",
+                }
+    except Exception as e:
+        log.debug("Caixin PMI scrape failed: %s", e)
+
+    # Global Manufacturing PMI composite (JPMorgan/S&P Global via public data)
+    try:
+        # Try FRED for global PMI proxy
+        if FRED_API_KEY:
+            url = f"https://api.stlouisfed.org/fred/series/observations?series_id=JPNPMIMFG&api_key={FRED_API_KEY}&sort_order=desc&limit=1&file_type=json"
+            data = fetch_json(url)
+            if data:
+                obs = data.get("observations", [])
+                if obs and obs[0]["value"] != ".":
+                    result["japan_manufacturing_pmi"] = {
+                        "label": "Japan Manufacturing PMI",
+                        "value": float(obs[0]["value"]),
+                        "date": obs[0].get("date", ""),
+                    }
+    except Exception as e:
+        log.debug("Japan PMI FRED fetch failed: %s", e)
+
+    return result
+
+
+# ── World Gold Council — Central bank demand & ETF flows ─────────────────────
+def fetch_world_gold_council():
+    """Fetch gold ETF flow data from World Gold Council public data feed."""
+    result = {}
+    try:
+        # WGC publishes ETF holdings data — total global ETF holdings
+        url = "https://www.gold.org/goldhub/data/global-gold-etf-holdings"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Look for total ETF holdings in tonnes
+        m = re.search(r'(\d[\d,]+\.?\d*)\s*(?:tonnes|t\b)', html)
+        if m:
+            val = float(m.group(1).replace(",", ""))
+            if 1000 < val < 10000:
+                result["global_etf_holdings"] = {
+                    "label": "Global Gold ETF Holdings (tonnes)",
+                    "value": val,
+                }
+    except Exception as e:
+        log.debug("WGC ETF holdings fetch failed: %s", e)
+
+    # Central bank gold buying — via IMF IFS data (proxy)
+    try:
+        url = "https://www.gold.org/goldhub/data/central-bank-statistics"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Look for net buying/selling figure
+        m = re.search(r'net\s+(?:purchase|buying)[^\d]*(\d+\.?\d*)\s*(?:tonnes|t\b)', html, re.IGNORECASE)
+        if m:
+            val = float(m.group(1))
+            result["central_bank_demand"] = {
+                "label": "Central Bank Net Gold Buying (tonnes)",
+                "value": val,
+            }
+    except Exception as e:
+        log.debug("WGC central bank data fetch failed: %s", e)
+    return result
+
+
+# ── CONAB — Brazil crop production estimates (corn, soybeans) ────────────────
+def fetch_conab_brazil():
+    """Fetch CONAB (Brazil) crop production estimates — free RSS/API."""
+    result = {}
+    try:
+        # CONAB publishes monthly crop reports. Try their public data endpoint.
+        url = "https://portaldeinformacoes.conab.gov.br/index.php/safra-graos-serie-historica-producao"
+        # Fallback: CONAB has a public API for annual production data
+        url = "https://consultaweb.conab.gov.br/consultas/consultaGrao.do?method=consultarPorParametros&codigoProduto=1&codigoEstado=0&codigoSafra=0&acao=consultar"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            content = r.read().decode("utf-8", errors="ignore")
+        # Parse for corn and soy production numbers
+        # CONAB data is typically in million tonnes
+        m = re.search(r'(\d+[\.,]\d+)\s*(?:milhões?|million)\s*(?:de\s+)?(?:toneladas?|tons?)', content, re.IGNORECASE)
+        if m:
+            val = float(m.group(1).replace(",", "."))
+            if 50 < val < 200:
+                result["brazil_corn_production"] = {
+                    "label": "Brazil Corn Production (million tonnes, CONAB)",
+                    "value": val,
+                }
+    except Exception as e:
+        log.debug("CONAB Brazil fetch failed: %s", e)
+
+    # Try USDA FAS for Brazil specifically (already have world, now add Brazil)
+    for comm, code in [("Corn", "0440000"), ("Soybeans", "2222000")]:
+        try:
+            url = (f"https://apps.fas.usda.gov/psdonline/api/psd/commodity/{code}"
+                   f"?commodityCode={code}&marketYear=2025&countryCode=BR&reportId=1")
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0", "Accept": "application/json"})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                data = json.loads(r.read())
+            if data:
+                prod = next((d for d in data if d.get("attributeId") == 57), None)  # Production
+                if prod:
+                    result[f"brazil_{comm.lower()}_production"] = {
+                        "label": f"Brazil {comm} Production (MMT, USDA FAS)",
+                        "value": prod.get("value"),
+                        "unit": "MMT",
+                    }
+        except Exception as e:
+            log.debug("CONAB/FAS Brazil fetch for %s failed: %s", comm, e)
+    return result
+
+
+# ── LBMA — Gold and Silver lease/forward rates ────────────────────────────────
+def fetch_lbma_data():
+    """Fetch LBMA gold and silver data including forward rates."""
+    result = {}
+    # LBMA gold price PM fix (free CSV download)
+    try:
+        url = "https://www.lbma.org.uk/prices-and-data/precious-metal-prices#/"
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as r:
+            html = r.read().decode("utf-8", errors="ignore")
+        # Look for gold lease rate or GOFO data
+        m = re.search(r'(?:lease|GOFO|forward)[^\d]*(\d+\.?\d*)\s*%', html, re.IGNORECASE)
+        if m:
+            result["gold_lease_1m"] = {
+                "label": "Gold 1M Lease Rate (%)",
+                "value": float(m.group(1)),
+                "signal": "contango" if float(m.group(1)) > 0 else "backwardation",
+            }
+    except Exception as e:
+        log.debug("LBMA data fetch failed: %s", e)
+
+    # Use FRED for gold price fix as reliable fallback
+    if FRED_API_KEY:
+        try:
+            url = f"https://api.stlouisfed.org/fred/series/observations?series_id=GOLDPMGBD228NLBM&api_key={FRED_API_KEY}&sort_order=desc&limit=2&file_type=json"
+            data = fetch_json(url)
+            if data:
+                obs = [o for o in data.get("observations", []) if o.get("value") != "."]
+                if obs:
+                    latest = float(obs[0]["value"])
+                    prev   = float(obs[1]["value"]) if len(obs) > 1 else latest
+                    result["gold_lbma_fix"] = {
+                        "label": "LBMA Gold PM Fix (USD/oz)",
+                        "value": latest,
+                        "change": round(latest - prev, 2),
+                        "date": obs[0].get("date", ""),
+                    }
+        except Exception as e:
+            log.debug("LBMA gold FRED fetch failed: %s", e)
+    return result
+
+
 # ── 13. DOE LNG export tracking — scraped from EIA (no extra key) ─────────────
 def fetch_lng_export_data():
     """Fetch US LNG export capacity utilization from EIA (uses existing EIA key)."""
@@ -1187,6 +1625,11 @@ def fetch_weather_data():
         "Ho Chi Minh": (10.76,  106.66),  # Vietnam Robusta coffee
         "Minneapolis": (44.98,  -93.27),  # US Northern Plains wheat & corn
         "New Delhi":   (28.68,   77.22),  # India sugar, wheat & gold demand
+        "Kyiv":        (50.45,   30.52),  # Black Sea wheat corridor
+        "Buenos Aires":(-34.61, -58.38),  # Argentina soybean/corn
+        "Perth":       (-31.95,  115.86), # Australian wheat
+        "Bogota":      (4.71,   -74.07),  # Colombia Arabica coffee
+        "Odessa":      (46.48,   30.74),  # Ukraine Black Sea port
     }
     result = {}
     for city, (lat, lon) in hubs.items():
@@ -1353,7 +1796,10 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
                         bls=None, weather=None, treasury=None, comex_copper=None, pmi=None,
                         ttf=None, entsog=None, lng_exports=None, gold_etf=None,
                         oil_prices=None, rig_count=None, tanker_rates=None, spr=None,
-                        silver_data=None, live_prices=None, usda_data=None):
+                        silver_data=None, live_prices=None, usda_data=None,
+                        gie_agsi=None, crop_progress=None, oecd_cli=None, silver_etf=None,
+                        shfe_copper=None, opec=None, caixin_ism=None, wgc=None,
+                        conab=None, lbma=None):
     lines = []
 
     # LIVE PRICE — always first so Claude sees today's move immediately
@@ -1775,6 +2221,96 @@ def build_macro_context(eia, cftc, imf, worldbank, fred, lme_copper, bdi, commod
             lines.append("KEY SUGAR DRIVERS: Brazil crushing pace & ethanol parity, India output & export policy, "
                          "Thailand production, crude oil price (ethanol competition), monsoon rains")
 
+    # ── OECD CLI — global growth signal (all commodities) ──────────────────────
+    if oecd_cli:
+        cli_lines = []
+        for country, d in oecd_cli.items():
+            cli_lines.append(f"  {d['label']}: {d['value']} — {d['trend']}")
+        if cli_lines:
+            lines.append("OECD LEADING INDICATORS (growth momentum):")
+            lines.extend(cli_lines[:4])  # top 4
+
+    # ── ISM / Caixin PMI ──────────────────────────────────────────────────────
+    if caixin_ism:
+        if commodity_name in ("Copper", "Crude Oil", "Natural Gas", "Corn", "Wheat", "Soybeans"):
+            if "ism_manufacturing" in caixin_ism:
+                d = caixin_ism["ism_manufacturing"]
+                lines.append(f"ISM US MANUFACTURING PMI: {d['value']} — {d.get('signal', d.get('regime', ''))}")
+            if "caixin_manufacturing" in caixin_ism:
+                d = caixin_ism["caixin_manufacturing"]
+                lines.append(f"CAIXIN CHINA MANUFACTURING PMI: {d['value']} — {d['regime']}")
+
+    # ── OPEC production (Crude Oil) ──────────────────────────────────────────
+    if opec and commodity_name == "Crude Oil":
+        if "opec_production" in opec:
+            d = opec["opec_production"]
+            lines.append(f"OPEC CRUDE PRODUCTION: {d['value']} mb/d")
+        if "opec_basket_price" in opec:
+            d = opec["opec_basket_price"]
+            lines.append(f"OPEC BASKET PRICE: ${d['value']}/bbl")
+
+    # ── GIE AGSI — European gas storage (Natural Gas) ───────────────────────
+    if gie_agsi and commodity_name == "Natural Gas":
+        d = gie_agsi.get("eu_gas_storage")
+        if d:
+            lines.append(f"EU GAS STORAGE: {d['value']}% full — {d['signal']}"
+                         + (f" (trend: {d['trend']})" if d.get("trend") else ""))
+
+    # ── USDA crop progress (Corn, Wheat, Soybeans) ───────────────────────────
+    if crop_progress and commodity_name in ("Corn", "Wheat", "Soybeans"):
+        cp = crop_progress.get(commodity_name, {})
+        if cp:
+            lines.append(f"USDA CROP PROGRESS ({commodity_name.upper()}):")
+            if "good_pct" in cp:
+                d = cp["good_pct"]
+                lines.append(f"  Condition % Good: {d['value']}% — {d['signal']} (week ending {d.get('week_ending', '')})")
+            if "planted_pct" in cp:
+                d = cp["planted_pct"]
+                lines.append(f"  % Planted: {d['value']}% (week ending {d.get('week_ending', '')})")
+
+    # ── CONAB Brazil estimates (Corn, Soybeans) ──────────────────────────────
+    if conab and commodity_name in ("Corn", "Soybeans"):
+        for key in [f"brazil_{commodity_name.lower()}_production", "brazil_corn_production"]:
+            if key in conab:
+                d = conab[key]
+                lines.append(f"CONAB/USDA BRAZIL: {d['label']}: {d['value']} {d.get('unit', 'MMT')}")
+                break
+
+    # ── Silver ETFs (Silver) ─────────────────────────────────────────────────
+    if silver_etf and commodity_name == "Silver":
+        etf_lines = []
+        for ticker, d in silver_etf.items():
+            if d.get("price"):
+                chg_str = f" ({d['change']:+.2f}%)" if d.get("change") is not None else ""
+                etf_lines.append(f"  {d['label']}: ${d['price']:.2f}{chg_str}")
+        if etf_lines:
+            lines.append("SILVER ETF PRICES:")
+            lines.extend(etf_lines)
+
+    # ── WGC data (Gold) ──────────────────────────────────────────────────────
+    if wgc and commodity_name == "Gold":
+        if "global_etf_holdings" in wgc:
+            d = wgc["global_etf_holdings"]
+            lines.append(f"WGC GLOBAL GOLD ETF HOLDINGS: {d['value']:,.0f} tonnes")
+        if "central_bank_demand" in wgc:
+            d = wgc["central_bank_demand"]
+            lines.append(f"WGC CENTRAL BANK DEMAND: {d['value']} tonnes (net buying)")
+
+    # ── LBMA data (Gold, Silver) ─────────────────────────────────────────────
+    if lbma and commodity_name in ("Gold", "Silver"):
+        if "gold_lbma_fix" in lbma:
+            d = lbma["gold_lbma_fix"]
+            lines.append(f"LBMA GOLD FIX: ${d['value']:,.2f} (chg: {d.get('change', 0):+.2f}, {d.get('date','')})")
+        if "gold_lease_1m" in lbma:
+            d = lbma["gold_lease_1m"]
+            lines.append(f"GOLD LEASE RATE (1M): {d['value']}% — {d.get('signal','')}")
+
+    # ── SHFE copper stocks (Copper) ──────────────────────────────────────────
+    if shfe_copper and commodity_name == "Copper":
+        d = shfe_copper.get("shfe_copper_stocks")
+        if d:
+            lines.append(f"SHFE COPPER WAREHOUSE STOCKS: {d['value']:,} tonnes")
+
     return "\n".join(lines) if lines else "No external data available."
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -2148,6 +2684,16 @@ def run_analysis():
         silver_data   = fetch_silver_data()
         live_prices   = fetch_live_prices()
         usda_data     = fetch_usda_data()
+        gie_agsi      = fetch_gie_agsi()
+        crop_progress = fetch_usda_crop_progress()
+        oecd_cli      = fetch_oecd_cli()
+        silver_etf    = fetch_silver_etf()
+        shfe_copper   = fetch_shfe_copper()
+        opec          = fetch_opec_production()
+        caixin_ism    = fetch_caixin_ism_pmi()
+        wgc           = fetch_world_gold_council()
+        conab         = fetch_conab_brazil()
+        lbma          = fetch_lbma_data()
         log.info("External data fetched. FRED=%d, BLS=%d, Treasury=%d, Weather=%d, PMI=%d, TTF=%d, ENTSOG=%d, GoldETF=%d, LME copper=%s, BDI=%s",
                  len(fred), len(bls), len(treasury), len(weather), len(pmi), len(ttf), len(entsog), len(gold_etf),
                  lme_copper["value"] if lme_copper else "unavailable",
@@ -2172,7 +2718,12 @@ def run_analysis():
                                                 gold_etf=gold_etf, oil_prices=oil_prices,
                                                 rig_count=rig_count, tanker_rates=tanker_rates,
                                                 spr=spr, silver_data=silver_data,
-                                                live_prices=live_prices, usda_data=usda_data)
+                                                live_prices=live_prices, usda_data=usda_data,
+                                                gie_agsi=gie_agsi, crop_progress=crop_progress,
+                                                oecd_cli=oecd_cli, silver_etf=silver_etf,
+                                                shfe_copper=shfe_copper, opec=opec,
+                                                caixin_ism=caixin_ism, wgc=wgc,
+                                                conab=conab, lbma=lbma)
             try:
                 if articles:
                     analysis = analyse_commodity(commodity, articles, macro_context)
@@ -2217,7 +2768,11 @@ def run_analysis():
                     c, fred, cftc, eia, bdi, lme_copper,
                     gold_etf, silver_data, oil_prices, rig_count,
                     tanker_rates, spr, pmi, ttf, weather, lng_exports,
-                    usda_data=usda_data)
+                    usda_data=usda_data, gie_agsi=gie_agsi,
+                    crop_progress=crop_progress, oecd_cli=oecd_cli,
+                    silver_etf=silver_etf, shfe_copper=shfe_copper,
+                    opec=opec, caixin_ism=caixin_ism, wgc=wgc,
+                    conab=conab, lbma=lbma)
             save_macro_cache(macro_snapshot)
         except Exception as e:
             log.warning("Macro snapshot save failed: %s", e)
@@ -2297,7 +2852,9 @@ def _chg(val, decimals=2, suffix=""):
 def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
                          gold_etf, silver_data, oil_prices, rig_count,
                          tanker_rates, spr, pmi, ttf, weather, lng_exports,
-                         usda_data=None):
+                         usda_data=None, gie_agsi=None, crop_progress=None, oecd_cli=None,
+                         silver_etf=None, shfe_copper=None, opec=None,
+                         caixin_ism=None, wgc=None, conab=None, lbma=None):
     """Build a structured key-data snapshot for the frontend Key Data Panel."""
     rows = []  # each row: {label, value, change, signal, signal_color}
     BULL = "#22c55e"; BEAR = "#ef4444"; NEUT = "#fbbf24"; MUTED = "#5d6478"
@@ -2516,6 +3073,77 @@ def build_macro_snapshot(commodity, fred, cftc, eia, bdi, lme_copper,
                 d = fred["wti_spot"]
                 sc = BULL if (d.get("change") or 0) > 0 else BEAR
                 row("WTI (Ethanol Parity)", f"${_fmt(d['value'], 2)}", _chg(d.get("change"), 2), None, sc)
+
+    # New data sources
+    if gie_agsi and commodity == "Natural Gas":
+        d = gie_agsi.get("eu_gas_storage")
+        if d:
+            sc = BEAR if d["value"] > 75 else BULL if d["value"] < 55 else NEUT
+            row("EU Gas Storage % Full", _fmt(d["value"], 1, "%"), None, d.get("signal", ""), sc)
+
+    if crop_progress and commodity in ("Corn", "Wheat", "Soybeans"):
+        cp = crop_progress.get(commodity, {})
+        if "good_pct" in cp:
+            d = cp["good_pct"]
+            sc = BULL if d["value"] >= 65 else BEAR if d["value"] < 50 else NEUT
+            row("Crop Condition % Good", _fmt(d["value"], 1, "%"), None, d.get("signal", ""), sc)
+        if "planted_pct" in cp:
+            d = cp["planted_pct"]
+            row("% Planted", _fmt(d["value"], 1, "%"), None, None, NEUT)
+
+    if oecd_cli:
+        us_cli = oecd_cli.get("United States")
+        if us_cli:
+            sc = BULL if us_cli["value"] > 100 else BEAR
+            row("OECD CLI (US)", _fmt(us_cli["value"], 2), None, us_cli.get("trend", ""), sc)
+
+    if caixin_ism:
+        if "ism_manufacturing" in caixin_ism:
+            d = caixin_ism["ism_manufacturing"]
+            sc = BULL if d["value"] > 50 else BEAR
+            row("ISM US Mfg PMI", _fmt(d["value"], 1), None, d.get("regime", ""), sc)
+        if "caixin_manufacturing" in caixin_ism:
+            d = caixin_ism["caixin_manufacturing"]
+            sc = BULL if d["value"] > 50 else BEAR
+            row("Caixin China Mfg PMI", _fmt(d["value"], 1), None, d.get("regime", ""), sc)
+
+    if opec and commodity == "Crude Oil":
+        if "opec_production" in opec:
+            row("OPEC Production", _fmt(opec["opec_production"]["value"], 1, " mb/d"), None, None, NEUT)
+        if "opec_basket_price" in opec:
+            row("OPEC Basket Price", f"${_fmt(opec['opec_basket_price']['value'], 2)}", None, None, NEUT)
+
+    if silver_etf and commodity == "Silver":
+        slv = silver_etf.get("SLV")
+        if slv and slv.get("price"):
+            sc = BULL if (slv.get("change") or 0) > 0 else BEAR
+            row("SLV Silver ETF", f"${_fmt(slv['price'], 2)}", _chg(slv.get("change"), 2, "%"), None, sc)
+
+    if shfe_copper and commodity == "Copper":
+        d = shfe_copper.get("shfe_copper_stocks")
+        if d:
+            row("SHFE Copper Stocks", f"{d['value']:,}t", None, None, NEUT)
+
+    if wgc and commodity == "Gold":
+        if "global_etf_holdings" in wgc:
+            row("Global Gold ETF (WGC)", f"{wgc['global_etf_holdings']['value']:,.0f}t", None, None, NEUT)
+        if "central_bank_demand" in wgc:
+            row("Central Bank Demand", f"{wgc['central_bank_demand']['value']}t", None, "NET BUYING", BULL)
+
+    if lbma and commodity in ("Gold", "Silver"):
+        if "gold_lbma_fix" in lbma:
+            d = lbma["gold_lbma_fix"]
+            sc = BULL if (d.get("change") or 0) > 0 else BEAR
+            row("LBMA Gold Fix", f"${_fmt(d['value'], 2)}", _chg(d.get("change"), 2), None, sc)
+        if "gold_lease_1m" in lbma:
+            d = lbma["gold_lease_1m"]
+            row("Gold Lease Rate (1M)", _fmt(d["value"], 2, "%"), None, d.get("signal", ""), NEUT)
+
+    if conab and commodity in ("Corn", "Soybeans"):
+        key = f"brazil_{commodity.lower()}_production"
+        if key in conab:
+            d = conab[key]
+            row("Brazil Production (USDA)", f"{d.get('value', '—')} MMT", None, None, NEUT)
 
     return rows
 
