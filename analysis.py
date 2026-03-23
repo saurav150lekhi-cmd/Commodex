@@ -3344,6 +3344,102 @@ def _run_in_context():
         run_analysis()
 
 
+# ── Trade Ideas ────────────────────────────────────────────────────────────────
+@app.route("/trade-ideas", methods=["POST"])
+@jwt_required()
+def trade_ideas():
+    if not ANTHROPIC_API_KEY:
+        return jsonify({"error": "AI not configured."}), 503
+
+    # Pull latest run per commodity
+    all_runs = AnalysisRun.query.order_by(AnalysisRun.run_at.desc()).all()
+    seen, rows = set(), []
+    for r in all_runs:
+        if r.commodity not in seen:
+            seen.add(r.commodity)
+            rows.append(r)
+
+    if not rows:
+        return jsonify({"error": "No analysis data available. Run analysis first."}), 404
+
+    # Build context summary for each commodity
+    price_data = fetch_live_prices()
+    lines = []
+    for r in rows:
+        d    = r.data or {}
+        an   = d.get("analysis", d)  # handle both wrapped and flat structures
+        sent = an.get("sentiment", r.sentiment or "NEUTRAL")
+        conf = an.get("confidence", "LOW")
+        summ = an.get("market_summary", "")[:300]
+        up   = "; ".join((an.get("drivers") or {}).get("up",   [])[:3])
+        dn   = "; ".join((an.get("drivers") or {}).get("down", [])[:2])
+        px   = price_data.get(r.commodity, {})
+        price_str = f"${px['price']:.2f} ({'+' if px.get('change',0)>=0 else ''}{px.get('change',0):.2f}%)" if px.get("price") else "N/A"
+        lines.append(
+            f"- {r.commodity}: {sent} | Confidence: {conf} | Price: {price_str}\n"
+            f"  Bullish: {up or 'N/A'}\n"
+            f"  Risks: {dn or 'N/A'}\n"
+            f"  Summary: {summ}"
+        )
+
+    context = "\n\n".join(lines)
+    today   = datetime.now(timezone.utc).strftime("%d %b %Y")
+
+    prompt = f"""You are a senior commodity strategist at a global macro hedge fund. Today is {today}.
+
+Below is the latest AI-generated analysis for each commodity we track:
+
+{context}
+
+---
+
+Based on this analysis, generate 4-6 specific trade ideas. For each idea:
+- Focus on commodities with HIGH or MEDIUM confidence and strong directional bias
+- Look for thematic connections across commodities where relevant (e.g. energy complex, soft commodities weather play, USD sensitivity)
+- Consider relative value plays where two commodities diverge
+
+For each trade idea return a JSON object with these fields:
+- "commodity": the commodity name (or "SPREAD: X vs Y" for relative value)
+- "direction": "LONG" or "SHORT" or "SPREAD"
+- "thesis": 2-3 sentence rationale drawing on the specific drivers above. Be precise and cite actual data points.
+- "entry_note": what level or condition to look for entry
+- "watch": the single biggest risk or catalyst to monitor
+- "conviction": "HIGH", "MEDIUM", or "LOW"
+
+Return ONLY a valid JSON array of idea objects. No markdown, no text before or after:
+
+[
+  {{
+    "commodity": "...",
+    "direction": "...",
+    "thesis": "...",
+    "entry_note": "...",
+    "watch": "...",
+    "conviction": "..."
+  }}
+]"""
+
+    client  = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    message = client.messages.create(
+        model="claude-sonnet-4-20250514",
+        max_tokens=2048,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    raw = message.content[0].text.strip()
+    if "```" in raw:
+        parts = raw.split("```")
+        for part in parts:
+            part = part.strip()
+            if part.startswith("json"): part = part[4:].strip()
+            if part.startswith("["): raw = part; break
+    start = raw.find("[")
+    end   = raw.rfind("]")
+    if start != -1 and end != -1:
+        raw = raw[start:end+1]
+    ideas = json.loads(raw)
+    return jsonify({"ideas": ideas, "generated_at": today})
+
+
 @app.route("/history/<commodity>")
 @jwt_required()
 def get_history(commodity):
