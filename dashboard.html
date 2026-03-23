@@ -452,22 +452,44 @@
   .pwa-btn-primary { background:var(--bull); color:#000; }
   .pwa-btn-dismiss { background:transparent; color:var(--muted); border:1px solid var(--border) !important; border:none; }
 
-  /* Trade Ideas */
-  .ti-card { border:1px solid var(--border); margin-bottom:16px; overflow:hidden; }
-  .ti-card-header { display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:1px solid var(--border); background:rgba(8,10,16,0.5); }
-  .ti-direction { font-size:10px; font-weight:800; letter-spacing:0.14em; padding:3px 10px; }
-  .ti-direction.long  { color:#26a69a; border:1px solid rgba(38,166,154,0.4); background:rgba(38,166,154,0.08); }
-  .ti-direction.short { color:#ef5350; border:1px solid rgba(239,83,80,0.4);  background:rgba(239,83,80,0.08); }
-  .ti-direction.spread{ color:var(--accent); border:1px solid rgba(200,168,112,0.4); background:rgba(200,168,112,0.08); }
-  .ti-commodity { font-size:13px; font-weight:800; color:var(--fg); letter-spacing:0.04em; }
-  .ti-conviction { margin-left:auto; font-size:8px; font-weight:700; letter-spacing:0.14em; padding:2px 8px; }
-  .ti-conviction.HIGH   { color:#26a69a; border:1px solid rgba(38,166,154,0.35); }
-  .ti-conviction.MEDIUM { color:var(--accent); border:1px solid rgba(200,168,112,0.35); }
-  .ti-conviction.LOW    { color:var(--muted); border:1px solid var(--border); }
-  .ti-card-body { padding:14px 16px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-  .ti-field-lbl { font-size:7px; font-weight:800; letter-spacing:0.16em; color:var(--muted); margin-bottom:5px; }
-  .ti-field-val { font-size:12px; color:rgba(209,212,220,0.88); line-height:1.6; font-family:var(--sans); }
-  .ti-thesis { grid-column:1/-1; }
+  /* Trade Ideas Modal */
+  #tradeIdeasModal { display:none; position:fixed; inset:0; background:rgba(4,6,12,0.96); z-index:600; overflow-y:auto; }
+  .ti-modal-inner { max-width:860px; margin:0 auto; padding:40px 20px 60px; }
+  .ti-modal-header { display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:28px; }
+  .ti-modal-title { font-size:22px; font-weight:700; color:#fff; letter-spacing:-0.02em; font-family:var(--sans); line-height:1.2; }
+  .ti-modal-title span { color:var(--accent); }
+  .ti-modal-meta { font-size:10px; color:var(--text-muted); letter-spacing:0.08em; margin-top:6px; font-family:var(--mono); }
+  .ti-close-btn { background:none; border:1px solid rgba(255,255,255,0.08); color:var(--text-muted); padding:6px 14px; font-family:var(--mono); font-size:9px; cursor:pointer; letter-spacing:0.1em; flex-shrink:0; transition:border-color 0.15s,color 0.15s; }
+  .ti-close-btn:hover { border-color:rgba(255,255,255,0.2); color:var(--fg); }
+  .ti-disclaimer { font-size:9px; color:var(--text-muted); letter-spacing:0.06em; margin-bottom:28px; padding:8px 0; border-top:1px solid rgba(255,255,255,0.05); border-bottom:1px solid rgba(255,255,255,0.05); }
+
+  /* Trade idea cards */
+  .ti-card { margin-bottom:16px; overflow:hidden; border:1px solid rgba(255,255,255,0.06); background:rgba(13,15,24,0.8); transition:border-color 0.15s; }
+  .ti-card:hover { border-color:rgba(255,255,255,0.12); }
+  .ti-card.long-card  { border-left:3px solid #22C55E; }
+  .ti-card.short-card { border-left:3px solid #EF4444; }
+  .ti-card.spread-card{ border-left:3px solid var(--accent); }
+  .ti-card-header { display:flex; align-items:center; gap:12px; padding:14px 20px; border-bottom:1px solid rgba(255,255,255,0.05); }
+  .ti-direction { font-size:9px; font-weight:800; letter-spacing:0.18em; padding:3px 10px; border-radius:2px; }
+  .ti-direction.long   { color:#22C55E; border:1px solid rgba(34,197,94,0.35);  background:rgba(34,197,94,0.1); }
+  .ti-direction.short  { color:#EF4444; border:1px solid rgba(239,68,68,0.35);  background:rgba(239,68,68,0.1); }
+  .ti-direction.spread { color:var(--accent); border:1px solid rgba(200,168,112,0.35); background:rgba(200,168,112,0.08); }
+  .ti-commodity { font-size:15px; font-weight:700; color:#fff; letter-spacing:0.01em; font-family:var(--sans); }
+  .ti-conviction { margin-left:auto; font-size:8px; font-weight:700; letter-spacing:0.14em; padding:3px 10px; border-radius:2px; }
+  .ti-conviction.HIGH   { color:#22C55E; background:rgba(34,197,94,0.1);   border:1px solid rgba(34,197,94,0.3); }
+  .ti-conviction.MEDIUM { color:var(--accent); background:rgba(200,168,112,0.08); border:1px solid rgba(200,168,112,0.3); }
+  .ti-conviction.LOW    { color:var(--text-muted); background:transparent; border:1px solid rgba(255,255,255,0.08); }
+  .ti-card-body { padding:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .ti-thesis { grid-column:1/-1; padding-bottom:18px; border-bottom:1px solid rgba(255,255,255,0.05); margin-bottom:2px; }
+  .ti-field-lbl { font-size:7px; font-weight:800; letter-spacing:0.2em; color:var(--text-muted); margin-bottom:7px; font-family:var(--mono); }
+  .ti-field-val { font-size:13px; color:rgba(209,212,220,0.9); line-height:1.65; font-family:var(--sans); }
+  .ti-thesis .ti-field-val { font-size:14px; line-height:1.7; }
+
+  /* Loading spinner */
+  @keyframes tiSpin { to { transform:rotate(360deg); } }
+  .ti-loading { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 0; gap:20px; }
+  .ti-spinner { width:32px; height:32px; border:2px solid rgba(200,168,112,0.15); border-top-color:var(--accent); border-radius:50%; animation:tiSpin 0.8s linear infinite; }
+  .ti-loading-txt { font-size:10px; color:var(--text-muted); letter-spacing:0.18em; font-family:var(--mono); }
 
   /* ── MOBILE RESPONSIVE ──────────────────────────────────────────────────── */
   @media (max-width: 768px) {
@@ -859,19 +881,17 @@
 </div><!-- #terminal -->
 
 <!-- TRADE IDEAS MODAL -->
-<div id="tradeIdeasModal" style="display:none;position:fixed;inset:0;background:rgba(8,10,16,0.92);z-index:600;overflow-y:auto;padding:32px 16px">
-  <div style="max-width:900px;margin:0 auto;background:var(--card);border:1px solid var(--border)">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--border)">
+<div id="tradeIdeasModal">
+  <div class="ti-modal-inner">
+    <div class="ti-modal-header">
       <div>
-        <div style="font-size:9px;font-weight:800;letter-spacing:0.18em;color:var(--accent)">⚡ AI TRADE IDEAS</div>
-        <div id="tiGeneratedAt" style="font-size:8px;color:var(--muted);margin-top:3px;letter-spacing:0.08em"></div>
+        <div class="ti-modal-title">AI <span>Trade Ideas</span></div>
+        <div class="ti-modal-meta" id="tiGeneratedAt"></div>
       </div>
-      <button onclick="closeTradeIdeas()" style="background:none;border:1px solid var(--border);color:var(--muted);padding:4px 12px;font-family:var(--mono);font-size:9px;cursor:pointer;letter-spacing:0.1em">✕ CLOSE</button>
+      <button class="ti-close-btn" onclick="closeTradeIdeas()">✕ CLOSE</button>
     </div>
-    <div id="tiDisclaimer" style="padding:10px 24px;background:rgba(239,83,80,0.06);border-bottom:1px solid rgba(239,83,80,0.15);font-size:9px;color:rgba(239,83,80,0.7);letter-spacing:0.08em">
-      FOR INFORMATIONAL PURPOSES ONLY · NOT FINANCIAL ADVICE · DO YOUR OWN RESEARCH
-    </div>
-    <div id="tiBody" style="padding:24px"></div>
+    <div class="ti-disclaimer">FOR INFORMATIONAL PURPOSES ONLY &nbsp;·&nbsp; NOT FINANCIAL ADVICE &nbsp;·&nbsp; DO YOUR OWN RESEARCH</div>
+    <div id="tiBody"></div>
   </div>
 </div>
 
@@ -1945,17 +1965,17 @@ async function openTradeIdeas() {
   const body  = document.getElementById('tiBody');
   const btn   = document.getElementById('tradeIdeasBtn');
   modal.style.display = 'block';
-  body.innerHTML = '<div style="text-align:center;padding:60px 0;font-size:10px;color:var(--muted);letter-spacing:0.12em">⚡ GENERATING TRADE IDEAS...</div>';
+  body.innerHTML = '<div class="ti-loading"><div class="ti-spinner"></div><div class="ti-loading-txt">GENERATING TRADE IDEAS</div></div>';
   btn.textContent = '⏳ GENERATING...'; btn.disabled = true;
   try {
     const res  = await fetchT('/trade-ideas', { method: 'POST', headers: authH() });
     const data = await res.json();
     btn.textContent = '⚡ TRADE IDEAS'; btn.disabled = false;
-    if (!res.ok) { body.innerHTML = `<div style="color:#ef5350;font-size:11px;padding:20px">${data.error || 'Failed to generate ideas.'}</div>`; return; }
-    document.getElementById('tiGeneratedAt').textContent = 'GENERATED ' + (data.generated_at || '').toUpperCase();
+    if (!res.ok) { body.innerHTML = `<div style="color:#ef5350;font-size:13px;padding:40px;font-family:var(--sans)">${data.error || 'Failed to generate ideas.'}</div>`; return; }
+    document.getElementById('tiGeneratedAt').textContent = 'Generated ' + (data.generated_at || '');
     const dirClass = d => d === 'LONG' ? 'long' : d === 'SHORT' ? 'short' : 'spread';
     body.innerHTML = (data.ideas || []).map(idea => `
-      <div class="ti-card">
+      <div class="ti-card ${dirClass(idea.direction)}-card">
         <div class="ti-card-header">
           <span class="ti-direction ${dirClass(idea.direction)}">${idea.direction}</span>
           <span class="ti-commodity">${idea.commodity}</span>
@@ -1971,7 +1991,7 @@ async function openTradeIdeas() {
             <div class="ti-field-val">${idea.entry_note}</div>
           </div>
           <div>
-            <div class="ti-field-lbl">WATCH</div>
+            <div class="ti-field-lbl">KEY RISK TO WATCH</div>
             <div class="ti-field-val">${idea.watch}</div>
           </div>
         </div>
